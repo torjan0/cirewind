@@ -1,0 +1,294 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "findings-v1alpha1.json",
+  "title": "CIRewind findings case output v1alpha1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "findings"],
+  "properties": {
+    "schemaVersion": { "const": "cirewind.findings/v1alpha1" },
+    "findings": { "type": "array", "items": { "$ref": "#/$defs/reportFinding" } }
+  },
+  "$defs": {
+    "reportFinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["findingId", "findingRevisionId", "incidentId", "indicatorId", "repository", "state", "provenance", "conclusion", "evidenceIds", "assumptions", "evidenceGaps", "contradictoryEvidence", "potentialCredentialExposure", "potentialResourceExposure", "remediationGuidance", "collectionCoverage"],
+      "properties": {
+        "findingId": { "type": "string", "pattern": "^find1:[0-9a-f]{64}$" },
+        "findingRevisionId": { "type": "string", "pattern": "^frev1:[0-9a-f]{64}$" },
+        "incidentId": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "indicatorId": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "repository": { "type": "string", "minLength": 3, "maxLength": 512 },
+        "workflow": { "type": "string", "maxLength": 4096 },
+        "runId": { "type": "integer", "minimum": 1 },
+        "runAttempt": { "type": "integer", "minimum": 1 },
+        "jobId": { "type": "integer", "minimum": 1 },
+        "stepIdentity": { "type": "string", "maxLength": 1024 },
+        "state": {
+          "enum": ["CONFIRMED_EXECUTED", "CONFIRMED_DOWNLOADED", "CONFIRMED_CALLED_WORKFLOW", "DECLARED_AT_RUN_SHA", "RUN_IN_WINDOW_MUTABLE_REF", "POTENTIAL_TRANSITIVE", "CURRENT_REFERENCE_ONLY", "NO_MATCH_CONFIRMED", "UNKNOWN_EVIDENCE_GAP", "CONTRADICTORY_EVIDENCE"]
+        },
+        "provenance": { "enum": ["L4_CERTAIN", "L3_STRONG", "L2_PROBABLE", "L1_POSSIBLE", "L0_UNKNOWN"] },
+        "conclusion": { "type": "string", "minLength": 1, "maxLength": 8192 },
+        "eventTime": { "type": "string", "maxLength": 4096 },
+        "evidenceIds": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/evidenceID" } },
+        "assumptions": { "type": "array", "uniqueItems": true, "items": { "type": "string", "maxLength": 4096 } },
+        "evidenceGaps": { "type": "array", "uniqueItems": true, "items": { "type": "string", "maxLength": 4096 } },
+        "contradictoryEvidence": { "type": "array", "uniqueItems": true, "items": { "type": "string", "maxLength": 4096 } },
+        "potentialCredentialExposure": { "type": "array", "items": { "$ref": "#/$defs/reportExposure" } },
+        "potentialResourceExposure": { "type": "array", "items": { "$ref": "#/$defs/reportExposure" } },
+        "remediationGuidance": { "type": "array", "uniqueItems": true, "items": { "type": "string", "maxLength": 8192 } },
+        "collectionCoverage": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^cova1:[0-9a-f]{64}$" } }
+      }
+    },
+    "reportExposure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "basis", "conclusion", "evidenceIds"],
+      "properties": {
+        "kind": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 512 },
+        "capability": { "type": "string", "maxLength": 512 },
+        "basis": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "conclusion": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "evidenceIds": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/evidenceID" } }
+      }
+    },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "evidenceID": { "type": "string", "pattern": "^ev1:[0-9a-f]{64}$" },
+    "gitObjectID": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "value"],
+      "properties": {
+        "algorithm": { "enum": ["sha1", "sha256"] },
+        "value": { "type": "string" }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "algorithm": { "const": "sha1" },
+            "value": { "type": "string", "pattern": "^[0-9a-f]{40}$" }
+          }
+        },
+        {
+          "properties": {
+            "algorithm": { "const": "sha256" },
+            "value": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+          }
+        }
+      ]
+    },
+    "packageDigest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["subject", "algorithm", "value"],
+      "properties": {
+        "subject": { "enum": ["github-action-package", "oci-manifest", "executable-file", "release-asset", "workflow-artifact"] },
+        "algorithm": { "const": "sha256" },
+        "value": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      }
+    },
+    "incident": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "api_version", "pack_version", "source_pack_sha256", "canonical_pack_sha256"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "api_version": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "pack_version": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "source_pack_sha256": { "$ref": "#/$defs/sha256" },
+        "canonical_pack_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["job", "lifecycle_phase", "occurrence"],
+      "properties": {
+        "job": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["repository_id", "run_id", "run_attempt", "job_id"],
+          "properties": {
+            "repository_id": { "type": "integer", "minimum": 1 },
+            "run_id": { "type": "integer", "minimum": 1 },
+            "run_attempt": { "type": "integer", "minimum": 1 },
+            "job_id": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "timeline_record_id": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "api_step_number": { "type": "integer", "minimum": 1 },
+        "ast_ordinal": { "type": "integer", "minimum": 1 },
+        "lifecycle_phase": { "enum": ["PRE", "MAIN", "POST"] },
+        "occurrence": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "workflow", "run_id", "run_attempt", "job_id", "step"],
+      "properties": {
+        "repository": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "name"],
+          "properties": {
+            "id": { "type": "integer", "minimum": 1 },
+            "name": { "type": "string", "minLength": 3, "maxLength": 512 }
+          }
+        },
+        "workflow": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "definition_object_id"],
+          "properties": {
+            "path": { "type": ["string", "null"], "maxLength": 4096 },
+            "definition_object_id": {
+              "oneOf": [
+                { "$ref": "#/$defs/gitObjectID" },
+                { "type": "null" }
+              ]
+            },
+            "unknown_reason": { "type": "string", "maxLength": 1024 }
+          }
+        },
+        "run_id": { "type": ["integer", "null"], "minimum": 1 },
+        "run_attempt": { "type": ["integer", "null"], "minimum": 1 },
+        "job_id": { "type": ["integer", "null"], "minimum": 1 },
+        "step": {
+          "oneOf": [
+            { "$ref": "#/$defs/step" },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "proposition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "attributes"],
+      "properties": {
+        "kind": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "action_source_object_id": { "$ref": "#/$defs/gitObjectID" },
+        "package_digest": { "$ref": "#/$defs/packageDigest" },
+        "called_workflow_object_id": { "$ref": "#/$defs/gitObjectID" },
+        "attributes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "value"],
+            "properties": {
+              "name": { "type": "string", "minLength": 1, "maxLength": 128 },
+              "value": { "type": "string", "maxLength": 4096 }
+            }
+          }
+        }
+      }
+    },
+    "eventTime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start", "end", "bounds", "source_precision", "approximation", "basis"],
+      "properties": {
+        "start": { "type": ["string", "null"], "format": "date-time" },
+        "end": { "type": ["string", "null"], "format": "date-time" },
+        "bounds": {
+          "oneOf": [
+            { "enum": ["[)", "[]", "()", "(]"] },
+            { "type": "null" }
+          ]
+        },
+        "source_precision": { "enum": ["second", "minute", "hour", "day", "unknown"] },
+        "approximation": { "enum": ["exact", "source-rounded", "conservative-expanded", "unknown"] },
+        "basis": { "enum": ["api_field", "log_timestamp", "definition_commit", "proxy_interval", "unknown"] }
+      }
+    },
+    "assumption": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "description"],
+      "properties": {
+        "code": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "description": { "type": "string", "maxLength": 4096 }
+      }
+    },
+    "evidenceGap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["coverage_assessment_id", "code", "description"],
+      "properties": {
+        "coverage_assessment_id": { "type": "string", "pattern": "^cova1:[0-9a-f]{64}$" },
+        "code": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "description": { "type": "string", "maxLength": 4096 }
+      }
+    },
+    "contradiction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["group_id", "evidence_ids", "description"],
+      "properties": {
+        "group_id": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "evidence_ids": { "type": "array", "minItems": 2, "uniqueItems": true, "items": { "$ref": "#/$defs/evidenceID" } },
+        "description": { "type": "string", "maxLength": 4096 }
+      }
+    },
+    "credentialExposure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "conclusion", "evidence_ids"],
+      "properties": {
+        "kind": {
+          "enum": [
+            "GITHUB_TOKEN_PERMISSION",
+            "SECRET_REFERENCED_BY_JOB",
+            "SECRET_PASSED_TO_STEP",
+            "REUSABLE_SECRET_MAPPED",
+            "REUSABLE_SECRET_INHERITED",
+            "ENVIRONMENT_SECRET_ELIGIBLE",
+            "OIDC_MINTING_CAPABILITY"
+          ]
+        },
+        "basis": {
+          "enum": [
+            "runtime-observed",
+            "static-inferred",
+            "historical-definition-reference",
+            "historical-definition-flow",
+            "reusable-workflow-call"
+          ]
+        },
+        "secret_name": { "type": "string", "pattern": "^[A-Z_][A-Z0-9_]{0,255}$" },
+        "permission": { "type": "string", "maxLength": 128 },
+        "access": { "enum": ["read", "write", "none"] },
+        "conclusion": { "type": "string", "maxLength": 4096 },
+        "evidence_ids": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/evidenceID" } }
+      }
+    },
+    "resourceExposure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "resource_id", "correlation", "conclusion", "evidence_ids"],
+      "properties": {
+        "kind": { "enum": ["ARTIFACT", "PACKAGE", "RELEASE", "DEPLOYMENT", "REPOSITORY_WRITE", "PULL_REQUEST_CHANGE"] },
+        "resource_id": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "correlation": { "enum": ["DIRECT_ATTRIBUTION", "OBSERVED_AFTER"] },
+        "conclusion": { "type": "string", "maxLength": 4096 },
+        "evidence_ids": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/evidenceID" } }
+      }
+    },
+    "derivation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rule_id", "rule_version", "first_produced_analysis_id", "first_produced_engine_version", "canonical_inputs_sha256"],
+      "properties": {
+        "rule_id": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "rule_version": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "first_produced_analysis_id": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "first_produced_engine_version": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "canonical_inputs_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    }
+  }
+}

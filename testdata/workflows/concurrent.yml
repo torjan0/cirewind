@@ -1,0 +1,11 @@
+name: fixture concurrent jobs
+on: workflow_dispatch
+jobs:
+  affected:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: cirewind-fixtures/harmless@v1
+  independent:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: ./.github/actions/local

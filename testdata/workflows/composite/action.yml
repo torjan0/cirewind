@@ -1,0 +1,5 @@
+name: fixture wrapper
+runs:
+  using: composite
+  steps:
+    - uses: cirewind-fixtures/harmless@v1

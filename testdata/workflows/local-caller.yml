@@ -1,0 +1,7 @@
+name: fixture local caller
+on: workflow_dispatch
+jobs:
+  local:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: ./.github/actions/local

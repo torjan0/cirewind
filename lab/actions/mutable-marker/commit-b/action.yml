@@ -1,0 +1,8 @@
+name: CIRewind harmless marker B
+description: Emits a fixed marker for the affected synthetic commit.
+runs:
+  using: composite
+  steps:
+    - name: Emit affected marker
+      shell: bash
+      run: "printf '%s\\n' 'CIREWIND_LAB_MARKER=B'"

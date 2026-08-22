@@ -1,0 +1,14 @@
+name: D - downloaded Action step is skipped
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  skipped:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Never-started affected step
+        if: ${{ false }}
+        uses: cirewind-fixtures/harmless@v1
+      - name: Fixed completion marker
+        run: "printf '%s\\n' 'CIREWIND_LAB_SKIP_CONFIRMED'"

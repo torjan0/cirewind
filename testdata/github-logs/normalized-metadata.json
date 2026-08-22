@@ -1,0 +1,115 @@
+{
+  "apiVersion": "cirewind.dev/normalized-github-fixture/v1alpha1",
+  "syntheticOnly": true,
+  "referencedWorkflows": [
+    {
+      "scenario": "C",
+      "runID": 910003,
+      "runAttempt": 1,
+      "callerWorkflowSHA": "5555555555555555555555555555555555555555",
+      "calledRepository": "cirewind-fixtures/workflows",
+      "calledPath": ".github/workflows/reusable.yml",
+      "calledWorkflowSHA": "cccccccccccccccccccccccccccccccccccccccc"
+    },
+    {
+      "scenario": "F",
+      "runID": 910006,
+      "runAttempt": 1,
+      "callerWorkflowSHA": "5555555555555555555555555555555555555555",
+      "calledRepository": "cirewind-fixtures/workflows",
+      "calledPath": ".github/workflows/reusable-failing.yml",
+      "calledWorkflowSHA": "cccccccccccccccccccccccccccccccccccccccc"
+    },
+    {
+      "scenario": "F",
+      "runID": 910006,
+      "runAttempt": 2,
+      "callerWorkflowSHA": "5555555555555555555555555555555555555555",
+      "calledRepository": "cirewind-fixtures/workflows",
+      "calledPath": ".github/workflows/reusable-failing.yml",
+      "calledWorkflowSHA": "cccccccccccccccccccccccccccccccccccccccc"
+    },
+    {
+      "scenario": "H",
+      "runID": 910008,
+      "runAttempt": 1,
+      "callerWorkflowSHA": "5555555555555555555555555555555555555555",
+      "calledRepository": "cirewind-fixtures/workflows",
+      "calledPath": ".github/workflows/reusable-secret.yml",
+      "calledWorkflowSHA": "cccccccccccccccccccccccccccccccccccccccc"
+    }
+  ],
+  "jobsWithoutLogs": [
+    {
+      "scenario": "I",
+      "runID": 910009,
+      "runAttempt": 1,
+      "jobID": 920009,
+      "status": "waiting",
+      "conclusion": null,
+      "environment": "cirewind-lab-protected",
+      "environmentGateCrossed": false,
+      "jobStarted": false,
+      "logAvailability": "NOT_GENERATED"
+    },
+    {
+      "scenario": "N",
+      "runID": 910014,
+      "runAttempt": 1,
+      "jobID": 920015,
+      "status": "completed",
+      "conclusion": "success",
+      "jobStarted": true,
+      "logAvailability": "EXPIRED",
+      "normalizedError": "LOGS_EXPIRED",
+      "httpStatus": null,
+      "httpStatusReason": "live response behavior is intentionally not asserted by this fixture"
+    }
+  ],
+  "runners": [
+    {
+      "scenario": "A",
+      "jobID": 920001,
+      "classification": "GITHUB_HOSTED",
+      "runnerID": null,
+      "runnerName": "GitHub Actions fixture",
+      "labels": ["ubuntu-24.04"]
+    },
+    {
+      "scenario": "K",
+      "jobID": 920011,
+      "classification": "SELF_HOSTED",
+      "runnerID": 930011,
+      "runnerName": "cirewind-lab-runner",
+      "runnerGroup": "cirewind-lab-group",
+      "labels": ["self-hosted", "cirewind-lab"]
+    }
+  ],
+  "secretMetadata": [
+    {
+      "name": "CIREWIND_LAB_DIRECT",
+      "scope": "repository",
+      "relationships": ["SECRET_PASSED_TO_STEP", "REUSABLE_SECRET_MAPPED"]
+    },
+    {
+      "name": "CIREWIND_LAB_INHERITED",
+      "scope": "organization",
+      "relationships": ["REUSABLE_SECRET_INHERITED"]
+    },
+    {
+      "name": "CIREWIND_LAB_ENVIRONMENT",
+      "scope": "environment",
+      "relationships": [],
+      "environmentGateCrossed": false
+    },
+    {
+      "name": "CIREWIND_LAB_UNUSED",
+      "scope": "repository",
+      "relationships": []
+    }
+  ],
+  "matrixJobs": [
+    {"scenario": "M", "runID": 910013, "runAttempt": 1, "jobID": 920013, "matrix": {"lane": "one"}},
+    {"scenario": "M", "runID": 910013, "runAttempt": 1, "jobID": 920014, "matrix": {"lane": "two"}}
+  ]
+}

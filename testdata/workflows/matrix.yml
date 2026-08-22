@@ -1,0 +1,10 @@
+name: fixture matrix
+on: workflow_dispatch
+jobs:
+  matrix:
+    strategy:
+      matrix:
+        lane: [one, two]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: cirewind-fixtures/harmless@v1

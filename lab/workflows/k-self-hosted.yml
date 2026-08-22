@@ -1,0 +1,13 @@
+name: K - dedicated self-hosted runner
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  self-hosted:
+    runs-on:
+      - self-hosted
+      - cirewind-lab
+    steps:
+      - name: Invoke marker
+        uses: cirewind-fixtures/harmless@v1

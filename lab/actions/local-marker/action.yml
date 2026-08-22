@@ -1,0 +1,8 @@
+name: CIRewind harmless local marker
+description: Emits a fixed local-Action marker without reading workflow data.
+runs:
+  using: composite
+  steps:
+    - name: Emit local marker
+      shell: bash
+      run: "printf '%s\\n' 'CIREWIND_LAB_LOCAL_MARKER'"

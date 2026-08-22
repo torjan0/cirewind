@@ -1,0 +1,10 @@
+name: fixture protected environment
+on: workflow_dispatch
+jobs:
+  gated:
+    environment: cirewind-lab-protected
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: cirewind-fixtures/harmless@v1
+        env:
+          CIREWIND_LAB_ENVIRONMENT_INPUT: ${{ secrets.CIREWIND_LAB_ENVIRONMENT }}

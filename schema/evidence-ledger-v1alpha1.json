@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "evidence-ledger-v1alpha1.json",
+  "title": "CIRewind evidence JSONL ledger record v1alpha1",
+  "description": "One framed record in a CIRewind case evidence.jsonl file. The payload schema is selected by recordType.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ledgerVersion", "sequence", "sessionId", "recordType", "payload"],
+  "properties": {
+    "ledgerVersion": { "const": "cirewind.ledger/v1alpha1" },
+    "sequence": { "type": "integer", "minimum": 1 },
+    "sessionId": { "type": "string", "minLength": 1, "maxLength": 512 },
+    "recordType": { "enum": ["evidence_observation", "finding_revision"] },
+    "payload": true
+  },
+  "oneOf": [
+    {
+      "properties": {
+        "recordType": { "const": "evidence_observation" },
+        "payload": { "$ref": "evidence-v1alpha1.json" }
+      }
+    },
+    {
+      "properties": {
+        "recordType": { "const": "finding_revision" },
+        "payload": { "$ref": "findings-v1alpha1.json#/$defs/reportFinding" }
+      }
+    }
+  ]
+}

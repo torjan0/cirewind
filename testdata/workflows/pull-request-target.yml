@@ -1,0 +1,8 @@
+name: fixture pull request target
+on:
+  pull_request_target:
+jobs:
+  base-only:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: cirewind-fixtures/harmless@v1

@@ -1,0 +1,11 @@
+name: O - current workflow after remediation
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  current:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Present-day immutable safe declaration
+        uses: cirewind-fixtures/harmless@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa

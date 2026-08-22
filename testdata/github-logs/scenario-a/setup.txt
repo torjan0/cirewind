@@ -1,0 +1,7 @@
+2026-08-20T01:00:00.1Z Current runner version: '2.330.0'
+2026-08-20T01:00:00.12Z Operating System: Ubuntu
+2026-08-20T01:00:00.1234567Z Image: ubuntu-24.04
+2026-08-20T01:00:01Z ##[group]GITHUB_TOKEN Permissions
+2026-08-20T01:00:01Z Contents: read
+2026-08-20T01:00:01Z ##[endgroup]
+2026-08-20T01:00:02Z Download action repository 'cirewind-fixtures/harmless@v1' (SHA:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb)

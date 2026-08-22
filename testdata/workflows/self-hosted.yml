@@ -1,0 +1,9 @@
+name: fixture self-hosted runner
+on: workflow_dispatch
+jobs:
+  runner:
+    runs-on:
+      - self-hosted
+      - cirewind-lab
+    steps:
+      - uses: cirewind-fixtures/harmless@v1

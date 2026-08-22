@@ -1,0 +1,11 @@
+name: A - direct mutable Action
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  direct:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Invoke mutable marker
+        uses: cirewind-fixtures/harmless@v1

@@ -1,0 +1,166 @@
+{
+  "format_version": 1,
+  "reviewed_at": "2026-08-21",
+  "reviewed_targets": [
+    "linux/amd64",
+    "linux/arm64",
+    "darwin/amd64",
+    "darwin/arm64",
+    "windows/amd64",
+    "windows/arm64"
+  ],
+  "files": [
+    {
+      "component": "github.com/dustin/go-humanize",
+      "version": "v1.0.1",
+      "linked_targets": ["linux/amd64", "linux/arm64", "darwin/amd64", "darwin/arm64", "windows/amd64", "windows/arm64"],
+      "source_file": "$GOMODCACHE/github.com/dustin/go-humanize@v1.0.1/LICENSE",
+      "local_path": "github.com/dustin/go-humanize/v1.0.1/LICENSE",
+      "sha256": "a973b4498c13eb74baa2a8e5c351426a6826f2fcdd909916dbe53ee2e755fd71"
+    },
+    {
+      "component": "github.com/google/uuid",
+      "version": "v1.6.0",
+      "linked_targets": ["linux/amd64", "linux/arm64", "darwin/amd64", "darwin/arm64"],
+      "source_file": "$GOMODCACHE/github.com/google/uuid@v1.6.0/LICENSE",
+      "local_path": "github.com/google/uuid/v1.6.0/LICENSE",
+      "sha256": "0a8d61ed3cbfd5312326e8126c31ce9c627a283adc99131b56896d29ada04b2d"
+    },
+    {
+      "component": "github.com/mattn/go-isatty",
+      "version": "v0.0.24",
+      "linked_targets": ["darwin/amd64", "darwin/arm64", "windows/amd64", "windows/arm64"],
+      "source_file": "$GOMODCACHE/github.com/mattn/go-isatty@v0.0.24/LICENSE",
+      "local_path": "github.com/mattn/go-isatty/v0.0.24/LICENSE",
+      "sha256": "08eab1118c80885fa1fa6a6dd7303f65a379fcb3733e063d20d1bbc2c76e6fa1"
+    },
+    {
+      "component": "github.com/ncruces/go-strftime",
+      "version": "v1.0.0",
+      "linked_targets": ["darwin/amd64", "darwin/arm64", "windows/amd64", "windows/arm64"],
+      "source_file": "$GOMODCACHE/github.com/ncruces/go-strftime@v1.0.0/LICENSE",
+      "local_path": "github.com/ncruces/go-strftime/v1.0.0/LICENSE",
+      "sha256": "38ae43959daf953a393a585b2988672cb65a5a541aca0d0be5e72595a0a16883"
+    },
+    {
+      "component": "github.com/remyoudompheng/bigfft",
+      "version": "v0.0.0-20230129092748-24d4a6f8daec",
+      "linked_targets": ["linux/amd64", "linux/arm64", "darwin/amd64", "darwin/arm64", "windows/amd64", "windows/arm64"],
+      "source_file": "$GOMODCACHE/github.com/remyoudompheng/bigfft@v0.0.0-20230129092748-24d4a6f8daec/LICENSE",
+      "local_path": "github.com/remyoudompheng/bigfft/v0.0.0-20230129092748-24d4a6f8daec/LICENSE",
+      "sha256": "dd26a7abddd02e2d0aba97805b31f248ef7835d9e10da289b22e3b8ab78b324d"
+    },
+    {
+      "component": "go.dev/toolchain",
+      "version": "go1.25.13",
+      "linked_targets": ["linux/amd64", "linux/arm64", "darwin/amd64", "darwin/arm64", "windows/amd64", "windows/arm64"],
+      "source_file": "$GOROOT/LICENSE",
+      "local_path": "go/1.25.13/LICENSE",
+      "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+    },
+    {
+      "component": "go.dev/toolchain",
+      "version": "go1.25.13",
+      "linked_targets": ["linux/amd64", "linux/arm64", "darwin/amd64", "darwin/arm64", "windows/amd64", "windows/arm64"],
+      "source_file": "$GOROOT/PATENTS",
+      "local_path": "go/1.25.13/PATENTS",
+      "sha256": "96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc"
+    },
+    {
+      "component": "golang.org/x/sys",
+      "version": "v0.47.0",
+      "linked_targets": ["linux/amd64", "linux/arm64", "darwin/amd64", "darwin/arm64", "windows/amd64", "windows/arm64"],
+      "source_file": "$GOMODCACHE/golang.org/x/sys@v0.47.0/LICENSE",
+      "local_path": "golang.org/x/sys/v0.47.0/LICENSE",
+      "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+    },
+    {
+      "component": "golang.org/x/sys",
+      "version": "v0.47.0",
+      "linked_targets": ["linux/amd64", "linux/arm64", "darwin/amd64", "darwin/arm64", "windows/amd64", "windows/arm64"],
+      "source_file": "$GOMODCACHE/golang.org/x/sys@v0.47.0/PATENTS",
+      "local_path": "golang.org/x/sys/v0.47.0/PATENTS",
+      "sha256": "96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc"
+    },
+    {
+      "component": "gopkg.in/yaml.v3",
+      "version": "v3.0.1",
+      "linked_targets": ["linux/amd64", "linux/arm64", "darwin/amd64", "darwin/arm64", "windows/amd64", "windows/arm64"],
+      "source_file": "$GOMODCACHE/gopkg.in/yaml.v3@v3.0.1/LICENSE",
+      "local_path": "gopkg.in/yaml.v3/v3.0.1/LICENSE",
+      "sha256": "d18f6323b71b0b768bb5e9616e36da390fbd39369a81807cca352de4e4e6aa0b"
+    },
+    {
+      "component": "gopkg.in/yaml.v3",
+      "version": "v3.0.1",
+      "linked_targets": ["linux/amd64", "linux/arm64", "darwin/amd64", "darwin/arm64", "windows/amd64", "windows/arm64"],
+      "source_file": "$GOMODCACHE/gopkg.in/yaml.v3@v3.0.1/NOTICE",
+      "local_path": "gopkg.in/yaml.v3/v3.0.1/NOTICE",
+      "sha256": "f6c2dd3a67b576eafb89b80200b8b1627230bf3821a0c14cb99a22ac19107d00"
+    },
+    {
+      "component": "modernc.org/libc",
+      "version": "v1.74.4",
+      "linked_targets": ["linux/amd64", "linux/arm64", "darwin/amd64", "darwin/arm64", "windows/amd64", "windows/arm64"],
+      "source_file": "$GOMODCACHE/modernc.org/libc@v1.74.4/LICENSE",
+      "local_path": "modernc.org/libc/v1.74.4/LICENSE",
+      "sha256": "95ff867eb55a56935fa7492406cfa953fb7c13ca73f4c0a86ae05756b4605600"
+    },
+    {
+      "component": "modernc.org/libc",
+      "version": "v1.74.4",
+      "linked_targets": ["linux/amd64", "linux/arm64", "darwin/amd64", "darwin/arm64", "windows/amd64", "windows/arm64"],
+      "source_file": "$GOMODCACHE/modernc.org/libc@v1.74.4/LICENSE-3RD-PARTY.md",
+      "local_path": "modernc.org/libc/v1.74.4/LICENSE-3RD-PARTY.md",
+      "sha256": "f597097efe3d97021f89170746bd3a0fb9a8b6fb26b82043ed68a4e0283bee6c"
+    },
+    {
+      "component": "modernc.org/mathutil",
+      "version": "v1.7.1",
+      "linked_targets": ["linux/amd64", "linux/arm64", "darwin/amd64", "darwin/arm64", "windows/amd64", "windows/arm64"],
+      "source_file": "$GOMODCACHE/modernc.org/mathutil@v1.7.1/LICENSE",
+      "local_path": "modernc.org/mathutil/v1.7.1/LICENSE",
+      "sha256": "bfa9bf72a72ca009fd62a8f84fca3dca67e51d93af96352723646599898b6cf5"
+    },
+    {
+      "component": "modernc.org/memory",
+      "version": "v1.11.0",
+      "linked_targets": ["linux/amd64", "linux/arm64", "darwin/amd64", "darwin/arm64", "windows/amd64", "windows/arm64"],
+      "source_file": "$GOMODCACHE/modernc.org/memory@v1.11.0/LICENSE",
+      "local_path": "modernc.org/memory/v1.11.0/LICENSE",
+      "sha256": "59895e669f48f168b6b858358f6005779cdf40a265f7828813061b56af67b496"
+    },
+    {
+      "component": "modernc.org/memory",
+      "version": "v1.11.0",
+      "linked_targets": ["linux/amd64", "linux/arm64", "darwin/amd64", "darwin/arm64", "windows/amd64", "windows/arm64"],
+      "source_file": "$GOMODCACHE/modernc.org/memory@v1.11.0/LICENSE-GO",
+      "local_path": "modernc.org/memory/v1.11.0/LICENSE-GO",
+      "sha256": "2d36597f7117c38b006835ae7f537487207d8ec407aa9d9980794b2030cbc067"
+    },
+    {
+      "component": "modernc.org/memory",
+      "version": "v1.11.0",
+      "linked_targets": ["linux/amd64", "linux/arm64", "darwin/amd64", "darwin/arm64", "windows/amd64", "windows/arm64"],
+      "source_file": "$GOMODCACHE/modernc.org/memory@v1.11.0/LICENSE-MMAP-GO",
+      "local_path": "modernc.org/memory/v1.11.0/LICENSE-MMAP-GO",
+      "sha256": "c2eba69f20d05414538c3a5df7694dde392e065ff70882e1625e90f5d6659fff"
+    },
+    {
+      "component": "modernc.org/sqlite",
+      "version": "v1.57.0",
+      "linked_targets": ["linux/amd64", "linux/arm64", "darwin/amd64", "darwin/arm64", "windows/amd64", "windows/arm64"],
+      "source_file": "$GOMODCACHE/modernc.org/sqlite@v1.57.0/LICENSE",
+      "local_path": "modernc.org/sqlite/v1.57.0/LICENSE",
+      "sha256": "c6fe05491a60ae13bcd223088d2705e36dede24e5587226231d2459ada5c4822"
+    },
+    {
+      "component": "modernc.org/sqlite",
+      "version": "v1.57.0",
+      "linked_targets": ["linux/amd64", "linux/arm64", "darwin/amd64", "darwin/arm64", "windows/amd64", "windows/arm64"],
+      "source_file": "$GOMODCACHE/modernc.org/sqlite@v1.57.0/LICENSE-SQLITE",
+      "local_path": "modernc.org/sqlite/v1.57.0/LICENSE-SQLITE",
+      "sha256": "8438c9c89b849131ead81d5435cb97fcf052df5b0b286dda8a2d4c29e6cb3fd0"
+    }
+  ]
+}

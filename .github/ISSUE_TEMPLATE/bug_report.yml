@@ -1,0 +1,81 @@
+name: Bug report
+description: Report a reproducible CIRewind defect using synthetic or sanitized data.
+title: "bug: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not paste tokens, secret values, private workflow logs, production case files, or private repository content. Security-sensitive defects must be reported privately as described in SECURITY.md.
+  - type: input
+    id: revision
+    attributes:
+      label: Version or revision
+      description: Provide `cirewind version` output or the full Git commit SHA.
+      placeholder: development revision or release version
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Platform
+      description: Operating system, architecture, and Go version if building from source.
+      placeholder: Linux amd64, Go 1.x
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      options:
+        - CLI and configuration
+        - GitHub collection
+        - Workflow or Action resolution
+        - Log or archive parsing
+        - Incident-pack validation
+        - Evidence matching or exposure
+        - Case storage or replay
+        - Report or manifest
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Sanitized reproduction
+      description: List deterministic steps and attach only synthetic or fully sanitized fixtures.
+      placeholder: |
+        1. Run ...
+        2. Provide synthetic fixture ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed behavior
+      description: Include sanitized diagnostics and note whether collection coverage was partial.
+    validations:
+      required: true
+  - type: textarea
+    id: semantics
+    attributes:
+      label: Forensic impact
+      description: State whether the defect can change a finding state, provenance level, evidence chain, coverage result, or credential/resource conclusion.
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Safety confirmation
+      options:
+        - label: I removed tokens, secret values, private logs, and identifying production data.
+          required: true
+        - label: This report does not require unauthorized access or active exploitation.
+          required: true
+        - label: I checked that this is not a security-sensitive report requiring private disclosure.
+          required: true

@@ -1,0 +1,9 @@
+name: fixture reusable callee
+on:
+  workflow_call:
+jobs:
+  nested:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: cirewind-fixtures/wrapper@v1
+      - uses: ./.github/actions/local

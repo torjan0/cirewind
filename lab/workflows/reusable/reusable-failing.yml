@@ -1,0 +1,11 @@
+name: Synthetic reusable workflow with harmless failure
+on:
+  workflow_call:
+jobs:
+  retry-target:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Invoke marker before expected fixture failure
+        uses: cirewind-fixtures/harmless@v1
+      - name: End attempt with expected failure
+        run: "exit 1"

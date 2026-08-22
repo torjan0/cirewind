@@ -1,0 +1,3 @@
+2026-08-20T03:30:02Z ##[group]Run cirewind-fixtures/harmless@v1
+2026-08-20T03:30:02.5Z ##[endgroup]
+2026-08-20T03:30:03Z CIREWIND_LAB_MARKER=B

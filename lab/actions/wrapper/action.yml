@@ -1,0 +1,7 @@
+name: CIRewind harmless composite wrapper
+description: Calls only the synthetic mutable marker Action.
+runs:
+  using: composite
+  steps:
+    - name: Invoke synthetic marker
+      uses: cirewind-fixtures/harmless@v1

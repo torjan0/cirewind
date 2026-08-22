@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "retrievedAt": "2026-08-21",
+  "verificationMethod": "git ls-remote --tags against each official https://github.com/actions/<repository>.git remote; the recorded full object ID exactly matched the recorded tag ref",
+  "actions": [
+    {
+      "repository": "actions/attest",
+      "tag": "v4.2.2",
+      "commit": "1e69f48acb82d1966a394da916b4c1698aa569d6",
+      "source": "https://github.com/actions/attest"
+    },
+    {
+      "repository": "actions/checkout",
+      "tag": "v7.0.1",
+      "commit": "3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "source": "https://github.com/actions/checkout"
+    },
+    {
+      "repository": "actions/download-artifact",
+      "tag": "v8.0.1",
+      "commit": "3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c",
+      "source": "https://github.com/actions/download-artifact"
+    },
+    {
+      "repository": "actions/setup-go",
+      "tag": "v7.0.0",
+      "commit": "b7ad1dad31e06c5925ef5d2fc7ad053ef454303e",
+      "source": "https://github.com/actions/setup-go"
+    },
+    {
+      "repository": "actions/upload-artifact",
+      "tag": "v7.0.1",
+      "commit": "043fb46d1a93c77aae656e7c1c64a875d1fc6a0a",
+      "source": "https://github.com/actions/upload-artifact"
+    }
+  ]
+}

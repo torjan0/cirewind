@@ -1,0 +1,50 @@
+name: Feature request
+description: Propose a focused capability within CIRewind's historical evidence scope.
+title: "feature: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        CIRewind is a historical GitHub Actions evidence-reconstruction tool, not a generic scanner, exploitation framework, secret collector, hosted service, or cloud-compromise validator.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Evidence problem
+      description: What incident-response question cannot be answered responsibly today?
+    validations:
+      required: true
+  - type: textarea
+    id: source
+    attributes:
+      label: Supporting evidence source
+      description: Identify the GitHub API, runner log, historical content, archive fact, or other primary data source needed.
+    validations:
+      required: true
+  - type: textarea
+    id: conclusion
+    attributes:
+      label: Proposed conclusion and limits
+      description: Describe what CIRewind could say, what it must not say, and how missing evidence affects the result.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Include current workarounds and existing open-source tools that already cover adjacent functionality.
+  - type: textarea
+    id: tests
+    attributes:
+      label: Acceptance fixtures
+      description: Describe harmless synthetic cases that would prove the feature without credentials or network access.
+    validations:
+      required: true
+  - type: checkboxes
+    id: boundaries
+    attributes:
+      label: Scope confirmation
+      options:
+        - label: The proposal preserves downloaded-versus-executed, secret-access, OIDC, causation, historical-state, and evidence-gap distinctions.
+          required: true
+        - label: The default tests can remain credential-free and offline.
+          required: true

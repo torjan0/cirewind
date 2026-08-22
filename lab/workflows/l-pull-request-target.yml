@@ -1,0 +1,13 @@
+name: L - pull request target without checkout
+on:
+  pull_request_target:
+    types:
+      - opened
+permissions:
+  contents: read
+jobs:
+  base-context-only:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Invoke marker from trusted base workflow
+        uses: cirewind-fixtures/harmless@v1

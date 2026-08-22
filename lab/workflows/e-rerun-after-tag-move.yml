@@ -1,0 +1,11 @@
+name: E - full rerun after mutable tag moves
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  rerun:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Invoke current v1 target
+        uses: cirewind-fixtures/harmless@v1

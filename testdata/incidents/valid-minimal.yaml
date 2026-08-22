@@ -1,0 +1,34 @@
+apiVersion: cirewind.dev/v1alpha1
+kind: GitHubActionsIncident
+metadata:
+  id: CIR-TEST-001
+  packVersion: 1.0.0
+  title: Minimal synthetic test
+  publishedAt: "2026-08-20T00:00:00Z"
+  updatedAt: "2026-08-20T00:00:00Z"
+  sources:
+    - id: fixture
+      type: synthetic-fixture
+      title: Fixture record
+      publisher: CIRewind test maintainers
+      url: https://example.invalid/fixture
+      retrievedAt: "2026-08-20T00:00:00Z"
+spec:
+  description: Synthetic test pack.
+  components:
+    - id: action
+      type: github-action
+      repository:
+        owner: Example
+        name: Harmless
+  indicators:
+    - id: commit
+      componentId: action
+      kind: action-commit
+      value:
+        gitObject:
+          algorithm: sha1
+          value: "1111111111111111111111111111111111111111"
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - fixture

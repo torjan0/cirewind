@@ -1,0 +1,11 @@
+name: P - synthetic contradictory evidence
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  contradiction:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Immutable safe declaration in workflow
+        uses: cirewind-fixtures/harmless@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa

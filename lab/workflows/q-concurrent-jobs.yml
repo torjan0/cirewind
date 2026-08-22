@@ -1,0 +1,16 @@
+name: Q - concurrent jobs are not causally ordered
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  affected:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Invoke affected marker
+        uses: cirewind-fixtures/harmless@v1
+  independent:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Emit independent marker
+        uses: ./.github/actions/local-marker

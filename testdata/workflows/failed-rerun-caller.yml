@@ -1,0 +1,5 @@
+name: fixture failed-job rerun caller
+on: workflow_dispatch
+jobs:
+  called:
+    uses: cirewind-fixtures/workflows/.github/workflows/reusable-failing.yml@v1

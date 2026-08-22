@@ -1,0 +1,2 @@
+2026-08-20T04:40:01.1Z ##[group]Run cirewind-fixtures/local-marker@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+2026-08-20T04:40:02Z CIREWIND_LAB_LOCAL_MARKER

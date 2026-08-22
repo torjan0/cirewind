@@ -1,0 +1,9 @@
+name: fixture downloaded then skipped
+on: workflow_dispatch
+jobs:
+  skipped:
+    runs-on: ubuntu-24.04
+    steps:
+      - id: never-started
+        if: ${{ false }}
+        uses: cirewind-fixtures/harmless@v1

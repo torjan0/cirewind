@@ -1,0 +1,17 @@
+2026-08-20T01:10:00Z Current runner version: '2.400.0'
+2026-08-20T01:10:01Z ##[group]GITHUB_TOKEN Permissions
+2026-08-20T01:10:01Z contents: write
+2026-08-20T01:10:01Z id-token: write
+2026-08-20T01:10:01Z ##[endgroup]
+2026-08-20T01:10:02Z Getting action download info
+2026-08-20T01:10:02Z Download action repository 'fixture/action@v1' (SHA:1111111111111111111111111111111111111111)
+2026-08-20T01:10:04Z Complete job name: build
+2026-08-20T01:10:05Z ##[group]Run fixture/action@v1
+2026-08-20T01:10:05Z with:
+2026-08-20T01:10:05Z   marker: harmless
+2026-08-20T01:10:05Z env:
+2026-08-20T01:10:05Z   CI: true
+2026-08-20T01:10:05Z ##[endgroup]
+2026-08-20T01:10:06Z harmless synthetic output
+2026-08-20T01:10:06Z ##[error]synthetic application error after setup
+2026-08-20T01:10:06Z Download action repository 'fixture/application-lookalike@v1' (SHA:ffffffffffffffffffffffffffffffffffffffff)

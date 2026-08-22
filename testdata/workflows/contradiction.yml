@@ -1,0 +1,7 @@
+name: fixture contradictory static declaration
+on: workflow_dispatch
+jobs:
+  contradiction:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: cirewind-fixtures/harmless@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa

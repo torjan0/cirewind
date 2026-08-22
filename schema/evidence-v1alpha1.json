@@ -1,0 +1,216 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "evidence-v1alpha1.json",
+  "title": "CIRewind evidence envelope v1alpha1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["evidence", "observation"],
+  "properties": {
+    "evidence": { "$ref": "#/$defs/evidenceObject" },
+    "observation": { "$ref": "#/$defs/collectionObservation" }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "evidenceID": {
+      "type": "string",
+      "pattern": "^ev1:[0-9a-f]{64}$"
+    },
+    "observationID": {
+      "type": "string",
+      "pattern": "^obs1:[0-9a-f]{64}$"
+    },
+    "requestParameters": {
+      "type": "object",
+      "maxProperties": 64,
+      "propertyNames": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 128
+      },
+      "additionalProperties": {
+        "type": "string",
+        "maxLength": 4096
+      }
+    },
+    "logicalSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "canonical_id", "request_parameters"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^src1:[0-9a-f]{64}$" },
+        "kind": { "enum": ["workflow_run_attempt_log", "job_log", "api_json", "repository_content", "derived_record", "other_bounded_kind"] },
+        "canonical_id": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "request_parameters": { "$ref": "#/$defs/requestParameters" }
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "repository_id": { "type": "integer", "minimum": 1 },
+        "workflow_path": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "run_id": { "type": "integer", "minimum": 1 },
+        "run_attempt": { "type": "integer", "minimum": 1 },
+        "job_id": { "type": "integer", "minimum": 1 },
+        "step_key": { "type": "string", "minLength": 1, "maxLength": 1024 }
+      }
+    },
+    "eventTime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start", "end", "bounds", "source_precision", "approximation", "basis"],
+      "properties": {
+        "start": { "type": ["string", "null"], "format": "date-time" },
+        "end": { "type": ["string", "null"], "format": "date-time" },
+        "bounds": {
+          "oneOf": [
+            { "enum": ["[)", "[]", "()", "(]"] },
+            { "type": "null" }
+          ]
+        },
+        "source_precision": { "enum": ["second", "minute", "hour", "day", "unknown"] },
+        "approximation": { "enum": ["exact", "source-rounded", "conservative-expanded", "unknown"] },
+        "basis": { "enum": ["api_field", "log_timestamp", "definition_commit", "proxy_interval", "unknown"] }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "request_parameters", "request_attempt"],
+      "properties": {
+        "provider": { "enum": ["github.com", "cirewind"] },
+        "api_version": { "type": "string", "maxLength": 128 },
+        "endpoint_template": { "type": "string", "maxLength": 2048 },
+        "source_url": { "type": "string", "maxLength": 4096 },
+        "request_parameters": { "$ref": "#/$defs/requestParameters" },
+        "request_attempt": { "type": "integer", "minimum": 1 },
+        "http_status": { "type": "integer", "minimum": 100, "maximum": 599 }
+      }
+    },
+    "content": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["media_type", "byte_length", "complete", "source_sha256", "raw_retained"],
+      "properties": {
+        "media_type": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "byte_length": { "type": "integer", "minimum": 0 },
+        "declared_byte_length": { "type": "integer", "minimum": 0 },
+        "complete": { "type": "boolean" },
+        "source_sha256": { "$ref": "#/$defs/sha256" },
+        "retained_payload_sha256": { "$ref": "#/$defs/sha256" },
+        "raw_retained": { "type": "boolean" },
+        "retained_path": { "type": "string", "minLength": 1, "maxLength": 4096 }
+      }
+    },
+    "extractor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "ruleset_sha256"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "version": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "ruleset_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "redaction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "policy_version"],
+      "properties": {
+        "status": { "enum": ["not_applicable", "not_inspected", "structured_allowlist", "redacted"] },
+        "policy_version": { "type": "string", "minLength": 1, "maxLength": 128 }
+      }
+    },
+    "derivation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["parent_evidence_ids"],
+      "properties": {
+        "kind": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "parent_evidence_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/evidenceID" }
+        },
+        "rule_id": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "rule_version": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "parameters_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["phase", "code", "retryable"],
+      "properties": {
+        "phase": { "enum": ["collect", "decode", "extract", "derive"] },
+        "code": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "http_status": { "type": "integer", "minimum": 100, "maximum": 599 },
+        "retryable": { "type": "boolean" },
+        "permission_related": { "type": "boolean" },
+        "sanitized_message": { "type": "string", "maxLength": 2048 },
+        "raw_message_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "evidenceObject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "evidence_id",
+        "logical_source",
+        "source",
+        "scope",
+        "event_time",
+        "content",
+        "extractor",
+        "redaction",
+        "derivation",
+        "errors"
+      ],
+      "properties": {
+        "schema_version": { "const": "cirewind.evidence/v1alpha1" },
+        "evidence_id": { "$ref": "#/$defs/evidenceID" },
+        "logical_source": { "$ref": "#/$defs/logicalSource" },
+        "source": { "$ref": "#/$defs/source" },
+        "scope": { "$ref": "#/$defs/scope" },
+        "event_time": { "$ref": "#/$defs/eventTime" },
+        "content": { "$ref": "#/$defs/content" },
+        "extractor": { "$ref": "#/$defs/extractor" },
+        "redaction": { "$ref": "#/$defs/redaction" },
+        "derivation": { "$ref": "#/$defs/derivation" },
+        "errors": { "type": "array", "items": { "$ref": "#/$defs/error" } }
+      }
+    },
+    "collectionObservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "observation_id",
+        "evidence_id",
+        "collection_session_id",
+        "request_id",
+        "request_attempt",
+        "collection_time"
+      ],
+      "properties": {
+        "observation_id": { "$ref": "#/$defs/observationID" },
+        "evidence_id": { "$ref": "#/$defs/evidenceID" },
+        "collection_session_id": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "request_id": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "request_attempt": { "type": "integer", "minimum": 1 },
+        "collection_time": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["started_at", "ended_at"],
+          "properties": {
+            "started_at": { "type": "string", "format": "date-time" },
+            "ended_at": { "type": "string", "format": "date-time" }
+          }
+        }
+      }
+    }
+  }
+}

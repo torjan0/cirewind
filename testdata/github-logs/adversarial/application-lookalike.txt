@@ -1,0 +1,2 @@
+2026-08-20T05:20:00Z ##[group]Run cirewind-fixtures/harmless@v1
+2026-08-20T05:20:01Z This is ordinary application output, not a trusted Action-step control entry.

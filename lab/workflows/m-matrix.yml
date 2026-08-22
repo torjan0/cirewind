@@ -1,0 +1,16 @@
+name: M - matrix jobs remain distinct
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  matrix:
+    strategy:
+      matrix:
+        lane:
+          - one
+          - two
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Invoke marker for matrix lane
+        uses: cirewind-fixtures/harmless@v1

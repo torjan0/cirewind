@@ -1,0 +1,277 @@
+name: Authenticated release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing annotated vSEMVER tag; dispatch this workflow at the same tag
+        required: true
+        type: string
+      publish:
+        description: Publish after separate release-publish environment approval; false leaves a verified draft
+        required: true
+        default: false
+        type: boolean
+
+permissions: {}
+
+concurrency:
+  group: authenticated-release
+  cancel-in-progress: false
+
+env:
+  GOFLAGS: -mod=readonly
+  GH_PROMPT_DISABLED: "1"
+
+jobs:
+  build:
+    name: Reproduce, smoke, and attest exact subjects
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions:
+      contents: read
+      attestations: write
+      id-token: write
+    outputs:
+      artifact-id: ${{ steps.upload.outputs.artifact-id }}
+      commit: ${{ steps.metadata.outputs.commit }}
+      version: ${{ steps.metadata.outputs.version }}
+      build-date: ${{ steps.metadata.outputs.build-date }}
+    env:
+      RELEASE_TAG: ${{ inputs.tag }}
+    steps:
+      - name: Validate the dispatch ref before checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^v[0-9A-Za-z.+-]+$ ]]
+          test "$GITHUB_REF" = "refs/tags/$RELEASE_TAG"
+      - name: Check out the exact requested tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: refs/tags/${{ inputs.tag }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate dispatch, annotated tag, and checked-out commit
+        id: metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          commit=$(./scripts/verify-release-ref.sh "$RELEASE_TAG")
+          expected_ref="refs/tags/$RELEASE_TAG"
+          test "$GITHUB_REF" = "$expected_ref" || {
+            echo "dispatch ref must be the exact release tag $expected_ref" >&2
+            exit 1
+          }
+          test "$GITHUB_SHA" = "$commit" || {
+            echo "dispatch commit does not equal the annotated tag commit" >&2
+            exit 1
+          }
+          epoch=$(git show -s --format=%ct "$commit")
+          build_date=$(date -u --date="@$epoch" +%Y-%m-%dT%H:%M:%SZ)
+          {
+            printf 'commit=%s\n' "$commit"
+            printf 'version=%s\n' "${RELEASE_TAG#v}"
+            printf 'build-date=%s\n' "$build_date"
+          } >>"$GITHUB_OUTPUT"
+      - name: Set up the exact Go toolchain
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Build the exact tag twice and compare every byte
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./scripts/release.sh "$RUNNER_TEMP/release-a" "$RELEASE_TAG"
+          ./scripts/release.sh "$RUNNER_TEMP/release-b" "$RELEASE_TAG"
+          go run ./internal/releasetool compare \
+            --first "$RUNNER_TEMP/release-a" \
+            --second "$RUNNER_TEMP/release-b"
+      - name: Smoke the Linux amd64 archive without credentials
+        shell: bash
+        env:
+          RELEASE_COMMIT: ${{ steps.metadata.outputs.commit }}
+          RELEASE_VERSION: ${{ steps.metadata.outputs.version }}
+          RELEASE_BUILD_DATE: ${{ steps.metadata.outputs.build-date }}
+        run: |
+          set -euo pipefail
+          unset CIREWIND_GITHUB_TOKEN GITHUB_TOKEN GH_TOKEN
+          ./scripts/smoke-release.sh \
+            "$RUNNER_TEMP/release-a" \
+            "$RELEASE_VERSION" \
+            "$RELEASE_COMMIT" \
+            "$RELEASE_BUILD_DATE" \
+            "$RUNNER_TEMP"
+      - name: Attest every exact archive, SBOM, checksum, and metadata subject
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: ${{ runner.temp }}/release-a/*
+      - name: Transfer the exact attested subjects by immutable artifact ID
+        id: upload
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: cirewind-${{ inputs.tag }}-attested-subjects
+          path: ${{ runner.temp }}/release-a/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+
+  draft:
+    name: Verify provenance and create protected draft
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    environment: release-draft
+    permissions:
+      actions: read
+      contents: write
+      attestations: read
+    env:
+      RELEASE_TAG: ${{ inputs.tag }}
+      RELEASE_COMMIT: ${{ needs.build.outputs.commit }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Check out the exact requested tag without stored credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: refs/tags/${{ inputs.tag }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Revalidate the exact annotated tag before toolchain setup
+        shell: bash
+        run: ./scripts/verify-release-ref.sh "$RELEASE_TAG" "$RELEASE_COMMIT"
+      - name: Fail closed unless the draft environment is protected
+        shell: bash
+        run: ./scripts/verify-release-environment.sh "$GITHUB_REPOSITORY" release-draft "$GITHUB_REPOSITORY_OWNER"
+      - name: Set up the verifier toolchain
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Download the exact build artifact by immutable ID
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          artifact-ids: ${{ needs.build.outputs.artifact-id }}
+          path: ${{ runner.temp }}/release-subjects
+      - name: Revalidate tag and release distribution
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./scripts/verify-release-ref.sh "$RELEASE_TAG" "$RELEASE_COMMIT"
+          CIREWIND_RELEASE_WORK_ROOT="$RUNNER_TEMP" \
+            ./scripts/verify-release.sh "$RUNNER_TEMP/release-subjects"
+      - name: Verify exact build provenance before any release creation
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./scripts/verify-release-attestations.sh \
+            "$RUNNER_TEMP/release-subjects" \
+            "$RELEASE_TAG" \
+            "$RELEASE_COMMIT" \
+            "$GITHUB_REPOSITORY" \
+            .github/workflows/release-candidate.yml
+      - name: Create or accept only an exact draft after verification
+        shell: bash
+        run: |
+          set -euo pipefail
+          if draft=$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft 2>/dev/null); then
+            test "$draft" = true || {
+              echo "a published release already exists for $RELEASE_TAG" >&2
+              exit 1
+            }
+          else
+            gh release create "$RELEASE_TAG" "$RUNNER_TEMP/release-subjects"/* \
+              --repo "$GITHUB_REPOSITORY" \
+              --verify-tag \
+              --draft \
+              --notes-from-tag \
+              --title "$RELEASE_TAG"
+          fi
+      - name: Download and byte-compare the created draft assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir "$RUNNER_TEMP/release-draft-download"
+          gh release download "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --dir "$RUNNER_TEMP/release-draft-download"
+          ./scripts/compare-release-assets.sh \
+            "$RUNNER_TEMP/release-subjects" \
+            "$RUNNER_TEMP/release-draft-download" \
+            "$RUNNER_TEMP"
+
+  publish:
+    name: Reverify exact draft and publish
+    if: ${{ inputs.publish }}
+    needs:
+      - build
+      - draft
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    environment: release-publish
+    permissions:
+      actions: read
+      contents: write
+      attestations: read
+    env:
+      RELEASE_TAG: ${{ inputs.tag }}
+      RELEASE_COMMIT: ${{ needs.build.outputs.commit }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Check out the exact requested tag without stored credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: refs/tags/${{ inputs.tag }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Revalidate the exact annotated tag before toolchain setup
+        shell: bash
+        run: ./scripts/verify-release-ref.sh "$RELEASE_TAG" "$RELEASE_COMMIT"
+      - name: Fail closed unless the publication environment is protected
+        shell: bash
+        run: ./scripts/verify-release-environment.sh "$GITHUB_REPOSITORY" release-publish "$GITHUB_REPOSITORY_OWNER"
+      - name: Set up the verifier toolchain
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Download the original exact build artifact by immutable ID
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          artifact-ids: ${{ needs.build.outputs.artifact-id }}
+          path: ${{ runner.temp }}/release-subjects
+      - name: Revalidate tag, distribution, and build provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./scripts/verify-release-ref.sh "$RELEASE_TAG" "$RELEASE_COMMIT"
+          CIREWIND_RELEASE_WORK_ROOT="$RUNNER_TEMP" \
+            ./scripts/verify-release.sh "$RUNNER_TEMP/release-subjects"
+          ./scripts/verify-release-attestations.sh \
+            "$RUNNER_TEMP/release-subjects" \
+            "$RELEASE_TAG" \
+            "$RELEASE_COMMIT" \
+            "$GITHUB_REPOSITORY" \
+            .github/workflows/release-candidate.yml
+      - name: Prove the draft is exact immediately before publication
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft)" = true
+          mkdir "$RUNNER_TEMP/release-draft-download"
+          gh release download "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --dir "$RUNNER_TEMP/release-draft-download"
+          ./scripts/compare-release-assets.sh \
+            "$RUNNER_TEMP/release-subjects" \
+            "$RUNNER_TEMP/release-draft-download" \
+            "$RUNNER_TEMP"
+      - name: Publish the already-verified draft without rebuilding
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release edit "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --verify-tag \
+            --draft=false

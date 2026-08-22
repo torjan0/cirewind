@@ -1,0 +1,3 @@
+2026-08-20T01:20:02Z ##[group]Run cirewind-fixtures/wrapper@v1
+2026-08-20T01:20:02.1Z ##[endgroup]
+2026-08-20T01:20:02.2Z CIREWIND_LAB_WRAPPER_STARTED

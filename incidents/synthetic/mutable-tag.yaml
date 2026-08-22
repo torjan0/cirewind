@@ -1,0 +1,116 @@
+apiVersion: cirewind.dev/v1alpha1
+kind: GitHubActionsIncident
+metadata:
+  id: CIR-SYNTHETIC-0001
+  packVersion: 1.0.0
+  title: Synthetic mutable-tag fixture
+  publishedAt: "2026-08-20T00:00:00Z"
+  updatedAt: "2026-08-20T00:00:00Z"
+  labels:
+    - synthetic
+  sources:
+    - id: synthetic-lab-protocol
+      type: synthetic-fixture
+      title: Harmless controlled lab protocol
+      publisher: CIRewind test maintainers
+      url: https://example.invalid/cirewind/synthetic-lab
+      publishedAt: "2026-08-20T00:00:00Z"
+      retrievedAt: "2026-08-20T00:00:00Z"
+      sourceRevision: fixture-v1
+      sourceSha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      timePrecision: second
+      notes: Reserved example data; not a claim about a real incident.
+spec:
+  description: Harmless synthetic evidence for testing a moved v1 tag.
+  components:
+    - id: harmless-action
+      type: github-action
+      repository:
+        owner: cirewind-fixtures
+        name: harmless-action
+      subpaths:
+        - ""
+    - id: harmless-workflow
+      type: reusable-workflow
+      repository:
+        owner: cirewind-fixtures
+        name: harmless-workflows
+      workflowPaths:
+        - .github/workflows/reusable.yaml
+  windows:
+    - id: synthetic-exposure
+      start: "2026-08-19T10:00:00Z"
+      end: "2026-08-19T11:00:00Z"
+      bounds: "[)"
+      sourcePrecision: second
+      approximation: exact
+      sourceRefs:
+        - synthetic-lab-protocol
+  indicators:
+    - id: synthetic-compromised-commit
+      componentId: harmless-action
+      kind: action-commit
+      value:
+        gitObject:
+          algorithm: sha1
+          value: "1111111111111111111111111111111111111111"
+      windowRefs:
+        - synthetic-exposure
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - synthetic-lab-protocol
+    - id: synthetic-mutable-ref
+      componentId: harmless-action
+      kind: mutable-action-ref
+      value:
+        ref: v1
+      windowRefs:
+        - synthetic-exposure
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - synthetic-lab-protocol
+    - id: synthetic-action-package
+      componentId: harmless-action
+      kind: digest
+      value:
+        subject: github-action-package
+        algorithm: sha256
+        digest: "2222222222222222222222222222222222222222222222222222222222222222"
+      windowRefs:
+        - synthetic-exposure
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - synthetic-lab-protocol
+    - id: synthetic-called-workflow
+      componentId: harmless-workflow
+      kind: reusable-workflow-commit
+      value:
+        gitObject:
+          algorithm: sha1
+          value: "3333333333333333333333333333333333333333"
+        path: .github/workflows/reusable.yaml
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - synthetic-lab-protocol
+  knownGood:
+    - id: synthetic-known-good-commit
+      componentId: harmless-action
+      kind: action-commit
+      value:
+        gitObject:
+          algorithm: sha1
+          value: "0000000000000000000000000000000000000000"
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - synthetic-lab-protocol
+  remediation:
+    guidance:
+      - Replace the synthetic mutable reference with the known-good fixture commit.
+    credentialRotationTriggers:
+      - id: synthetic-direct-execution
+        whenStates:
+          - CONFIRMED_EXECUTED
+        guidance: Rotate only fake lab credentials assigned to this fixture.
+        confidence: L4_CERTAIN
+        sourceRefs:
+          - synthetic-lab-protocol

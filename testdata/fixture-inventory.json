@@ -1,0 +1,341 @@
+{
+  "apiVersion": "cirewind.dev/fixture-inventory/v1alpha1",
+  "kind": "CIRewindSyntheticFixtureInventory",
+  "syntheticOnly": true,
+  "repository": {
+    "id": 900001,
+    "nameWithOwner": "cirewind-fixtures/consumer"
+  },
+  "normalizedMetadata": "testdata/github-logs/normalized-metadata.json",
+  "logContextDefaults": {
+    "repositoryID": 900001,
+    "grammar": "github-runner-control/v1alpha1"
+  },
+  "identifiers": {
+    "safeActionSHA": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "affectedActionSHA": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "calledWorkflowSHA": "cccccccccccccccccccccccccccccccccccccccc",
+    "wrapperActionSHA": "dddddddddddddddddddddddddddddddddddddddd",
+    "movedCalledWorkflowSHA": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "historicalWorkflowSHA": "5555555555555555555555555555555555555555",
+    "currentWorkflowSHA": "6666666666666666666666666666666666666666",
+    "immutablePackageDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+  },
+  "scenarios": [
+    {
+      "id": "A",
+      "title": "direct mutable Action",
+      "workflow": "testdata/workflows/direct-mutable.yml",
+      "executionKeys": ["910001:1:920001"],
+      "expectedFindings": [
+        {"component": "cirewind-fixtures/harmless", "state": "CONFIRMED_EXECUTED", "provenance": "L4_CERTAIN"}
+      ]
+    },
+    {
+      "id": "B",
+      "title": "composite Action calls affected Action",
+      "workflow": "testdata/workflows/composite-caller.yml",
+      "actionDefinitions": ["testdata/workflows/composite/action.yml"],
+      "executionKeys": ["910002:1:920002"],
+      "expectedFindings": [
+        {"component": "cirewind-fixtures/harmless", "state": "CONFIRMED_EXECUTED", "provenance": "L4_CERTAIN", "transitiveVia": "cirewind-fixtures/wrapper"}
+      ]
+    },
+    {
+      "id": "C",
+      "title": "reusable workflow calls composite Action",
+      "workflow": "testdata/workflows/reusable-caller.yml",
+      "reusableWorkflow": "testdata/workflows/reusable-called.yml",
+      "calledWorkflowSHAByAttempt": {"1": "cccccccccccccccccccccccccccccccccccccccc"},
+      "executionKeys": ["910003:1:920003"],
+      "expectedFindings": [
+        {"component": "cirewind-fixtures/harmless", "state": "CONFIRMED_EXECUTED", "provenance": "L4_CERTAIN"},
+        {"component": "cirewind-fixtures/workflows/.github/workflows/reusable.yml", "state": "CONFIRMED_CALLED_WORKFLOW", "provenance": "L4_CERTAIN"}
+      ]
+    },
+    {
+      "id": "D",
+      "title": "affected Action prepared but condition skips step",
+      "workflow": "testdata/workflows/skipped.yml",
+      "executionKeys": ["910004:1:920004"],
+      "expectedFindings": [
+        {"component": "cirewind-fixtures/harmless", "state": "CONFIRMED_DOWNLOADED", "provenance": "L4_CERTAIN"}
+      ],
+      "forbiddenStates": ["CONFIRMED_EXECUTED"]
+    },
+    {
+      "id": "E",
+      "title": "full rerun after mutable tag moves",
+      "workflow": "testdata/workflows/direct-mutable.yml",
+      "executionKeys": ["910005:1:920005", "910005:2:920105"],
+      "expectedFindings": [
+        {"attempt": 1, "component": "cirewind-fixtures/harmless", "state": "CONFIRMED_EXECUTED", "provenance": "L4_CERTAIN", "sourceSHA": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+        {"attempt": 2, "component": "cirewind-fixtures/harmless", "state": "NO_MATCH_CONFIRMED", "provenance": "L4_CERTAIN", "sourceSHA": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
+      ],
+      "attemptsMustRemainSeparate": true
+    },
+    {
+      "id": "F",
+      "title": "failed-job rerun retains called-workflow identity",
+      "workflow": "testdata/workflows/failed-rerun-caller.yml",
+      "reusableWorkflow": "testdata/workflows/reusable-failing.yml",
+      "executionKeys": ["910006:1:920006", "910006:2:920106"],
+      "jobConclusionByAttempt": {"1": "failure", "2": "failure"},
+      "calledWorkflowSHAByAttempt": {
+        "1": "cccccccccccccccccccccccccccccccccccccccc",
+        "2": "cccccccccccccccccccccccccccccccccccccccc"
+      },
+      "mutableCalledWorkflowTagAfterAttemptOne": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "expectedFindings": [
+        {"attempt": 1, "component": "cirewind-fixtures/harmless", "state": "CONFIRMED_EXECUTED", "provenance": "L4_CERTAIN"},
+        {"attempt": 2, "component": "cirewind-fixtures/harmless", "state": "NO_MATCH_CONFIRMED", "provenance": "L4_CERTAIN"},
+        {"attempt": 1, "component": "cirewind-fixtures/workflows/.github/workflows/reusable.yml", "state": "CONFIRMED_CALLED_WORKFLOW", "provenance": "L4_CERTAIN"},
+        {"attempt": 2, "component": "cirewind-fixtures/workflows/.github/workflows/reusable.yml", "state": "CONFIRMED_CALLED_WORKFLOW", "provenance": "L4_CERTAIN"}
+      ],
+      "attemptsMustRemainSeparate": true
+    },
+    {
+      "id": "G",
+      "title": "direct named-secret mapping",
+      "workflow": "testdata/workflows/direct-secret.yml",
+      "executionKeys": ["910007:1:920007"],
+      "expectedFindings": [
+        {"component": "cirewind-fixtures/harmless", "state": "CONFIRMED_EXECUTED", "provenance": "L4_CERTAIN"}
+      ],
+      "expectedCredentialRelationships": [
+        {"kind": "SECRET_PASSED_TO_STEP", "name": "CIREWIND_LAB_DIRECT", "eligible": true}
+      ]
+    },
+    {
+      "id": "H",
+      "title": "reusable workflow secrets inherit",
+      "workflow": "testdata/workflows/reusable-secret-inherit.yml",
+      "reusableWorkflow": "testdata/workflows/reusable-secret-called.yml",
+      "executionKeys": ["910008:1:920008"],
+      "calledWorkflowSHAByAttempt": {"1": "cccccccccccccccccccccccccccccccccccccccc"},
+      "expectedFindings": [
+        {"component": "cirewind-fixtures/harmless", "state": "CONFIRMED_EXECUTED", "provenance": "L4_CERTAIN"}
+      ],
+      "expectedCredentialRelationships": [
+        {"kind": "REUSABLE_SECRET_INHERITED", "name": "CIREWIND_LAB_INHERITED", "eligible": true, "maximumHops": 1}
+      ]
+    },
+    {
+      "id": "I",
+      "title": "environment approval prevents job start",
+      "workflow": "testdata/workflows/environment.yml",
+      "executionKeys": ["910009:1:920009"],
+      "jobStarted": false,
+      "environmentGateCrossed": false,
+      "expectedFindings": [],
+      "forbiddenStates": ["CONFIRMED_EXECUTED", "CONFIRMED_DOWNLOADED", "RUN_IN_WINDOW_MUTABLE_REF"],
+      "expectedCredentialRelationships": [
+        {"kind": "ENVIRONMENT_SECRET_ELIGIBLE", "name": "CIREWIND_LAB_ENVIRONMENT", "eligible": false}
+      ],
+      "forbiddenCredentialRelationships": ["ENVIRONMENT_SECRET_ELIGIBLE:true"]
+    },
+    {
+      "id": "J",
+      "title": "id-token write without a cloud trust policy",
+      "workflow": "testdata/workflows/oidc.yml",
+      "executionKeys": ["910010:1:920010"],
+      "expectedFindings": [
+        {"component": "cirewind-fixtures/harmless", "state": "CONFIRMED_EXECUTED", "provenance": "L4_CERTAIN"}
+      ],
+      "expectedCredentialRelationships": [
+        {"kind": "OIDC_MINTING_CAPABILITY", "eligible": true}
+      ],
+      "forbiddenCredentialRelationships": ["CLOUD_IDENTITY_REACHABLE"]
+    },
+    {
+      "id": "K",
+      "title": "self-hosted runner",
+      "workflow": "testdata/workflows/self-hosted.yml",
+      "executionKeys": ["910011:1:920011"],
+      "runner": {"classification": "SELF_HOSTED", "id": 930011, "name": "cirewind-lab-runner", "labels": ["self-hosted", "cirewind-lab"]},
+      "expectedFindings": [
+        {"component": "cirewind-fixtures/harmless", "state": "CONFIRMED_EXECUTED", "provenance": "L4_CERTAIN"}
+      ]
+    },
+    {
+      "id": "L",
+      "title": "pull_request_target base context",
+      "workflow": "testdata/workflows/pull-request-target.yml",
+      "event": "pull_request_target",
+      "untrustedCheckoutPresent": false,
+      "executionKeys": ["910012:1:920012"],
+      "expectedFindings": [
+        {"component": "cirewind-fixtures/harmless", "state": "CONFIRMED_EXECUTED", "provenance": "L4_CERTAIN"}
+      ]
+    },
+    {
+      "id": "M",
+      "title": "matrix expansion",
+      "workflow": "testdata/workflows/matrix.yml",
+      "executionKeys": ["910013:1:920013", "910013:1:920014"],
+      "matrixJobsMustRemainSeparate": true,
+      "expectedFindings": [
+        {"jobID": 920013, "component": "cirewind-fixtures/harmless", "state": "CONFIRMED_EXECUTED", "provenance": "L4_CERTAIN"},
+        {"jobID": 920014, "component": "cirewind-fixtures/harmless", "state": "CONFIRMED_EXECUTED", "provenance": "L4_CERTAIN"}
+      ]
+    },
+    {
+      "id": "N",
+      "title": "missing or expired logs",
+      "workflow": "testdata/workflows/missing-logs.yml",
+      "executionKeys": ["910014:1:920015"],
+      "missingEvidence": ["attempt log archive:LOGS_EXPIRED", "job log archive:LOGS_EXPIRED"],
+      "expectedFindings": [
+        {"component": "cirewind-fixtures/harmless", "state": "UNKNOWN_EVIDENCE_GAP", "provenance": "L0_UNKNOWN"}
+      ],
+      "forbiddenStates": ["NO_MATCH_CONFIRMED"]
+    },
+    {
+      "id": "O",
+      "title": "historical workflow differs from current default",
+      "workflow": "testdata/workflows/historical/run-commit.yml",
+      "currentWorkflow": "testdata/workflows/historical/current-default.yml",
+      "workflowDefinitionCommit": "5555555555555555555555555555555555555555",
+      "currentDefaultCommit": "6666666666666666666666666666666666666666",
+      "executionKeys": ["910015:1:920016"],
+      "expectedFindings": [
+        {"component": "cirewind-fixtures/harmless", "state": "CONFIRMED_EXECUTED", "provenance": "L4_CERTAIN"}
+      ],
+      "presentDayDefinitionMustNotOverrideHistorical": true
+    },
+    {
+      "id": "P",
+      "title": "static declaration and runtime resolution contradict",
+      "workflow": "testdata/workflows/contradiction.yml",
+      "executionKeys": ["910016:1:920017"],
+      "declaredSHA": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "runtimeSHA": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "expectedFindings": [
+        {"component": "cirewind-fixtures/harmless", "state": "CONTRADICTORY_EVIDENCE", "provenance": "L4_CERTAIN"}
+      ],
+      "contradictionMustPreserveBothValues": true
+    },
+    {
+      "id": "Q",
+      "title": "concurrent jobs are not causally ordered",
+      "workflow": "testdata/workflows/concurrent.yml",
+      "executionKeys": ["910017:1:920018", "910017:1:920019"],
+      "timeIntervalsOverlap": true,
+      "synchronizationEvidence": [],
+      "expectedFindings": [
+        {"jobID": 920018, "component": "cirewind-fixtures/harmless", "state": "CONFIRMED_EXECUTED", "provenance": "L4_CERTAIN"}
+      ],
+      "forbiddenConclusions": ["affected job caused independent job output", "affected job caused a downstream resource"]
+    }
+  ],
+  "supplementalFixtures": [
+    {
+      "id": "LOCAL_TRANSITIVE",
+      "workflow": "testdata/workflows/local-caller.yml",
+      "actionDefinitions": ["testdata/workflows/local/action.yml"],
+      "executionKeys": ["910018:1:920020"],
+      "expectedFindings": [
+        {"component": "cirewind-fixtures/harmless", "state": "CONFIRMED_EXECUTED", "provenance": "L4_CERTAIN", "transitiveVia": "./.github/actions/local"}
+      ]
+    },
+    {
+      "id": "IMMUTABLE_PACKAGE",
+      "executionKeys": ["910019:1:920021"],
+      "expectedFindings": [
+        {"component": "cirewind-fixtures/harmless", "state": "CONFIRMED_EXECUTED", "provenance": "L4_CERTAIN", "digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"}
+      ]
+    },
+    {
+      "id": "REUSABLE_SECRET_MAPPED",
+      "workflow": "testdata/workflows/reusable-secret-map.yml",
+      "reusableWorkflow": "testdata/workflows/reusable-mapped-called.yml",
+      "expectedCredentialRelationships": [
+        {"kind": "REUSABLE_SECRET_MAPPED", "callerName": "CIREWIND_LAB_DIRECT", "calleeName": "TARGET", "eligible": true, "maximumHops": 1}
+      ]
+    },
+    {
+      "id": "APPLICATION_LOOKALIKE",
+      "executionKeys": ["910020:1:920022"],
+      "expectedRuntimeObservationCount": 0,
+      "forbiddenStates": ["CONFIRMED_EXECUTED", "CONFIRMED_DOWNLOADED"]
+    },
+    {
+      "id": "TRUNCATED_IMMUTABLE_GROUP",
+      "executionKeys": ["910021:1:920023"],
+      "expectedEvidenceGap": "INCOMPLETE_IMMUTABLE_PACKAGE_GROUP",
+      "forbiddenStates": ["CONFIRMED_EXECUTED", "CONFIRMED_DOWNLOADED", "NO_MATCH_CONFIRMED"]
+    }
+  ],
+  "logEntries": [
+    {"path": "testdata/github-logs/scenario-a/setup.txt", "role": "setup", "scope": {"runID": 910001, "runAttempt": 1, "jobID": 920001, "stepKey": "setup"}, "apiStatus": "completed", "apiConclusion": "success", "gitObjectAlgorithm": "sha1", "grammarValidated": true, "expectedObservationCounts": {"RESOLUTION_OBSERVED": 1, "DOWNLOAD_ANNOUNCED": 1, "PREPARATION_COMPLETED": 1, "TOKEN_PERMISSION": 1, "RUNNER_METADATA": 3}},
+    {"path": "testdata/github-logs/scenario-a/affected-step.txt", "role": "action-step", "phase": "main", "expectedAction": "cirewind-fixtures/harmless@v1", "scope": {"runID": 910001, "runAttempt": 1, "jobID": 920001, "stepKey": "affected:main"}, "apiStatus": "completed", "apiConclusion": "success", "grammarValidated": true, "expectedObservationCounts": {"LIFECYCLE_STARTED": 1, "LIFECYCLE_COMPLETED": 1}},
+
+    {"path": "testdata/github-logs/scenario-b/setup.txt", "role": "setup", "scope": {"runID": 910002, "runAttempt": 1, "jobID": 920002, "stepKey": "setup"}, "apiStatus": "completed", "apiConclusion": "success", "gitObjectAlgorithm": "sha1", "grammarValidated": true, "expectedObservationCounts": {"RESOLUTION_OBSERVED": 2, "DOWNLOAD_ANNOUNCED": 2, "PREPARATION_COMPLETED": 2}},
+    {"path": "testdata/github-logs/scenario-b/wrapper-step.txt", "role": "action-step", "phase": "main", "expectedAction": "cirewind-fixtures/wrapper@v1", "scope": {"runID": 910002, "runAttempt": 1, "jobID": 920002, "stepKey": "wrapper:main"}, "apiStatus": "completed", "apiConclusion": "success", "grammarValidated": true, "expectedObservationCounts": {"LIFECYCLE_STARTED": 1, "LIFECYCLE_COMPLETED": 1}},
+    {"path": "testdata/github-logs/scenario-b/nested-affected-step.txt", "role": "action-step", "phase": "main", "expectedAction": "cirewind-fixtures/harmless@v1", "scope": {"runID": 910002, "runAttempt": 1, "jobID": 920002, "stepKey": "wrapper/affected:main"}, "apiStatus": "completed", "apiConclusion": "success", "grammarValidated": true, "expectedObservationCounts": {"LIFECYCLE_STARTED": 1, "LIFECYCLE_COMPLETED": 1}},
+
+    {"path": "testdata/github-logs/scenario-c/setup.txt", "role": "setup", "scope": {"runID": 910003, "runAttempt": 1, "jobID": 920003, "stepKey": "setup"}, "apiStatus": "completed", "apiConclusion": "success", "gitObjectAlgorithm": "sha1", "grammarValidated": true, "expectedObservationCounts": {"RESOLUTION_OBSERVED": 2, "DOWNLOAD_ANNOUNCED": 2, "PREPARATION_COMPLETED": 2}},
+    {"path": "testdata/github-logs/scenario-c/wrapper-step.txt", "role": "action-step", "phase": "main", "expectedAction": "cirewind-fixtures/wrapper@v1", "scope": {"runID": 910003, "runAttempt": 1, "jobID": 920003, "stepKey": "callee/wrapper:main"}, "apiStatus": "completed", "apiConclusion": "success", "grammarValidated": true, "expectedObservationCounts": {"LIFECYCLE_STARTED": 1, "LIFECYCLE_COMPLETED": 1}},
+    {"path": "testdata/github-logs/scenario-c/nested-affected-step.txt", "role": "action-step", "phase": "main", "expectedAction": "cirewind-fixtures/harmless@v1", "scope": {"runID": 910003, "runAttempt": 1, "jobID": 920003, "stepKey": "callee/wrapper/affected:main"}, "apiStatus": "completed", "apiConclusion": "success", "grammarValidated": true, "expectedObservationCounts": {"LIFECYCLE_STARTED": 1, "LIFECYCLE_COMPLETED": 1}},
+
+    {"path": "testdata/github-logs/scenario-d/setup.txt", "role": "setup", "scope": {"runID": 910004, "runAttempt": 1, "jobID": 920004, "stepKey": "setup"}, "apiStatus": "completed", "apiConclusion": "success", "gitObjectAlgorithm": "sha1", "grammarValidated": true, "expectedObservationCounts": {"RESOLUTION_OBSERVED": 1, "DOWNLOAD_ANNOUNCED": 1, "PREPARATION_COMPLETED": 1}},
+    {"path": "testdata/github-logs/scenario-d/skipped-step.txt", "role": "action-step", "phase": "main", "expectedAction": "cirewind-fixtures/harmless@v1", "scope": {"runID": 910004, "runAttempt": 1, "jobID": 920004, "stepKey": "never-started:main"}, "apiStatus": "completed", "apiConclusion": "skipped", "grammarValidated": true, "expectedObservationCounts": {"CONDITION_SKIPPED": 1}},
+
+    {"path": "testdata/github-logs/scenario-e/attempt-1-setup.txt", "role": "setup", "scope": {"runID": 910005, "runAttempt": 1, "jobID": 920005, "stepKey": "setup"}, "apiStatus": "completed", "apiConclusion": "success", "gitObjectAlgorithm": "sha1", "grammarValidated": true, "expectedObservationCounts": {"RESOLUTION_OBSERVED": 1, "DOWNLOAD_ANNOUNCED": 1, "PREPARATION_COMPLETED": 1}},
+    {"path": "testdata/github-logs/scenario-e/attempt-1-step.txt", "role": "action-step", "phase": "main", "expectedAction": "cirewind-fixtures/harmless@v1", "scope": {"runID": 910005, "runAttempt": 1, "jobID": 920005, "stepKey": "affected:main"}, "apiStatus": "completed", "apiConclusion": "success", "grammarValidated": true, "expectedObservationCounts": {"LIFECYCLE_STARTED": 1, "LIFECYCLE_COMPLETED": 1}},
+    {"path": "testdata/github-logs/scenario-e/attempt-2-setup.txt", "role": "setup", "scope": {"runID": 910005, "runAttempt": 2, "jobID": 920105, "stepKey": "setup"}, "apiStatus": "completed", "apiConclusion": "success", "gitObjectAlgorithm": "sha1", "grammarValidated": true, "expectedObservationCounts": {"RESOLUTION_OBSERVED": 1, "DOWNLOAD_ANNOUNCED": 1, "PREPARATION_COMPLETED": 1}},
+    {"path": "testdata/github-logs/scenario-e/attempt-2-step.txt", "role": "action-step", "phase": "main", "expectedAction": "cirewind-fixtures/harmless@v1", "scope": {"runID": 910005, "runAttempt": 2, "jobID": 920105, "stepKey": "affected:main"}, "apiStatus": "completed", "apiConclusion": "success", "grammarValidated": true, "expectedObservationCounts": {"LIFECYCLE_STARTED": 1, "LIFECYCLE_COMPLETED": 1}},
+
+    {"path": "testdata/github-logs/scenario-f/attempt-1-setup.txt", "role": "setup", "scope": {"runID": 910006, "runAttempt": 1, "jobID": 920006, "stepKey": "setup"}, "apiStatus": "completed", "apiConclusion": "success", "gitObjectAlgorithm": "sha1", "grammarValidated": true, "expectedObservationCounts": {"RESOLUTION_OBSERVED": 1, "DOWNLOAD_ANNOUNCED": 1, "PREPARATION_COMPLETED": 1}},
+    {"path": "testdata/github-logs/scenario-f/attempt-1-step.txt", "role": "action-step", "phase": "main", "expectedAction": "cirewind-fixtures/harmless@v1", "scope": {"runID": 910006, "runAttempt": 1, "jobID": 920006, "stepKey": "affected:main"}, "apiStatus": "completed", "apiConclusion": "success", "grammarValidated": true, "expectedObservationCounts": {"LIFECYCLE_STARTED": 1, "LIFECYCLE_COMPLETED": 1}},
+    {"path": "testdata/github-logs/scenario-f/attempt-2-setup.txt", "role": "setup", "scope": {"runID": 910006, "runAttempt": 2, "jobID": 920106, "stepKey": "setup"}, "apiStatus": "completed", "apiConclusion": "success", "gitObjectAlgorithm": "sha1", "grammarValidated": true, "expectedObservationCounts": {"RESOLUTION_OBSERVED": 1, "DOWNLOAD_ANNOUNCED": 1, "PREPARATION_COMPLETED": 1}},
+    {"path": "testdata/github-logs/scenario-f/attempt-2-step.txt", "role": "action-step", "phase": "main", "expectedAction": "cirewind-fixtures/harmless@v1", "scope": {"runID": 910006, "runAttempt": 2, "jobID": 920106, "stepKey": "affected:main"}, "apiStatus": "completed", "apiConclusion": "success", "grammarValidated": true, "expectedObservationCounts": {"LIFECYCLE_STARTED": 1, "LIFECYCLE_COMPLETED": 1}},
+
+    {"path": "testdata/github-logs/scenario-g/setup.txt", "role": "setup", "scope": {"runID": 910007, "runAttempt": 1, "jobID": 920007, "stepKey": "setup"}, "apiStatus": "completed", "apiConclusion": "success", "gitObjectAlgorithm": "sha1", "grammarValidated": true, "expectedObservationCounts": {"RESOLUTION_OBSERVED": 1, "DOWNLOAD_ANNOUNCED": 1, "PREPARATION_COMPLETED": 1}},
+    {"path": "testdata/github-logs/scenario-g/affected-step.txt", "role": "action-step", "phase": "main", "expectedAction": "cirewind-fixtures/harmless@v1", "scope": {"runID": 910007, "runAttempt": 1, "jobID": 920007, "stepKey": "affected:main"}, "apiStatus": "completed", "apiConclusion": "success", "grammarValidated": true, "expectedObservationCounts": {"LIFECYCLE_STARTED": 1, "LIFECYCLE_COMPLETED": 1}},
+    {"path": "testdata/github-logs/scenario-h/setup.txt", "role": "setup", "scope": {"runID": 910008, "runAttempt": 1, "jobID": 920008, "stepKey": "setup"}, "apiStatus": "completed", "apiConclusion": "success", "gitObjectAlgorithm": "sha1", "grammarValidated": true, "expectedObservationCounts": {"RESOLUTION_OBSERVED": 1, "DOWNLOAD_ANNOUNCED": 1, "PREPARATION_COMPLETED": 1}},
+    {"path": "testdata/github-logs/scenario-h/affected-step.txt", "role": "action-step", "phase": "main", "expectedAction": "cirewind-fixtures/harmless@v1", "scope": {"runID": 910008, "runAttempt": 1, "jobID": 920008, "stepKey": "callee/affected:main"}, "apiStatus": "completed", "apiConclusion": "success", "grammarValidated": true, "expectedObservationCounts": {"LIFECYCLE_STARTED": 1, "LIFECYCLE_COMPLETED": 1}},
+
+    {"path": "testdata/github-logs/scenario-j/setup.txt", "role": "setup", "scope": {"runID": 910010, "runAttempt": 1, "jobID": 920010, "stepKey": "setup"}, "apiStatus": "completed", "apiConclusion": "success", "gitObjectAlgorithm": "sha1", "grammarValidated": true, "expectedObservationCounts": {"RESOLUTION_OBSERVED": 1, "DOWNLOAD_ANNOUNCED": 1, "PREPARATION_COMPLETED": 1, "TOKEN_PERMISSION": 2}},
+    {"path": "testdata/github-logs/scenario-j/affected-step.txt", "role": "action-step", "phase": "main", "expectedAction": "cirewind-fixtures/harmless@v1", "scope": {"runID": 910010, "runAttempt": 1, "jobID": 920010, "stepKey": "affected:main"}, "apiStatus": "completed", "apiConclusion": "success", "grammarValidated": true, "expectedObservationCounts": {"LIFECYCLE_STARTED": 1, "LIFECYCLE_COMPLETED": 1}},
+    {"path": "testdata/github-logs/scenario-k/setup.txt", "role": "setup", "scope": {"runID": 910011, "runAttempt": 1, "jobID": 920011, "stepKey": "setup"}, "apiStatus": "completed", "apiConclusion": "success", "gitObjectAlgorithm": "sha1", "grammarValidated": true, "expectedObservationCounts": {"RESOLUTION_OBSERVED": 1, "DOWNLOAD_ANNOUNCED": 1, "PREPARATION_COMPLETED": 1, "RUNNER_METADATA": 1}},
+    {"path": "testdata/github-logs/scenario-k/affected-step.txt", "role": "action-step", "phase": "main", "expectedAction": "cirewind-fixtures/harmless@v1", "scope": {"runID": 910011, "runAttempt": 1, "jobID": 920011, "stepKey": "affected:main"}, "apiStatus": "completed", "apiConclusion": "success", "grammarValidated": true, "expectedObservationCounts": {"LIFECYCLE_STARTED": 1, "LIFECYCLE_COMPLETED": 1}},
+    {"path": "testdata/github-logs/scenario-l/setup.txt", "role": "setup", "scope": {"runID": 910012, "runAttempt": 1, "jobID": 920012, "stepKey": "setup"}, "apiStatus": "completed", "apiConclusion": "success", "gitObjectAlgorithm": "sha1", "grammarValidated": true, "expectedObservationCounts": {"RESOLUTION_OBSERVED": 1, "DOWNLOAD_ANNOUNCED": 1, "PREPARATION_COMPLETED": 1}},
+    {"path": "testdata/github-logs/scenario-l/affected-step.txt", "role": "action-step", "phase": "main", "expectedAction": "cirewind-fixtures/harmless@v1", "scope": {"runID": 910012, "runAttempt": 1, "jobID": 920012, "stepKey": "affected:main"}, "apiStatus": "completed", "apiConclusion": "success", "grammarValidated": true, "expectedObservationCounts": {"LIFECYCLE_STARTED": 1, "LIFECYCLE_COMPLETED": 1}},
+
+    {"path": "testdata/github-logs/scenario-m/lane-one-setup.txt", "role": "setup", "scope": {"runID": 910013, "runAttempt": 1, "jobID": 920013, "stepKey": "setup"}, "apiStatus": "completed", "apiConclusion": "success", "gitObjectAlgorithm": "sha1", "grammarValidated": true, "expectedObservationCounts": {"RESOLUTION_OBSERVED": 1, "DOWNLOAD_ANNOUNCED": 1, "PREPARATION_COMPLETED": 1}},
+    {"path": "testdata/github-logs/scenario-m/lane-one-step.txt", "role": "action-step", "phase": "main", "expectedAction": "cirewind-fixtures/harmless@v1", "scope": {"runID": 910013, "runAttempt": 1, "jobID": 920013, "stepKey": "affected:main"}, "apiStatus": "completed", "apiConclusion": "success", "grammarValidated": true, "expectedObservationCounts": {"LIFECYCLE_STARTED": 1, "LIFECYCLE_COMPLETED": 1}},
+    {"path": "testdata/github-logs/scenario-m/lane-two-setup.txt", "role": "setup", "scope": {"runID": 910013, "runAttempt": 1, "jobID": 920014, "stepKey": "setup"}, "apiStatus": "completed", "apiConclusion": "success", "gitObjectAlgorithm": "sha1", "grammarValidated": true, "expectedObservationCounts": {"RESOLUTION_OBSERVED": 1, "DOWNLOAD_ANNOUNCED": 1, "PREPARATION_COMPLETED": 1}},
+    {"path": "testdata/github-logs/scenario-m/lane-two-step.txt", "role": "action-step", "phase": "main", "expectedAction": "cirewind-fixtures/harmless@v1", "scope": {"runID": 910013, "runAttempt": 1, "jobID": 920014, "stepKey": "affected:main"}, "apiStatus": "completed", "apiConclusion": "success", "grammarValidated": true, "expectedObservationCounts": {"LIFECYCLE_STARTED": 1, "LIFECYCLE_COMPLETED": 1}},
+
+    {"path": "testdata/github-logs/scenario-o/setup.txt", "role": "setup", "scope": {"runID": 910015, "runAttempt": 1, "jobID": 920016, "stepKey": "setup"}, "apiStatus": "completed", "apiConclusion": "success", "gitObjectAlgorithm": "sha1", "grammarValidated": true, "expectedObservationCounts": {"RESOLUTION_OBSERVED": 1, "DOWNLOAD_ANNOUNCED": 1, "PREPARATION_COMPLETED": 1}},
+    {"path": "testdata/github-logs/scenario-o/affected-step.txt", "role": "action-step", "phase": "main", "expectedAction": "cirewind-fixtures/harmless@v1", "scope": {"runID": 910015, "runAttempt": 1, "jobID": 920016, "stepKey": "affected:main"}, "apiStatus": "completed", "apiConclusion": "success", "grammarValidated": true, "expectedObservationCounts": {"LIFECYCLE_STARTED": 1, "LIFECYCLE_COMPLETED": 1}},
+    {"path": "testdata/github-logs/scenario-p/setup.txt", "role": "setup", "scope": {"runID": 910016, "runAttempt": 1, "jobID": 920017, "stepKey": "setup"}, "apiStatus": "completed", "apiConclusion": "success", "gitObjectAlgorithm": "sha1", "grammarValidated": true, "expectedObservationCounts": {"RESOLUTION_OBSERVED": 1, "DOWNLOAD_ANNOUNCED": 1, "PREPARATION_COMPLETED": 1}},
+    {"path": "testdata/github-logs/scenario-p/affected-step.txt", "role": "action-step", "phase": "main", "expectedAction": "cirewind-fixtures/harmless@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "scope": {"runID": 910016, "runAttempt": 1, "jobID": 920017, "stepKey": "affected:main"}, "apiStatus": "completed", "apiConclusion": "success", "grammarValidated": true, "expectedObservationCounts": {"LIFECYCLE_STARTED": 1, "LIFECYCLE_COMPLETED": 1}},
+
+    {"path": "testdata/github-logs/scenario-q/affected-setup.txt", "role": "setup", "scope": {"runID": 910017, "runAttempt": 1, "jobID": 920018, "stepKey": "setup"}, "apiStatus": "completed", "apiConclusion": "success", "gitObjectAlgorithm": "sha1", "grammarValidated": true, "expectedObservationCounts": {"RESOLUTION_OBSERVED": 1, "DOWNLOAD_ANNOUNCED": 1, "PREPARATION_COMPLETED": 1}},
+    {"path": "testdata/github-logs/scenario-q/affected-step.txt", "role": "action-step", "phase": "main", "expectedAction": "cirewind-fixtures/harmless@v1", "scope": {"runID": 910017, "runAttempt": 1, "jobID": 920018, "stepKey": "affected:main"}, "apiStatus": "completed", "apiConclusion": "success", "grammarValidated": true, "expectedObservationCounts": {"LIFECYCLE_STARTED": 1, "LIFECYCLE_COMPLETED": 1}},
+    {"path": "testdata/github-logs/scenario-q/independent-step.txt", "role": "run-step", "scope": {"runID": 910017, "runAttempt": 1, "jobID": 920019, "stepKey": "independent:main"}, "apiStatus": "completed", "apiConclusion": "success", "grammarValidated": true, "expectedObservationCounts": {}},
+
+    {"path": "testdata/github-logs/local/setup.txt", "role": "setup", "scope": {"runID": 910018, "runAttempt": 1, "jobID": 920020, "stepKey": "setup"}, "apiStatus": "completed", "apiConclusion": "success", "gitObjectAlgorithm": "sha1", "grammarValidated": true, "expectedObservationCounts": {"RESOLUTION_OBSERVED": 1, "DOWNLOAD_ANNOUNCED": 1, "PREPARATION_COMPLETED": 1}},
+    {"path": "testdata/github-logs/local/nested-affected-step.txt", "role": "action-step", "phase": "main", "expectedAction": "cirewind-fixtures/harmless@v1", "scope": {"runID": 910018, "runAttempt": 1, "jobID": 920020, "stepKey": "local/affected:main"}, "apiStatus": "completed", "apiConclusion": "success", "grammarValidated": true, "expectedObservationCounts": {"LIFECYCLE_STARTED": 1, "LIFECYCLE_COMPLETED": 1}},
+    {"path": "testdata/github-logs/immutable/setup.txt", "role": "setup", "scope": {"runID": 910019, "runAttempt": 1, "jobID": 920021, "stepKey": "setup"}, "apiStatus": "completed", "apiConclusion": "success", "gitObjectAlgorithm": "sha1", "grammarValidated": true, "expectedObservationCounts": {"RESOLUTION_OBSERVED": 1, "DOWNLOAD_ANNOUNCED": 1, "PREPARATION_COMPLETED": 1}},
+    {"path": "testdata/github-logs/immutable/affected-step.txt", "role": "action-step", "phase": "main", "expectedAction": "cirewind-fixtures/harmless@v1", "scope": {"runID": 910019, "runAttempt": 1, "jobID": 920021, "stepKey": "affected:main"}, "apiStatus": "completed", "apiConclusion": "success", "grammarValidated": true, "expectedObservationCounts": {"LIFECYCLE_STARTED": 1, "LIFECYCLE_COMPLETED": 1}},
+    {"path": "testdata/github-logs/adversarial/application-lookalike.txt", "role": "run-step", "scope": {"runID": 910020, "runAttempt": 1, "jobID": 920022, "stepKey": "run:main"}, "apiStatus": "completed", "apiConclusion": "success", "grammarValidated": true, "expectedObservationCounts": {}},
+    {"path": "testdata/github-logs/adversarial/truncated-setup.txt", "role": "setup", "scope": {"runID": 910021, "runAttempt": 1, "jobID": 920023, "stepKey": "setup"}, "apiStatus": "completed", "apiConclusion": "success", "gitObjectAlgorithm": "sha1", "grammarValidated": true, "expectedObservationCounts": {}, "expectedDiagnostics": ["INCOMPLETE_IMMUTABLE_PACKAGE_GROUP"]}
+  ],
+  "globalAssertions": {
+    "downloadedWithoutLifecycleNeverMeansExecuted": true,
+    "secretExistenceAloneNeverMeansExposed": true,
+    "oidcCapabilityNeverMeansCloudRoleAssumed": true,
+    "presentDayConfigurationNeverReplacesHistoricalDefinition": true,
+    "missingLogsNeverMeanNoMatch": true,
+    "temporalFollowingNeverMeansCausation": true,
+    "fixtureSecretNamesOnly": [
+      "CIREWIND_LAB_DIRECT",
+      "CIREWIND_LAB_INHERITED",
+      "CIREWIND_LAB_ENVIRONMENT",
+      "CIREWIND_LAB_UNUSED"
+    ]
+  }
+}

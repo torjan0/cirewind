@@ -1,0 +1,8 @@
+name: C - reusable workflow calls composite
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  reusable:
+    uses: cirewind-fixtures/workflows/.github/workflows/reusable-composite.yml@v1

@@ -1,0 +1,7 @@
+name: fixture with expired runtime logs
+on: workflow_dispatch
+jobs:
+  metadata-only:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: cirewind-fixtures/harmless@v1

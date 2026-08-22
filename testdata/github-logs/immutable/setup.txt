@@ -1,0 +1,4 @@
+2026-08-20T05:10:00Z Download immutable action package 'cirewind-fixtures/harmless@v1'
+2026-08-20T05:10:00Z Version: 1.0.0-fixture
+2026-08-20T05:10:00Z Source commit SHA: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+2026-08-20T05:10:00Z Digest: sha256:2222222222222222222222222222222222222222222222222222222222222222

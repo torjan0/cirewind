@@ -1,0 +1,13 @@
+name: fixture reusable callee with explicit secret mapping
+on:
+  workflow_call:
+    secrets:
+      TARGET:
+        required: true
+jobs:
+  nested:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: cirewind-fixtures/harmless@v1
+        env:
+          CIREWIND_LAB_MAPPED_INPUT: ${{ secrets.TARGET }}

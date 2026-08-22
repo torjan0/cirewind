@@ -1,0 +1,374 @@
+#!/usr/bin/env python3
+"""Audit a generated report in Chromium through the W3C WebDriver protocol."""
+
+from __future__ import annotations
+
+import argparse
+import base64
+import hashlib
+import json
+import os
+from pathlib import Path
+import shutil
+import socket
+import subprocess
+import sys
+import tempfile
+import time
+from urllib.error import HTTPError, URLError
+from urllib.parse import urlsplit
+from urllib.request import Request, urlopen
+
+
+class AuditError(RuntimeError):
+    pass
+
+
+def first_executable(explicit: str | None, candidates: tuple[str, ...]) -> str:
+    if explicit:
+        path = Path(explicit).expanduser().resolve()
+        if not path.is_file() or not os.access(path, os.X_OK):
+            raise AuditError(f"executable is unavailable: {path}")
+        return str(path)
+    for candidate in candidates:
+        resolved = shutil.which(candidate)
+        if resolved:
+            return resolved
+        path = Path(candidate)
+        if path.is_file() and os.access(path, os.X_OK):
+            return str(path)
+    raise AuditError(f"none of these executables is available: {', '.join(candidates)}")
+
+
+def reserve_loopback_port() -> int:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
+        listener.bind(("127.0.0.1", 0))
+        return int(listener.getsockname()[1])
+
+
+class Driver:
+    def __init__(self, executable: str, chrome: str, profile: Path, log_path: Path):
+        self.port = reserve_loopback_port()
+        self.base = f"http://127.0.0.1:{self.port}"
+        self.log_path = log_path
+        self.log_file = log_path.open("wb")
+        self.process = subprocess.Popen(
+            [
+                executable,
+                f"--port={self.port}",
+                "--allowed-ips=127.0.0.1",
+                "--verbose",
+            ],
+            stdin=subprocess.DEVNULL,
+            stdout=self.log_file,
+            stderr=subprocess.STDOUT,
+        )
+        self.session_id = ""
+        try:
+            self._wait_ready()
+            created = self.call(
+                "POST",
+                "/session",
+                {
+                    "capabilities": {
+                        "alwaysMatch": {
+                            "browserName": "chrome",
+                            "goog:chromeOptions": {
+                                "binary": chrome,
+                                "args": [
+                                    "--headless=new",
+                                    "--no-sandbox",
+                                    "--disable-gpu",
+                                    "--disable-dev-shm-usage",
+                                    "--disable-background-networking",
+                                    "--disable-component-update",
+                                    "--disable-default-apps",
+                                    "--disable-domain-reliability",
+                                    "--disable-sync",
+                                    "--metrics-recording-only",
+                                    "--no-first-run",
+                                    "--no-default-browser-check",
+                                    "--password-store=basic",
+                                    "--use-mock-keychain",
+                                    "--proxy-server=direct://",
+                                    "--proxy-bypass-list=*",
+                                    "--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE localhost",
+                                    f"--user-data-dir={profile}",
+                                ],
+                            },
+                            "goog:loggingPrefs": {
+                                "performance": "ALL",
+                                "browser": "ALL",
+                            },
+                        }
+                    }
+                },
+            )
+            self.session_id = created["value"]["sessionId"]
+            self.capabilities = created["value"]["capabilities"]
+        except Exception as error:
+            self.close()
+            detail = ""
+            try:
+                lines = self.log_path.read_text(encoding="utf-8", errors="replace").splitlines()
+                detail = " | ".join(lines[-12:])
+                detail = "".join(character for character in detail if character.isprintable())[:2048]
+            except OSError:
+                pass
+            suffix = f"; chromedriver: {detail}" if detail else ""
+            raise AuditError(f"{error}{suffix}") from error
+
+    def _wait_ready(self) -> None:
+        deadline = time.monotonic() + 15
+        while time.monotonic() < deadline:
+            if self.process.poll() is not None:
+                raise AuditError("chromedriver exited before becoming ready")
+            try:
+                if self.call("GET", "/status")["value"]["ready"]:
+                    return
+            except (AuditError, URLError):
+                time.sleep(0.05)
+        raise AuditError("chromedriver did not become ready within 15 seconds")
+
+    def call(self, method: str, path: str, body: object | None = None) -> dict:
+        data = None if body is None else json.dumps(body).encode("utf-8")
+        request = Request(
+            self.base + path,
+            data=data,
+            method=method,
+            headers={"Content-Type": "application/json;charset=UTF-8"},
+        )
+        try:
+            with urlopen(request, timeout=20) as response:
+                result = json.load(response)
+        except HTTPError as error:
+            detail = ""
+            try:
+                payload = json.loads(error.read().decode("utf-8", errors="replace"))
+                value = payload.get("value", {}) if isinstance(payload, dict) else {}
+                message = value.get("message", "") if isinstance(value, dict) else ""
+                detail = "".join(character for character in str(message) if character.isprintable())
+                detail = detail[:1024]
+            except (json.JSONDecodeError, OSError, UnicodeError):
+                pass
+            suffix = f": {detail}" if detail else ""
+            raise AuditError(
+                f"webdriver {method} {path} returned HTTP {error.code}{suffix}"
+            ) from error
+        if isinstance(result, dict) and isinstance(result.get("value"), dict):
+            error_name = result["value"].get("error")
+            if error_name:
+                raise AuditError(f"webdriver {method} {path} failed: {error_name}")
+        return result
+
+    def session_call(self, method: str, path: str, body: object | None = None) -> dict:
+        if not self.session_id:
+            raise AuditError("webdriver session is unavailable")
+        return self.call(method, f"/session/{self.session_id}{path}", body)
+
+    def close(self) -> None:
+        if self.session_id:
+            try:
+                self.session_call("DELETE", "")
+            except Exception:
+                pass
+            self.session_id = ""
+        if self.process.poll() is None:
+            self.process.terminate()
+            try:
+                self.process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                self.process.kill()
+                self.process.wait(timeout=5)
+        self.log_file.close()
+
+
+def sha256_source(source: str) -> str:
+    digest = hashlib.sha256(source.encode("utf-8")).digest()
+    return "'sha256-" + base64.b64encode(digest).decode("ascii") + "'"
+
+
+def parse_csp(value: str) -> dict[str, list[str]]:
+    directives: dict[str, list[str]] = {}
+    for section in value.split(";"):
+        fields = section.strip().split()
+        if not fields:
+            continue
+        if fields[0] in directives:
+            raise AuditError(f"duplicate CSP directive: {fields[0]}")
+        directives[fields[0]] = fields[1:]
+    return directives
+
+
+def page_request_urls(entries: list[dict], report_url: str) -> list[str]:
+    urls: list[str] = []
+    for entry in entries:
+        message = json.loads(entry["message"])["message"]
+        if message.get("method") != "Network.requestWillBeSent":
+            continue
+        params = message["params"]
+        request_url = params["request"]["url"]
+        if params.get("documentURL") == report_url or request_url == report_url:
+            urls.append(request_url)
+    return urls
+
+
+def audit(report: Path, driver: Driver) -> dict[str, object]:
+    report_url = report.resolve().as_uri()
+    driver.session_call("POST", "/log", {"type": "performance"})
+    driver.session_call("POST", "/log", {"type": "browser"})
+    driver.session_call("POST", "/url", {"url": report_url})
+    state = driver.session_call(
+        "POST",
+        "/execute/sync",
+        {
+            "script": r"""
+const counted = [...document.querySelectorAll('[data-finding-item][data-counted="true"]')];
+const visible = () => counted.filter(item => !item.hidden).length;
+const displayed = () => document.getElementById('visible-count').textContent;
+const filter = document.querySelector('[data-filter="state"]');
+const option = filter ? [...filter.options].find(candidate => candidate.value) : null;
+const initial = {visible: visible(), displayed: displayed()};
+let filtered = null;
+if (filter && option) {
+  filter.value = option.value;
+  filter.dispatchEvent(new Event('change'));
+  filtered = {
+    state: option.value,
+    visible: visible(),
+    displayed: displayed(),
+    expected: counted.filter(item => item.dataset.state === option.value).length
+  };
+  document.getElementById('filter-reset').click();
+}
+return {
+  ready: document.readyState,
+  csp: document.querySelector('meta[http-equiv="Content-Security-Policy"]').content,
+  scripts: [...document.scripts].map(element => ({src: element.src, text: element.textContent})),
+  styles: [...document.querySelectorAll('style')].map(element => element.textContent),
+  counted: counted.length,
+  initial,
+  filtered,
+  reset: {visible: visible(), displayed: displayed()}
+};
+""",
+            "args": [],
+        },
+    )["value"]
+    performance = driver.session_call("POST", "/log", {"type": "performance"})["value"]
+    console = driver.session_call("POST", "/log", {"type": "browser"})["value"]
+
+    if state["ready"] != "complete":
+        raise AuditError("report document did not reach complete state")
+    if len(state["scripts"]) != 1 or state["scripts"][0]["src"]:
+        raise AuditError("report must contain exactly one inline script")
+    if len(state["styles"]) != 1:
+        raise AuditError("report must contain exactly one inline stylesheet")
+    if state["initial"]["visible"] != state["counted"]:
+        raise AuditError("initial report filter hid findings")
+    if state["initial"]["displayed"] != str(state["counted"]):
+        raise AuditError("initial visible-count text is inconsistent")
+    if state["filtered"] is None:
+        raise AuditError("report has no usable state filter")
+    if state["filtered"]["visible"] != state["filtered"]["expected"]:
+        raise AuditError("state filter displayed the wrong findings")
+    if state["filtered"]["displayed"] != str(state["filtered"]["expected"]):
+        raise AuditError("filtered visible-count text is inconsistent")
+    if state["reset"]["visible"] != state["counted"]:
+        raise AuditError("filter reset did not restore all findings")
+
+    directives = parse_csp(state["csp"])
+    required_none = (
+        "default-src",
+        "img-src",
+        "connect-src",
+        "object-src",
+        "base-uri",
+        "form-action",
+    )
+    for name in required_none:
+        if directives.get(name) != ["'none'"]:
+            raise AuditError(f"CSP {name} must be exactly 'none'")
+    expected_script = sha256_source(state["scripts"][0]["text"])
+    expected_style = sha256_source(state["styles"][0])
+    if directives.get("script-src") != [expected_script]:
+        raise AuditError("CSP script hash does not match the inline script")
+    if directives.get("style-src") != [expected_style]:
+        raise AuditError("CSP style hash does not match the inline stylesheet")
+    if "frame-ancestors" in directives:
+        raise AuditError("frame-ancestors is ineffective in a meta-delivered CSP")
+
+    requests = page_request_urls(performance, report_url)
+    external = sorted(
+        {url for url in requests if urlsplit(url).scheme in {"http", "https", "ws", "wss"}}
+    )
+    files = sorted({url for url in requests if urlsplit(url).scheme == "file"})
+    if external:
+        raise AuditError("report initiated an external request")
+    if files != [report_url]:
+        raise AuditError("report loaded an unexpected local file")
+    severe = [item for item in console if item.get("level") == "SEVERE"]
+    if severe:
+        raise AuditError("browser console contains a severe report error")
+
+    return {
+        "browser": driver.capabilities.get("browserVersion", "unknown"),
+        "findings": state["counted"],
+        "filterState": state["filtered"]["state"],
+        "filterMatches": state["filtered"]["visible"],
+        "pageRequests": len(requests),
+        "externalRequests": len(external),
+        "consoleErrors": len(severe),
+        "cspHashesVerified": True,
+    }
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("report", type=Path)
+    parser.add_argument("--chrome")
+    parser.add_argument("--chromedriver")
+    parser.add_argument("--work-root", type=Path)
+    args = parser.parse_args()
+
+    report = args.report.expanduser().resolve()
+    if not report.is_file():
+        raise AuditError(f"report is unavailable: {report}")
+    work_root = args.work_root.expanduser().resolve() if args.work_root else None
+    if work_root is not None and not work_root.is_dir():
+        raise AuditError(f"work root is unavailable: {work_root}")
+    chrome = first_executable(
+        args.chrome or os.environ.get("CIREWIND_CHROME"),
+        (
+            "/snap/chromium/current/usr/lib/chromium-browser/chrome",
+            "chromium",
+            "chromium-browser",
+            "google-chrome",
+        ),
+    )
+    chromedriver = first_executable(
+        args.chromedriver or os.environ.get("CIREWIND_CHROMEDRIVER"),
+        (
+            "/snap/chromium/current/usr/lib/chromium-browser/chromedriver",
+            "chromedriver",
+        ),
+    )
+    work = Path(tempfile.mkdtemp(prefix="cirewind-browser-audit.", dir=work_root))
+    driver: Driver | None = None
+    try:
+        driver = Driver(chromedriver, chrome, work / "profile", work / "chromedriver.log")
+        result = audit(report, driver)
+        print(json.dumps(result, sort_keys=True))
+    finally:
+        if driver is not None:
+            driver.close()
+        shutil.rmtree(work)
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
+    except AuditError as error:
+        print(f"browser audit failed: {error}", file=sys.stderr)
+        raise SystemExit(1)

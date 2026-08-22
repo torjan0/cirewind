@@ -1,0 +1,58 @@
+name: Incident-pack proposal
+description: Propose verified primary-source data for a real incident pack.
+title: "incident pack: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not submit guessed SHAs, inferred exposure windows, executable content, private intelligence, or incident indicators you are not authorized to publish. Use synthetic fixtures when primary evidence is unavailable.
+  - type: input
+    id: incident
+    attributes:
+      label: Incident identifier and title
+    validations:
+      required: true
+  - type: textarea
+    id: primary_sources
+    attributes:
+      label: Primary sources
+      description: Provide direct links to maintainer advisories, GitHub Advisory Database records, or source-repository records supporting each proposed fact.
+    validations:
+      required: true
+  - type: textarea
+    id: components
+    attributes:
+      label: Affected components and paths
+      description: List exact repositories and subpaths, keeping components with different windows separate.
+    validations:
+      required: true
+  - type: textarea
+    id: indicators
+    attributes:
+      label: Verified indicators
+      description: List full commit SHAs, immutable package digests, mutable refs, known-good SHAs, and literal log indicators with a source beside each value.
+    validations:
+      required: true
+  - type: textarea
+    id: windows
+    attributes:
+      label: Exposure windows
+      description: Give inclusive/exclusive boundary semantics, UTC timestamps, component association, and a primary source for every boundary.
+    validations:
+      required: true
+  - type: textarea
+    id: remediation
+    attributes:
+      label: Sourced remediation
+      description: Separate source-backed guidance from project-maintainer interpretation.
+  - type: checkboxes
+    id: attestation
+    attributes:
+      label: Submission confirmation
+      options:
+        - label: Every real indicator and window is supported by a cited primary source.
+          required: true
+        - label: No value was invented to make the pack appear complete.
+          required: true
+        - label: The proposed pack contains no scripts, HTML, shell commands, templated requests, or secret values.
+          required: true

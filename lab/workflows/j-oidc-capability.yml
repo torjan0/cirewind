@@ -1,0 +1,12 @@
+name: J - OIDC minting capability only
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  oidc-capability:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Invoke marker without requesting an OIDC token
+        uses: cirewind-fixtures/harmless@v1

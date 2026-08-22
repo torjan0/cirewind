@@ -1,0 +1,11 @@
+name: B - composite calls affected Action
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  composite:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Invoke wrapper
+        uses: cirewind-fixtures/wrapper@v1

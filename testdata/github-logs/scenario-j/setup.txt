@@ -1,0 +1,5 @@
+2026-08-20T03:30:00Z ##[group]GITHUB_TOKEN Permissions
+2026-08-20T03:30:00Z Contents: read
+2026-08-20T03:30:00Z Id-token: write
+2026-08-20T03:30:00Z ##[endgroup]
+2026-08-20T03:30:01Z Download action repository 'cirewind-fixtures/harmless@v1' (SHA:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb)

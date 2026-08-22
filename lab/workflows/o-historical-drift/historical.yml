@@ -1,0 +1,11 @@
+name: O - historical workflow at run commit
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  historical:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Historical mutable declaration
+        uses: cirewind-fixtures/harmless@v1

@@ -1,0 +1,379 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "incident-v1alpha1.json",
+  "title": "CIRewind GitHub Actions incident pack v1alpha1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "properties": {
+    "apiVersion": { "const": "cirewind.dev/v1alpha1" },
+    "kind": { "const": "GitHubActionsIncident" },
+    "metadata": { "$ref": "#/$defs/metadata" },
+    "spec": { "$ref": "#/$defs/spec" }
+  },
+  "$defs": {
+    "stableID": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100,
+      "pattern": "^[A-Za-z0-9._-]+$"
+    },
+    "provenance": {
+      "enum": ["L4_CERTAIN", "L3_STRONG", "L2_PROBABLE", "L1_POSSIBLE", "L0_UNKNOWN"]
+    },
+    "sourceRefs": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/stableID" }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "packVersion", "title", "publishedAt", "updatedAt", "sources"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 100,
+          "pattern": "^[A-Za-z0-9._-]+$"
+        },
+        "packVersion": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"
+        },
+        "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "publishedAt": { "$ref": "#/$defs/utcTimestamp" },
+        "updatedAt": { "$ref": "#/$defs/utcTimestamp" },
+        "labels": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$" }
+        },
+        "sources": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/source" }
+        }
+      }
+    },
+    "utcTimestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$"
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "title", "publisher", "url", "retrievedAt"],
+      "properties": {
+        "id": { "$ref": "#/$defs/stableID" },
+        "type": {
+          "enum": [
+            "primary-advisory",
+            "github-advisory-database",
+            "source-repository",
+            "vendor-incident-report",
+            "government-advisory",
+            "synthetic-fixture"
+          ]
+        },
+        "title": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "publisher": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "url": { "type": "string", "format": "uri", "pattern": "^https://" },
+        "publishedAt": { "$ref": "#/$defs/utcTimestamp" },
+        "retrievedAt": { "$ref": "#/$defs/utcTimestamp" },
+        "sourceRevision": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "sourceSha256": { "type": "string", "pattern": "^[0-9A-Fa-f]{64}$" },
+        "timePrecision": { "enum": ["second", "minute", "hour", "day", "unknown"] },
+        "notes": { "type": "string", "minLength": 1, "maxLength": 4096 }
+      }
+    },
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["description", "components", "indicators"],
+      "properties": {
+        "description": { "type": "string", "minLength": 1, "maxLength": 16384 },
+        "components": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/component" }
+        },
+        "windows": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/window" }
+        },
+        "indicators": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/indicator" }
+        },
+        "knownGood": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/knownGood" }
+        },
+        "remediation": { "$ref": "#/$defs/remediation" }
+      }
+    },
+    "repository": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["owner", "name"],
+      "properties": {
+        "owner": { "type": "string", "pattern": "^[A-Za-z0-9_.-]{1,100}$" },
+        "name": { "type": "string", "pattern": "^[A-Za-z0-9_.-]{1,100}$" },
+        "id": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "repoPath": {
+      "type": "string",
+      "maxLength": 4096,
+      "allOf": [
+        { "not": { "pattern": "^/" } },
+        { "not": { "pattern": "(^|/)\\.\\.?(/|$)" } },
+        { "not": { "pattern": "//" } },
+        { "not": { "pattern": "\\\\" } }
+      ]
+    },
+    "workflowPath": {
+      "type": "string",
+      "maxLength": 4096,
+      "pattern": "^\\.github/workflows/.+\\.ya?ml$"
+    },
+    "component": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "repository"],
+      "properties": {
+        "id": { "$ref": "#/$defs/stableID" },
+        "type": { "enum": ["github-action", "reusable-workflow", "embedded-tool", "repository"] },
+        "repository": { "$ref": "#/$defs/repository" },
+        "subpaths": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/repoPath" }
+        },
+        "workflowPaths": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/workflowPath" }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "reusable-workflow" } }, "required": ["type"] },
+          "then": { "required": ["workflowPaths"] }
+        }
+      ]
+    },
+    "window": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "bounds", "sourcePrecision", "approximation", "sourceRefs"],
+      "anyOf": [{ "required": ["start"] }, { "required": ["end"] }],
+      "properties": {
+        "id": { "$ref": "#/$defs/stableID" },
+        "start": { "$ref": "#/$defs/utcTimestamp" },
+        "end": { "$ref": "#/$defs/utcTimestamp" },
+        "bounds": { "enum": ["[)", "[]", "()", "(]"] },
+        "sourcePrecision": { "enum": ["second", "minute", "hour", "day", "unknown"] },
+        "approximation": { "enum": ["exact", "source-rounded", "conservative-expanded", "unknown"] },
+        "originalClaim": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "sourceRefs": { "$ref": "#/$defs/sourceRefs" },
+        "notes": { "type": "string", "minLength": 1, "maxLength": 4096 }
+      }
+    },
+    "gitObject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "value"],
+      "properties": {
+        "algorithm": { "enum": ["sha1", "sha256"] },
+        "value": { "type": "string" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "algorithm": { "const": "sha1" } }, "required": ["algorithm"] },
+          "then": { "properties": { "value": { "pattern": "^[0-9A-Fa-f]{40}$" } } }
+        },
+        {
+          "if": { "properties": { "algorithm": { "const": "sha256" } }, "required": ["algorithm"] },
+          "then": { "properties": { "value": { "pattern": "^[0-9A-Fa-f]{64}$" } } }
+        }
+      ]
+    },
+    "valueActionCommit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gitObject"],
+      "properties": { "gitObject": { "$ref": "#/$defs/gitObject" } }
+    },
+    "valueWorkflowCommit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gitObject"],
+      "properties": {
+        "gitObject": { "$ref": "#/$defs/gitObject" },
+        "path": { "$ref": "#/$defs/workflowPath" }
+      }
+    },
+    "valueMutableAction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ref"],
+      "properties": { "ref": { "type": "string", "minLength": 1, "maxLength": 1024 } }
+    },
+    "valueMutableWorkflow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ref", "path"],
+      "properties": {
+        "ref": { "type": "string", "minLength": 1, "maxLength": 1024 },
+        "path": { "$ref": "#/$defs/workflowPath" }
+      }
+    },
+    "valueDigest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["subject", "algorithm", "digest"],
+      "properties": {
+        "subject": { "enum": ["github-action-package", "executable-file", "oci-manifest", "release-asset", "workflow-artifact"] },
+        "algorithm": { "const": "sha256" },
+        "digest": { "type": "string", "pattern": "^[0-9A-Fa-f]{64}$" },
+        "path": { "$ref": "#/$defs/repoPath" },
+        "platform": { "type": "string", "minLength": 1, "maxLength": 200 }
+      }
+    },
+    "valueLiteral": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["literal", "caseSensitive", "scope"],
+      "properties": {
+        "literal": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "caseSensitive": { "const": true },
+        "scope": { "enum": ["runner-control", "setup", "step", "any-retained-log"] }
+      }
+    },
+    "valueDomain": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["domain", "match"],
+      "properties": {
+        "domain": { "type": "string", "minLength": 1, "maxLength": 253 },
+        "match": { "enum": ["exact", "subdomains"] }
+      }
+    },
+    "valueIP": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["address"],
+      "properties": { "address": { "type": "string", "minLength": 2, "maxLength": 45 } }
+    },
+    "valueRepository": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["owner", "name"],
+      "properties": {
+        "owner": { "type": "string", "pattern": "^[A-Za-z0-9_.-]{1,100}$" },
+        "name": { "type": "string", "pattern": "^[A-Za-z0-9_.-]{1,100}$" },
+        "path": { "$ref": "#/$defs/repoPath" }
+      }
+    },
+    "valueRelease": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version"],
+      "properties": { "version": { "type": "string", "minLength": 1, "maxLength": 256 } }
+    },
+    "indicatorBase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "componentId", "kind", "value", "confidence", "sourceRefs"],
+      "properties": {
+        "id": { "$ref": "#/$defs/stableID" },
+        "componentId": { "$ref": "#/$defs/stableID" },
+        "kind": { "enum": ["action-commit", "reusable-workflow-commit", "mutable-action-ref", "mutable-workflow-ref", "digest", "log-literal", "domain", "ip-address", "repository-name", "release-version"] },
+        "value": { "type": "object" },
+        "windowRefs": { "$ref": "#/$defs/sourceRefs" },
+        "confidence": { "$ref": "#/$defs/provenance" },
+        "sourceRefs": { "$ref": "#/$defs/sourceRefs" },
+        "notes": { "type": "string", "minLength": 1, "maxLength": 4096 }
+      }
+    },
+    "indicator": {
+      "allOf": [
+        { "$ref": "#/$defs/indicatorBase" },
+        {
+          "oneOf": [
+            { "properties": { "kind": { "const": "action-commit" }, "value": { "$ref": "#/$defs/valueActionCommit" } } },
+            { "properties": { "kind": { "const": "reusable-workflow-commit" }, "value": { "$ref": "#/$defs/valueWorkflowCommit" } } },
+            { "properties": { "kind": { "const": "mutable-action-ref" }, "value": { "$ref": "#/$defs/valueMutableAction" } }, "required": ["windowRefs"] },
+            { "properties": { "kind": { "const": "mutable-workflow-ref" }, "value": { "$ref": "#/$defs/valueMutableWorkflow" } }, "required": ["windowRefs"] },
+            { "properties": { "kind": { "const": "digest" }, "value": { "$ref": "#/$defs/valueDigest" } } },
+            { "properties": { "kind": { "const": "log-literal" }, "value": { "$ref": "#/$defs/valueLiteral" } } },
+            { "properties": { "kind": { "const": "domain" }, "value": { "$ref": "#/$defs/valueDomain" } } },
+            { "properties": { "kind": { "const": "ip-address" }, "value": { "$ref": "#/$defs/valueIP" } } },
+            { "properties": { "kind": { "const": "repository-name" }, "value": { "$ref": "#/$defs/valueRepository" } } },
+            { "properties": { "kind": { "const": "release-version" }, "value": { "$ref": "#/$defs/valueRelease" } } }
+          ]
+        }
+      ]
+    },
+    "knownGood": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "componentId", "kind", "value", "confidence", "sourceRefs"],
+      "properties": {
+        "id": { "$ref": "#/$defs/stableID" },
+        "componentId": { "$ref": "#/$defs/stableID" },
+        "kind": { "enum": ["action-commit", "reusable-workflow-commit", "digest"] },
+        "value": { "type": "object" },
+        "confidence": { "$ref": "#/$defs/provenance" },
+        "sourceRefs": { "$ref": "#/$defs/sourceRefs" },
+        "notes": { "type": "string", "minLength": 1, "maxLength": 4096 }
+      },
+      "oneOf": [
+        { "properties": { "kind": { "const": "action-commit" }, "value": { "$ref": "#/$defs/valueActionCommit" } } },
+        { "properties": { "kind": { "const": "reusable-workflow-commit" }, "value": { "$ref": "#/$defs/valueWorkflowCommit" } } },
+        { "properties": { "kind": { "const": "digest" }, "value": { "$ref": "#/$defs/valueDigest" } } }
+      ]
+    },
+    "remediation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["guidance"],
+      "properties": {
+        "guidance": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1, "maxLength": 4096 }
+        },
+        "credentialRotationTriggers": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/rotationTrigger" }
+        }
+      }
+    },
+    "rotationTrigger": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "whenStates", "guidance", "confidence", "sourceRefs"],
+      "properties": {
+        "id": { "$ref": "#/$defs/stableID" },
+        "whenStates": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": ["CONFIRMED_EXECUTED", "CONFIRMED_DOWNLOADED", "CONFIRMED_CALLED_WORKFLOW", "DECLARED_AT_RUN_SHA", "RUN_IN_WINDOW_MUTABLE_REF", "POTENTIAL_TRANSITIVE", "CURRENT_REFERENCE_ONLY", "NO_MATCH_CONFIRMED", "UNKNOWN_EVIDENCE_GAP", "CONTRADICTORY_EVIDENCE"]
+          }
+        },
+        "guidance": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "confidence": { "$ref": "#/$defs/provenance" },
+        "sourceRefs": { "$ref": "#/$defs/sourceRefs" }
+      }
+    }
+  }
+}

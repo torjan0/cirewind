@@ -1,0 +1,8 @@
+name: fixture composite caller
+on: workflow_dispatch
+jobs:
+  wrapper:
+    runs-on: ubuntu-24.04
+    steps:
+      - id: wrapper
+        uses: cirewind-fixtures/wrapper@v1

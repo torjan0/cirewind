@@ -1,0 +1,8 @@
+name: F - failed job rerun preserves identities
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  reusable:
+    uses: cirewind-fixtures/workflows/.github/workflows/reusable-failing.yml@v1

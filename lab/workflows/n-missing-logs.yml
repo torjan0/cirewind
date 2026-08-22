@@ -1,0 +1,11 @@
+name: N - source logs later expire
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  retained-metadata-only:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Invoke mutable marker
+        uses: cirewind-fixtures/harmless@v1

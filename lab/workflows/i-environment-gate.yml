@@ -1,0 +1,14 @@
+name: I - environment gate prevents job start
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  awaiting-approval:
+    environment: cirewind-lab-protected
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Would invoke marker after approval
+        uses: cirewind-fixtures/harmless@v1
+        env:
+          CIREWIND_LAB_ENVIRONMENT_INPUT: ${{ secrets.CIREWIND_LAB_ENVIRONMENT }}
