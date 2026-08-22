@@ -47,6 +47,10 @@ func NewBuilder(target string, raw bool) (*Builder, error) {
 	if abs == string(filepath.Separator) || abs == filepath.Clean(os.Getenv("HOME")) {
 		return nil, errors.New("case output cannot be a filesystem or home root")
 	}
+	abs, err = canonicalizeTrustedTempPath(abs)
+	if err != nil {
+		return nil, err
+	}
 	if _, err := os.Lstat(abs); err == nil {
 		return nil, fmt.Errorf("case output already exists: %s", abs)
 	} else if !errors.Is(err, os.ErrNotExist) {
@@ -348,6 +352,44 @@ func contains(values []string, value string) bool {
 		}
 	}
 	return false
+}
+
+// canonicalizeTrustedTempPath resolves links in the process-selected temporary
+// root, but not in any caller-controlled path below that root. This admits
+// operating-system aliases such as macOS /var -> /private/var without turning
+// an arbitrary symlink ancestor into an accepted output location. Callers must
+// still apply rejectLinks to the returned path before and after creating
+// missing directories.
+func canonicalizeTrustedTempPath(path string) (string, error) {
+	return canonicalizeUnderTrustedRoot(path, os.TempDir())
+}
+
+func canonicalizeUnderTrustedRoot(path, trustedRoot string) (string, error) {
+	cleanPath := filepath.Clean(path)
+	root, err := filepath.Abs(trustedRoot)
+	if err != nil {
+		return "", fmt.Errorf("resolve trusted temporary root: %w", err)
+	}
+	root = filepath.Clean(root)
+	relative, err := filepath.Rel(root, cleanPath)
+	if err != nil || relative == ".." || filepath.IsAbs(relative) || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
+		return cleanPath, nil
+	}
+	canonicalRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return "", fmt.Errorf("canonicalize trusted temporary root: %w", err)
+	}
+	info, err := os.Stat(canonicalRoot)
+	if err != nil {
+		return "", fmt.Errorf("inspect trusted temporary root: %w", err)
+	}
+	if !info.IsDir() {
+		return "", errors.New("trusted temporary root is not a directory")
+	}
+	if relative == "." {
+		return filepath.Clean(canonicalRoot), nil
+	}
+	return filepath.Clean(filepath.Join(canonicalRoot, relative)), nil
 }
 
 func rejectLinks(path string) error {

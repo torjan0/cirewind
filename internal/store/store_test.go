@@ -181,10 +181,53 @@ func TestCreateRejectsSymlinkAncestorBeforeCreatingParents(t *testing.T) {
 	}
 }
 
+func TestTrustedRootAliasCanonicalizationKeepsDescendantLinksHostile(t *testing.T) {
+	t.Parallel()
+	aliasParent := t.TempDir()
+	canonicalRoot := t.TempDir()
+	aliasRoot := filepath.Join(aliasParent, "system-temp-alias")
+	if err := os.Symlink(canonicalRoot, aliasRoot); err != nil {
+		t.Skipf("symlinks are unavailable: %v", err)
+	}
+
+	safePath := filepath.Join(aliasRoot, "job", "archive.db")
+	canonicalSafe, err := canonicalizeUnderTrustedRoot(safePath, aliasRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolvedRoot, err := filepath.EvalSymlinks(canonicalRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := filepath.Join(resolvedRoot, "job", "archive.db"); canonicalSafe != want {
+		t.Fatalf("canonical safe path = %q, want %q", canonicalSafe, want)
+	}
+	if err := rejectSymlinkComponents(filepath.Dir(canonicalSafe)); err != nil {
+		t.Fatalf("trusted root alias was not removed before strict validation: %v", err)
+	}
+
+	redirectTarget := t.TempDir()
+	redirect := filepath.Join(canonicalRoot, "redirect")
+	if err := os.Symlink(redirectTarget, redirect); err != nil {
+		t.Fatal(err)
+	}
+	hostilePath := filepath.Join(aliasRoot, "redirect", "must-not-be-created", "archive.db")
+	canonicalHostile, err := canonicalizeUnderTrustedRoot(hostilePath, aliasRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := rejectSymlinkComponents(filepath.Dir(canonicalHostile)); err == nil {
+		t.Fatal("caller-controlled link below trusted root was accepted")
+	}
+}
+
 func TestReadOnlyOpenEncodesSpecialFilename(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	path := filepath.Join(t.TempDir(), "archive?# evidence.db")
+	// Space and fragment-marker characters exercise URI encoding while remaining
+	// valid filename characters on every supported platform. A question mark is
+	// not a legal Windows filename character.
+	path := filepath.Join(t.TempDir(), "archive# evidence.db")
 	created, err := Create(ctx, path, KindArchive)
 	if err != nil {
 		t.Fatal(err)

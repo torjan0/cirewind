@@ -1,2 +1,6 @@
+# CIRewind hashes and parses checked-in evidence fixtures byte-for-byte. Keep
+# text files LF-normalized on every supported checkout platform.
+* text=auto eol=lf
+
 # Preserve the exact upstream bytes and audited hash of this license file.
 third_party/licenses/modernc.org/memory/v1.11.0/LICENSE-MMAP-GO whitespace=-blank-at-eof

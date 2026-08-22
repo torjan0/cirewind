@@ -211,3 +211,43 @@ func TestNewBuilderRejectsSymlinkAncestorBeforeCreatingParents(t *testing.T) {
 		t.Fatalf("case builder mutated the symlink target before rejection: %v", err)
 	}
 }
+
+func TestTrustedRootAliasCanonicalizationKeepsDescendantLinksHostile(t *testing.T) {
+	t.Parallel()
+	aliasParent := t.TempDir()
+	canonicalRoot := t.TempDir()
+	aliasRoot := filepath.Join(aliasParent, "system-temp-alias")
+	if err := os.Symlink(canonicalRoot, aliasRoot); err != nil {
+		t.Skipf("symlinks are unavailable: %v", err)
+	}
+
+	safePath := filepath.Join(aliasRoot, "job", "case")
+	canonicalSafe, err := canonicalizeUnderTrustedRoot(safePath, aliasRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolvedRoot, err := filepath.EvalSymlinks(canonicalRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := filepath.Join(resolvedRoot, "job", "case"); canonicalSafe != want {
+		t.Fatalf("canonical safe path = %q, want %q", canonicalSafe, want)
+	}
+	if err := rejectLinks(filepath.Dir(canonicalSafe)); err != nil {
+		t.Fatalf("trusted root alias was not removed before strict validation: %v", err)
+	}
+
+	redirectTarget := t.TempDir()
+	redirect := filepath.Join(canonicalRoot, "redirect")
+	if err := os.Symlink(redirectTarget, redirect); err != nil {
+		t.Fatal(err)
+	}
+	hostilePath := filepath.Join(aliasRoot, "redirect", "must-not-be-created", "case")
+	canonicalHostile, err := canonicalizeUnderTrustedRoot(hostilePath, aliasRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := rejectLinks(filepath.Dir(canonicalHostile)); err == nil {
+		t.Fatal("caller-controlled link below trusted root was accepted")
+	}
+}

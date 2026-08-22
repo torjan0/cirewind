@@ -342,7 +342,10 @@ func secureNewFilePath(path string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("resolve store path: %w", err)
 	}
-	clean := filepath.Clean(abs)
+	clean, err := canonicalizeTrustedTempPath(filepath.Clean(abs))
+	if err != nil {
+		return "", err
+	}
 	if clean == string(filepath.Separator) || filepath.Base(clean) == "." {
 		return "", errors.New("store path must name a file")
 	}
@@ -358,6 +361,10 @@ func existingRegularFile(path string) (string, error) {
 	abs, err := filepath.Abs(path)
 	if err != nil {
 		return "", fmt.Errorf("resolve store path: %w", err)
+	}
+	abs, err = canonicalizeTrustedTempPath(filepath.Clean(abs))
+	if err != nil {
+		return "", err
 	}
 	if err := rejectSymlinkComponents(filepath.Dir(abs)); err != nil {
 		return "", err
@@ -392,6 +399,44 @@ func sqliteDSN(path, mode string, immutable bool) string {
 	query.Set("mode", mode)
 	target.RawQuery = query.Encode()
 	return target.String()
+}
+
+// canonicalizeTrustedTempPath resolves links in the process-selected temporary
+// root, but not in any caller-controlled path below that root. This admits
+// operating-system aliases such as macOS /var -> /private/var without turning
+// an arbitrary symlink ancestor into an accepted output location. Callers must
+// still apply rejectSymlinkComponents to the returned path before and after
+// creating missing directories.
+func canonicalizeTrustedTempPath(path string) (string, error) {
+	return canonicalizeUnderTrustedRoot(path, os.TempDir())
+}
+
+func canonicalizeUnderTrustedRoot(path, trustedRoot string) (string, error) {
+	cleanPath := filepath.Clean(path)
+	root, err := filepath.Abs(trustedRoot)
+	if err != nil {
+		return "", fmt.Errorf("resolve trusted temporary root: %w", err)
+	}
+	root = filepath.Clean(root)
+	relative, err := filepath.Rel(root, cleanPath)
+	if err != nil || relative == ".." || filepath.IsAbs(relative) || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
+		return cleanPath, nil
+	}
+	canonicalRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return "", fmt.Errorf("canonicalize trusted temporary root: %w", err)
+	}
+	info, err := os.Stat(canonicalRoot)
+	if err != nil {
+		return "", fmt.Errorf("inspect trusted temporary root: %w", err)
+	}
+	if !info.IsDir() {
+		return "", errors.New("trusted temporary root is not a directory")
+	}
+	if relative == "." {
+		return filepath.Clean(canonicalRoot), nil
+	}
+	return filepath.Clean(filepath.Join(canonicalRoot, relative)), nil
 }
 
 func rejectSymlinkComponents(path string) error {

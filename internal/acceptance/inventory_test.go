@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	pathpkg "path"
 	"path/filepath"
 	"reflect"
 	"runtime"
@@ -224,16 +225,72 @@ func repositoryRoot(t testing.TB) string {
 	return filepath.Clean(filepath.Join(filepath.Dir(filename), "..", ".."))
 }
 
-func readRepositoryFile(t testing.TB, path string) []byte {
+func readRepositoryFile(t testing.TB, name string) []byte {
 	t.Helper()
-	if filepath.IsAbs(path) || filepath.Clean(path) != path || strings.HasPrefix(path, ".."+string(filepath.Separator)) {
-		t.Fatalf("unsafe fixture path %q", path)
+	// Fixture inventory paths are repository-relative slash paths regardless of
+	// the host OS. filepath.Clean would rewrite every slash on Windows and reject
+	// valid checked-in paths before FromSlash can translate them.
+	if !isPortableRepositorySlashPath(name) {
+		t.Fatalf("unsafe fixture path %q", name)
 	}
-	data, err := os.ReadFile(filepath.Join(repositoryRoot(t), filepath.FromSlash(path)))
+	data, err := os.ReadFile(filepath.Join(repositoryRoot(t), filepath.FromSlash(name)))
 	if err != nil {
-		t.Fatalf("read %s: %v", path, err)
+		t.Fatalf("read %s: %v", name, err)
 	}
 	return data
+}
+
+func isPortableRepositorySlashPath(name string) bool {
+	if name == "" || name == "." || name == ".." || strings.Contains(name, "\\") ||
+		pathpkg.IsAbs(name) || pathpkg.Clean(name) != name || strings.HasPrefix(name, "../") {
+		return false
+	}
+	for _, segment := range strings.Split(name, "/") {
+		if segment == "" || strings.ContainsAny(segment, `<>:"|?*`) ||
+			strings.HasSuffix(segment, ".") || strings.HasSuffix(segment, " ") ||
+			isWindowsReservedPathSegment(segment) {
+			return false
+		}
+		for _, value := range segment {
+			if value < 0x20 || value == 0x7f {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func isWindowsReservedPathSegment(segment string) bool {
+	base := strings.ToUpper(strings.SplitN(segment, ".", 2)[0])
+	switch base {
+	case "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+		"LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9":
+		return true
+	default:
+		return false
+	}
+}
+
+func TestRepositoryFixturePathsUsePortableSlashSemantics(t *testing.T) {
+	for _, name := range []string{
+		"testdata/fixture-inventory.json",
+		".github/actions-pins.json",
+		"third_party/licenses/modernc.org/sqlite/v1.57.0/LICENSE-SQLITE",
+	} {
+		if !isPortableRepositorySlashPath(name) {
+			t.Errorf("portable repository path %q was rejected", name)
+		}
+	}
+
+	for _, name := range []string{
+		"", ".", "..", "../outside", "testdata/../outside", "/absolute", `C:/absolute`,
+		`testdata\fixture.json`, "testdata//fixture.json", "testdata/fixture?.json", "testdata/NUL.txt",
+		"testdata/trailing.", "testdata/trailing ", "testdata/control\x1b.json",
+	} {
+		if isPortableRepositorySlashPath(name) {
+			t.Errorf("non-portable repository path %q was accepted", name)
+		}
+	}
 }
 
 func decodeStrict[T any](t testing.TB, path string) T {

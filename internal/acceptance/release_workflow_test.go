@@ -324,7 +324,10 @@ func TestReleaseWorkflowPolicyFilesExist(t *testing.T) {
 			t.Errorf("required release policy file %s: %v", path, err)
 			continue
 		}
-		if info.Mode()&0o111 == 0 {
+		// Windows does not expose the executable bits stored by Git. POSIX jobs
+		// enforce the checkout mode, and Windows never executes these shell
+		// policies directly.
+		if runtime.GOOS != "windows" && info.Mode()&0o111 == 0 {
 			t.Errorf("required release policy file %s is not executable", path)
 		}
 	}
@@ -360,6 +363,31 @@ func TestReleaseWorkflowPolicyFilesExist(t *testing.T) {
 	if !strings.Contains(releaseScript, `git show -s --format=%ct "$head_commit"`) ||
 		strings.Contains(releaseScript, "--format=%ct HEAD") {
 		t.Fatal("release source timestamp must be read from the already-validated full commit")
+	}
+}
+
+func TestRepositoryCheckoutKeepsByteSensitiveTextLFNormalized(t *testing.T) {
+	attributes := string(readRepositoryFile(t, ".gitattributes"))
+	foundPolicy := false
+	for _, line := range strings.Split(attributes, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "* text=auto eol=lf" {
+			foundPolicy = true
+			break
+		}
+	}
+	if !foundPolicy {
+		t.Fatal(".gitattributes must force LF checkouts for byte-hashed fixtures and license material")
+	}
+
+	for _, name := range []string{
+		"testdata/fixture-inventory.json",
+		"incidents/synthetic/mutable-tag.yaml",
+		"third_party/licenses/github.com/dustin/go-humanize/v1.0.1/LICENSE",
+	} {
+		if bytes.Contains(readRepositoryFile(t, name), []byte("\r\n")) {
+			t.Errorf("byte-sensitive repository file %s was checked out with CRLF", name)
+		}
 	}
 }
 
