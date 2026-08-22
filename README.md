@@ -49,12 +49,14 @@ no GitHub credential or network access.
 
 ## Install
 
-Release archives contain the executable, synthetic incident pack, target SPDX
-document, applicable third-party notices, and build metadata. Download the
-archive for your platform together with `SHA256SUMS`, then authenticate the
-release provenance as described in
-[`docs/RELEASE_PROCESS.md`](docs/RELEASE_PROCESS.md) and verify its checksum
-before extracting it.
+The immutable [v0.1.1 release](https://github.com/torjan0/cirewind/releases/tag/v0.1.1)
+provides platform archives and per-target SPDX documents. Each archive contains
+the executable, synthetic incident pack, applicable third-party notices, and
+build metadata. The checked-in provenance verifier validates the complete
+14-asset release set. Download all release assets into one clean directory,
+authenticate their provenance and verify `SHA256SUMS` as described in
+[`docs/RELEASE_PROCESS.md`](docs/RELEASE_PROCESS.md), then extract the archive
+for your platform.
 
 From source, use the exact Go version declared in [`go.mod`](go.mod):
 

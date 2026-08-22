@@ -6,7 +6,10 @@ All notable changes to CIRewind are documented here. The format follows
 
 ## [Unreleased]
 
-No changes yet.
+### Documentation
+
+- Record the completed protected v0.1.1 draft, publication, and anonymous
+  post-public verification sequence.
 
 ## [0.1.1] - 2026-08-22
 
@@ -31,7 +34,7 @@ and provenance-verification checks, then failed closed before draft creation
 because the runner's GitHub CLI rejects `--notes-from-tag` together with
 `--repo`. No GitHub Release or release asset was created, and the publication
 job did not run. The immutable candidate tag is retained as an audit record;
-the corrected workflow must be exercised under a new `v0.1.1` tag.
+the corrected workflow was subsequently exercised under the new `v0.1.1` tag.
 
 The recovery source change was reviewed in
 [PR #1](https://github.com/torjan0/cirewind/pull/1). All nine required checks
@@ -43,10 +46,27 @@ the run was associated with PR head
 `a56a880c4fadf2ab85945b3b96099b5b2cf62a25`, and all nine checks passed
 again at that exact `main` object in CI run
 [`32556880171`](https://github.com/torjan0/cirewind/actions/runs/32556880171).
-Those results qualify the recovery source only. At this final pre-tag revision,
-the `v0.1.1` tag, official artifacts and attestations, protected draft,
-downloaded-asset smokes, final GO, publication, and public verification remain
-open gates.
+Those results qualified the recovery source only. Final release preparation was
+reviewed in [PR #2](https://github.com/torjan0/cirewind/pull/2), and exact release
+commit `d4954356e733af42500061885dae36996281547e` passed the required `main` CI
+matrix in run
+[`32557942570`](https://github.com/torjan0/cirewind/actions/runs/32557942570).
+
+### Release verification
+
+- Protected draft run
+  [`32559258464`](https://github.com/torjan0/cirewind/actions/runs/32559258464)
+  reproduced and attested all 14 release subjects, ran the Linux amd64 smoke,
+  then uploaded, downloaded, and byte-compared all 14 successfully.
+- Separate publication run
+  [`32559856110`](https://github.com/torjan0/cirewind/actions/runs/32559856110)
+  revalidated the exact existing draft and published it through the protected
+  `release-publish` environment without replacing an asset.
+- The public [v0.1.1 release](https://github.com/torjan0/cirewind/releases/tag/v0.1.1)
+  is immutable. Anonymous downloads matched GitHub's SHA-256 digests and the
+  independent candidate; checksums, six SPDX documents, both SLSA
+  build-provenance bundles covering all 14 release subjects, source archives,
+  and documented smoke boundaries passed.
 
 ## [0.1.0] - 2026-08-22 (unpublished candidate)
 

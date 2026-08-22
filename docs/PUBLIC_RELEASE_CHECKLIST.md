@@ -1,6 +1,7 @@
 # CIRewind v0.1 public-release checklist
 
-Status snapshot: **2026-08-22 — release candidate, not yet published**
+Status snapshot: **2026-08-22 — v0.1.1 published, immutable, and independently
+verified**
 
 This checklist is the final authority log for publishing the experimental v0.1
 release. It applies the bounded qualification decision in
@@ -8,30 +9,34 @@ release. It applies the bounded qualification decision in
 waive the canonical evidence semantics, hostile-input rules, or release-candidate
 integrity requirements.
 
-At this snapshot, the repository is public and its qualified product-source
-baseline is `7c548ebb56c1a5fecb55b65aebd8f582ae5dc6ba`. That exact revision passed
-the private hosted-CI run
-[`32553126718`](https://github.com/torjan0/cirewind/actions/runs/32553126718),
-clean-clone/offline reproduction, and the local deep-qualification gates. This
-source baseline also passed public-visibility CI run
-[`32553662965`](https://github.com/torjan0/cirewind/actions/runs/32553662965)
-and a remote-object security scan. The final `v0.1.0` candidate revision
-`2088f133df395f472180848ba6e929919c743b0d` passed all nine jobs in public CI
-run [`32554210398`](https://github.com/torjan0/cirewind/actions/runs/32554210398).
-Its protected annotated tag and verified workflow attestations exist, but no
-draft, published GitHub Release, or release asset exists. `v0.1.1` is the
-recovery publication target. The recovery source was reviewed in
-[PR #1](https://github.com/torjan0/cirewind/pull/1). Run
-[`32556616946`](https://github.com/torjan0/cirewind/actions/runs/32556616946),
-associated with PR head `a1ec0cb23f2a5204781a9ccf17393139181aa2c4`, passed all
-nine required checks on GitHub-generated merge object
-`c916b0b8174ec5c561bf34f60c1d65ae224cc6fa`. The squash commit
-`a56a880c4fadf2ab85945b3b96099b5b2cf62a25` passed all nine again at that
-exact `main` object in run
-[`32556880171`](https://github.com/torjan0/cirewind/actions/runs/32556880171).
-No `v0.1.1` tag, official artifact, attestation, draft, or release exists yet.
-See the
-[`hosted-release qualification record`](validation/2026-08-22-hosted-release-qualification.md).
+The repository is public. The protected `v0.1.0` tag remains an unpublished
+candidate audit record after its release workflow failed closed before draft
+creation. Recovery source and release preparation were reviewed in
+[PR #1](https://github.com/torjan0/cirewind/pull/1) and
+[PR #2](https://github.com/torjan0/cirewind/pull/2). Run
+[`32557676966`](https://github.com/torjan0/cirewind/actions/runs/32557676966)
+was associated with PR head `3dba4ceb2115f1092b57a124c64347889c0c9136`
+and passed all nine required checks on GitHub-generated merge object
+`62b9d8a9d55c081ba55fd9af8be84b8228498e8d`.
+The final squash commit `d4954356e733af42500061885dae36996281547e`
+passed the same nine checks on `main` in run
+[`32557942570`](https://github.com/torjan0/cirewind/actions/runs/32557942570).
+
+Protected annotated tag object
+`c7fa1e8b7ddedd7c27e8df423161b9735227cd3e` peels to that exact commit. The
+protected draft run
+[`32559258464`](https://github.com/torjan0/cirewind/actions/runs/32559258464)
+built, reproduced, and attested all 14 subjects, ran the Linux amd64 smoke, then
+uploaded, downloaded, and byte-compared all 14 successfully. The separate
+protected publication run
+[`32559856110`](https://github.com/torjan0/cirewind/actions/runs/32559856110)
+repeated those checks, proved the existing draft exact immediately before
+publication, and published it without replacing an asset. GitHub Release
+[`v0.1.1`](https://github.com/torjan0/cirewind/releases/tag/v0.1.1), release ID
+`374862445`, was published at `2026-08-22T07:43:52Z`; it is non-prerelease,
+latest, and immutable. See the
+[`hosted-release qualification record`](validation/2026-08-22-hosted-release-qualification.md)
+for the bounded GO and verification evidence.
 
 ## Gate A — reviewed source tree
 
@@ -130,8 +135,10 @@ not close any final `v0.1.1` draft, asset, publication, or verification gate.
   [`32554210398`](https://github.com/torjan0/cirewind/actions/runs/32554210398)
   completes successfully for the exact
   `2088f133df395f472180848ba6e929919c743b0d` revision.
-- [ ] Record a final **GO** confirming all failures inside ADR 0011's supported
+- [x] Record a final **GO** confirming all failures inside ADR 0011's supported
   envelope are closed and all remaining limitations are explicitly documented.
+  The decision is GO for the bounded experimental v0.1.1 release, not for the
+  broader compatibility tasks that remain open in `TASKS.md`.
 - [x] Change repository visibility to public and verify private vulnerability
   reporting, dependency alerts/security updates, secret scanning and push
   protection, release-tag rules, read-only workflow defaults, SHA pinning, and
@@ -156,25 +163,37 @@ not close any final `v0.1.1` draft, asset, publication, or verification gate.
   that exact `main` object in run
   [`32556880171`](https://github.com/torjan0/cirewind/actions/runs/32556880171).
   This closes recovery-source qualification only.
-- [ ] Complete and qualify the final pre-tag documentation revision at its
-  exact green `main` object, create the protected annotated `v0.1.1` tag, and
-  push only that tag.
-- [ ] Dispatch the corrected workflow for `v0.1.1` with `publish=false`; build
+- [x] Complete and qualify the final pre-tag documentation revision at exact
+  green `main` object `d4954356e733af42500061885dae36996281547e`, create
+  protected annotated tag object `c7fa1e8b7ddedd7c27e8df423161b9735227cd3e`,
+  and push only `v0.1.1`.
+- [x] Dispatch the corrected workflow for `v0.1.1` with `publish=false`; build
   and attest the official artifacts, approve the draft gate, then verify version
   metadata, source revision, checksums, archive contents, SPDX documents,
   license indexes, build provenance, signer workflow/ref, and every downloaded
-  draft asset byte.
-- [ ] Independently smoke the downloaded release on each advertised runtime-
-  qualified platform. Label cross-build-only or Wine-only targets accurately.
-- [ ] Dispatch the separate `v0.1.1` `publish=true` run, approve the publication
-  gate, ensure it accepts the exact existing draft without rebuilding or
-  substitution, and publish it.
-- [ ] Verify the public `v0.1.1` tag, release page, immutable assets,
+  draft asset byte. Run `32559258464` completed successfully; immutable workflow
+  artifact `9472359966` carried the exact subjects to the protected draft job.
+- [x] Independently smoke the downloaded release on each advertised runtime-
+  qualified platform. Linux amd64 passed natively with credentials unset and in
+  a network-disabled, read-only-root container. Windows amd64 passed the same
+  compatibility smoke under Wine and remains labeled non-native; the other
+  published targets are cross-build-qualified only.
+- [x] Dispatch the separate `v0.1.1` `publish=true` run, ensure its draft job
+  accepts only the exact existing draft, and approve the publication gate only
+  after that job passes. Ensure the publish job re-verifies and publishes without
+  rebuilding or substitution. Run `32559856110` completed successfully; its
+  independently reproduced subjects arrived as immutable workflow artifact
+  `9472527249`.
+- [x] Verify the public `v0.1.1` tag, release page, immutable assets,
   `SHA256SUMS`, GitHub attestations, source archives, README links, `SECURITY.md`,
-  and changelog from an unauthenticated view.
-- [ ] Update this snapshot with the release URL, workflow run IDs, attestation
-  verification result, and any nonblocking follow-up—without adding credentials,
-  private lab identifiers, or assistant credit.
+  and changelog from an unauthenticated view. All 14 assets downloaded without
+  credentials; their GitHub digests, local SHA-256 values, and independent
+  candidate bytes agree. Both SLSA build-provenance bundles covering all 14
+  release subjects were retrieved without credentials and verified locally
+  against the exact signer workflow, source ref, and release commit.
+- [x] Update this snapshot with the release URL, workflow run IDs, attestation
+  verification result, and nonblocking follow-up—without credentials, private
+  lab identifiers, or assistant credit.
 
 ## Explicit nonblocking v0.1 limitations
 
