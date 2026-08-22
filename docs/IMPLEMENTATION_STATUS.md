@@ -2,19 +2,19 @@
 
 Status snapshot: **2026-08-22**
 
-Release decision: **product candidate GO for an experimental v0.1 inside
-[`ADR 0011`](adr/0011-experimental-v0-1-qualification-envelope.md), publication
-still NO-GO pending candidate and publication gates**. The final
-controlled archive/replay, exact-revision local qualification, private hosted
-CI, public hosted CI, clean-clone/offline reproduction, remote-object security
-scan, and repository-control checks passed at
-`2088f133df395f472180848ba6e929919c743b0d`. The repository is public and that
-revision is retained as the protected, unpublished `v0.1.0` candidate tag.
-Candidate build/provenance checks passed, but draft creation failed closed before
-any GitHub Release existed. The recovery source was reviewed and merged through
-PR #1 and passed the required PR and `main` CI matrices. `v0.1.1` is the recovery
-publication target; its tag, official artifact/attestation run, protected draft
-inspection, final GO, publication, and public verification remain open.
+Release decision: **GO and published for experimental v0.1.1 inside
+[`ADR 0011`](adr/0011-experimental-v0-1-qualification-envelope.md)'s bounded
+qualification envelope**. Release tree
+`006baad681fe594b1961158de66b3fa6813f26db` passed the required PR merge-object
+matrix. Exact release commit `d4954356e733af42500061885dae36996281547e`
+passed local deep qualification and the required `main` CI matrix, followed by
+clean-clone reproduction, protected tag, draft, attestation, downloaded-asset,
+and separate publication gates. GitHub Release
+[`v0.1.1`](https://github.com/torjan0/cirewind/releases/tag/v0.1.1) is public,
+latest, and immutable. The earlier protected `v0.1.0` candidate remains
+unpublished after its workflow correctly failed closed before draft creation.
+Open compatibility and scale work below remains nonblocking only within the
+explicit experimental limits; this is not a production-readiness claim.
 
 This document distinguishes implemented behavior from live qualification and
 from known limits. A passing fixture is not a claim about every GitHub runner,
@@ -256,7 +256,8 @@ fixtures.
 Local release work includes default/race/vet suites, offline no-network/process
 audits, CSP/browser injection checks, dependency vulnerability analysis, license
 verification, cross-builds, Wine Windows compatibility, reproducibility checks,
-SPDX validation, and fuzz campaigns at 11 parser/domain boundaries.
+SPDX validation, and a final bounded fuzz campaign of 15,668,442 inputs across
+13 parser/domain targets without a failure.
 
 An extended three-minute ZIP campaign executed 4.3 million inputs without a
 crash or accepted boundary violation. A streaming parser processed 5 GiB and
@@ -324,26 +325,41 @@ the run was associated with PR head
 `a56a880c4fadf2ab85945b3b96099b5b2cf62a25`, and all nine checks passed
 again at that exact `main` object in CI run
 [`32556880171`](https://github.com/torjan0/cirewind/actions/runs/32556880171).
-This qualifies the recovery source path only; no `v0.1.1` tag, official
-artifact, attestation, draft, or release was created by either CI run.
+Those runs qualified the recovery source path only. Release preparation was then
+reviewed in [PR #2](https://github.com/torjan0/cirewind/pull/2). Run
+[`32557676966`](https://github.com/torjan0/cirewind/actions/runs/32557676966)
+was associated with PR head `3dba4ceb2115f1092b57a124c64347889c0c9136`
+and passed all nine required checks on GitHub-generated merge object
+`62b9d8a9d55c081ba55fd9af8be84b8228498e8d`. Exact squash commit
+`d4954356e733af42500061885dae36996281547e`
+passed the same matrix on `main` in run
+[`32557942570`](https://github.com/torjan0/cirewind/actions/runs/32557942570).
 
-## Release blockers
+Protected annotated tag object
+`c7fa1e8b7ddedd7c27e8df423161b9735227cd3e` peels to that commit. Draft run
+[`32559258464`](https://github.com/torjan0/cirewind/actions/runs/32559258464)
+passed exact tag validation, two byte-identical builds, credential-free smoke,
+SLSA provenance covering all 14 subjects, protected draft creation, and
+downloaded-asset byte comparison. Separate publication run
+[`32559856110`](https://github.com/torjan0/cirewind/actions/runs/32559856110)
+repeated the build/provenance checks, revalidated the exact existing draft, and
+passed the separately protected publication job. Public release ID `374862445`
+was published at `2026-08-22T07:43:52Z` with 14 uploaded assets and is immutable.
+Fresh anonymous downloads matched GitHub digests and the independent local
+candidate; checksums, six SPDX documents, both SLSA provenance bundles, source
+archives, links, native Linux smoke, locked-down container smoke, and Windows
+amd64 Wine compatibility smoke passed. Wine and cross-build results are labeled
+as such rather than native qualification.
 
-The release-creation correction and recovery-source CI are complete. Before the
-public release, the exact `v0.1.1` candidate must still:
+## Release outcome and remaining nonblocking work
 
-1. complete and qualify the final pre-tag documentation revision at its exact
-   `main` object;
-2. create the exact protected annotated `v0.1.1` tag;
-3. build and attest the official artifacts, create and inspect the protected
-   draft, and download and smoke every draft asset; and
-4. record final GO, approve the separate publication gate, publish the
-   byte-identical draft through the protected release workflow, and verify the
-   release and attestations from an unauthenticated view.
-
-Failures inside the ADR 0011 qualification envelope are blocking. The explicit
-experimental limitations above are non-blocking only while they remain visible
-in output and documentation.
+No release blocker remains inside ADR 0011's bounded experimental envelope. The
+final GO covers the exact v0.1.1 release above. It does not close the broader
+aggregate tasks for organization saturation, every authentication profile,
+additional runner grammars, full optional-resource joins, native qualification
+of every cross-built target, or scale above the measured guards. Those items
+remain open in `TASKS.md`; failures inside the published envelope would again be
+blocking for a patch release.
 
 ## Incident-content limitation
 

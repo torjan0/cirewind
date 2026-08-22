@@ -4,7 +4,8 @@ This is the ordered implementation and release-qualification checklist. It is su
 
 ## Status audit — 2026-08-22
 
-The tree now contains a materially functional experimental v0.1 candidate; see
+The repository now has a published, materially functional experimental v0.1.1
+release; see
 [`docs/IMPLEMENTATION_STATUS.md`](docs/IMPLEMENTATION_STATUS.md). The accepted
 qualification envelope in
 [`ADR 0011`](docs/adr/0011-experimental-v0-1-qualification-envelope.md) supersedes
@@ -33,9 +34,10 @@ current consolidated runner-log layout, exact traditional Action identities,
 separate attempts, reusable metadata, historical definitions, runner context,
 and retention loss.
 
-Fuzz campaigns covered 11 parser/domain targets; an extended three-minute ZIP
-campaign passed 4.3 million executions. Synthetic streaming parses at 5 GiB and
-50 GiB stayed near-linear with stable RSS and no false lifecycle observation.
+Final fuzz campaigns executed 15,668,442 inputs across 13 parser/domain targets
+without a failure; an earlier extended three-minute ZIP campaign alone passed
+4.3 million executions. Synthetic streaming parses at 5 GiB and 50 GiB stayed
+near-linear with stable RSS and no false lifecycle observation.
 The measured relational envelope is 1,000 repositories, 100,000 runs, and
 300,000 executions. A 3,000,000-execution run exceeded two hours and remains
 unsupported. Replay separately rejects more than 1,000,000 facts or 256 MiB of
@@ -49,43 +51,37 @@ implemented subset is sufficient for the experimental release decision. The
 status documents and public-release checklist are the authoritative record of
 what v0.1 actually supports.
 
-The exact product-source revision
-`7c548ebb56c1a5fecb55b65aebd8f582ae5dc6ba` passed the local deep gates,
-private hosted CI run
-[`32553126718`](https://github.com/torjan0/cirewind/actions/runs/32553126718),
-public hosted CI run
-[`32553662965`](https://github.com/torjan0/cirewind/actions/runs/32553662965),
-clean-clone/offline reproduction, and a remote-object security recheck. The
-final `v0.1.0` candidate revision
-`2088f133df395f472180848ba6e929919c743b0d` passed all nine jobs in public CI
-run [`32554210398`](https://github.com/torjan0/cirewind/actions/runs/32554210398).
-The repository is public with read-only workflow defaults, selected full-SHA
+Release tree `006baad681fe594b1961158de66b3fa6813f26db` passed PR #2 run
+[`32557676966`](https://github.com/torjan0/cirewind/actions/runs/32557676966)
+on GitHub-generated merge object
+`62b9d8a9d55c081ba55fd9af8be84b8228498e8d`. Exact release revision
+`d4954356e733af42500061885dae36996281547e` passed the final local deep gates,
+exact-`main` run
+[`32557942570`](https://github.com/torjan0/cirewind/actions/runs/32557942570),
+clean-clone/offline reproduction, and a final Git-object security recheck. The
+repository is public with read-only workflow defaults, selected full-SHA
 Actions, vulnerability reporting and security scanning, protected `main`,
 protected release environments, and active no-bypass main/release-tag rulesets.
-The sanitized status is recorded in the
-[`hosted-release qualification`](docs/validation/2026-08-22-hosted-release-qualification.md).
 
-The protected annotated `v0.1.0` tag remains an unpublished candidate. Release
-run [`32554866238`](https://github.com/torjan0/cirewind/actions/runs/32554866238)
-passed all exact build and provenance checks, then failed closed before draft
-creation because the runner's GitHub CLI rejects `--notes-from-tag` together
-with `--repo`. No draft, published release, or release asset was created, and
-publication was skipped. `v0.1.1` is the first actual publication target.
-The recovery invocation was corrected and reviewed in
-[PR #1](https://github.com/torjan0/cirewind/pull/1). PR CI run
-[`32556616946`](https://github.com/torjan0/cirewind/actions/runs/32556616946)
-was associated with PR head `a1ec0cb23f2a5204781a9ccf17393139181aa2c4`
-and passed all nine required checks on GitHub-generated merge object
-`c916b0b8174ec5c561bf34f60c1d65ae224cc6fa`. The squash commit
-`a56a880c4fadf2ab85945b3b96099b5b2cf62a25` passed the same nine checks at
-that exact `main` object in run
-[`32556880171`](https://github.com/torjan0/cirewind/actions/runs/32556880171).
-Those checks qualify the recovery implementation, not a `v0.1.1` candidate or
-release. Remaining release blockers are candidate-scoped: qualify the exact
-final pre-tag revision, create its protected annotated tag, build and attest the
-official artifacts, inspect and smoke the protected draft/assets, record final
-GO, separately approve publication, and verify the public release. No broad task
-checkbox below is closed by this status audit.
+The protected annotated `v0.1.0` tag remains an unpublished candidate after
+release run
+[`32554866238`](https://github.com/torjan0/cirewind/actions/runs/32554866238)
+correctly failed closed before draft creation. The recovery invocation was
+reviewed in [PR #1](https://github.com/torjan0/cirewind/pull/1), and final release
+preparation was reviewed in [PR #2](https://github.com/torjan0/cirewind/pull/2).
+Protected `v0.1.1` draft run
+[`32559258464`](https://github.com/torjan0/cirewind/actions/runs/32559258464)
+and separate publication run
+[`32559856110`](https://github.com/torjan0/cirewind/actions/runs/32559856110)
+both completed successfully. GitHub Release
+[`v0.1.1`](https://github.com/torjan0/cirewind/releases/tag/v0.1.1) is public,
+latest, immutable, and contains the independently verified 14-asset set.
+The bounded final GO and exact evidence are recorded in the
+[`hosted-release qualification`](docs/validation/2026-08-22-hosted-release-qualification.md)
+and [`public-release checklist`](docs/PUBLIC_RELEASE_CHECKLIST.md). Publication
+does not close any broad task checkbox whose original completion criterion is
+still unsatisfied.
+
 Organization saturation, full token-type qualification, live
 immutable-package grammar, all runner versions, broad resource inventories,
 local workspace proof, and data above the measured scale envelope are explicit

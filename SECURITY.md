@@ -47,10 +47,10 @@ The advisory may be used for private discussion, a patch, a CVE request, and
 coordinated disclosure. Public disclosure should wait until affected users have
 a reasonable opportunity to update.
 
-The v0.1 release is gated on GitHub private vulnerability reporting being
-enabled immediately after the repository becomes public and before release
-assets are published. If the **Report a vulnerability** control is absent, the
-confidential route is not operational; do not disclose details publicly.
+GitHub private vulnerability reporting was enabled before v0.1.1 publication
+and is a continuing release control. If the **Report a vulnerability** control
+is absent, the confidential route is not operational; do not disclose details
+publicly.
 
 ## Security boundaries
 

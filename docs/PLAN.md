@@ -3,7 +3,7 @@
 Status: accepted implementation and release-qualification baseline
 Planning date: 2026-08-20
 Product target: GitHub.com, v0.1
-Implementation status: experimental v0.1 candidate; see [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md)
+Implementation status: experimental v0.1.1 published; see [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md)
 
 > **Release-qualification update (2026-08-22):** the controlled GitHub.com
 > explicit-repository spike established the central A→B→A and conservative-gap

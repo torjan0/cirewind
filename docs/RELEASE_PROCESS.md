@@ -1,23 +1,23 @@
 # Release-candidate build and verification process
 
-Status: protected `v0.1.0` candidate retained but unpublished; `v0.1.1` is the
-recovery publication target
+Status: `v0.1.1` published through both protected gates; protected `v0.1.0`
+candidate retained but unpublished
 
 The local process creates deterministic, hash-verifiable release candidates.
 The manual GitHub workflow adds GitHub build-provenance attestations and, after
 two separately protected environment gates, can create and publish a release.
-A local checksum still does not prove who built an artifact. Final candidate
-revision `2088f133df395f472180848ba6e929919c743b0d` passed the public nine-job
+A local checksum still does not prove who built an artifact. Final `v0.1.0`
+candidate revision `2088f133df395f472180848ba6e929919c743b0d` passed the public nine-job
 platform/race/vulnerability/release-contract matrix and was tagged `v0.1.0`.
 Its authenticated workflow passed every build and provenance check but failed
 closed before draft creation because the runner's GitHub CLI rejects
 `--notes-from-tag` together with `--repo`. No GitHub Release or release asset was
 created. The immutable candidate tag remains an audit record. The workflow
-correction was reviewed in PR #1 and passed all nine required checks on the
-GitHub-generated PR merge object and again at the exact squash commit on `main`;
-this qualifies the recovery source, not a tagged or attested `v0.1.1`
-distribution. The exact `v0.1.1` candidate, draft/asset inspection, and
-project-wide publication decision remain separate gates. The sanitized record is
+correction was reviewed in PR #1, and release preparation was reviewed in PR #2.
+The final `v0.1.1` source passed the required PR and exact-`main` matrices,
+protected tag and draft checks, independent downloaded-asset verification, and
+the separate protected publication gate. The resulting GitHub Release is public
+and immutable. The sanitized record is
 [`docs/validation/2026-08-22-hosted-release-qualification.md`](validation/2026-08-22-hosted-release-qualification.md).
 
 ## Build contract
@@ -84,8 +84,13 @@ license files are distributed separately rather than turning engineering review
 into a legal attestation.
 
 The distribution root contains twelve target files (six archives and six SPDX
-documents), `release-metadata.json`, and `SHA256SUMS`. `SHA256SUMS` covers every
-material root file except itself. It cannot be self-referential.
+documents), `release-metadata.json`, and `SHA256SUMS`. The deterministic
+`release-metadata.json` deliberately retains
+`authentication.authenticated: false`: the file describes locally reproducible
+bytes and does not rewrite itself after publication. The external GitHub
+statements supply authenticated build-provenance claims for the published
+subjects. `SHA256SUMS` covers every material root file except itself. It cannot
+be self-referential.
 
 ## Reproducibility and local verification
 
@@ -136,18 +141,46 @@ and validates each as SPDX 2.3. It does not install or update packages. Release
 automation must pin the validator and its transitive artifacts before making it
 a network-installed CI dependency.
 
-Users who have only downloaded artifacts can first authenticate the maintainer's
-signature or platform attestation, then use a local checksum utility. For
-example, on Linux:
+The v0.1.1 artifact-provenance mechanism is GitHub build-provenance attestation
+covering each of the 14 published subjects. From a trusted checkout of this
+repository, a current GitHub CLI can enforce the exact repository, signer
+workflow, tagged source ref, source commit, and GitHub-hosted builder policy.
+Download the complete release into a new, otherwise empty directory before
+running the all-subject verifier:
 
 ```sh
+mkdir /path/to/downloaded-v0.1.1
+gh release download v0.1.1 \
+  --repo torjan0/cirewind \
+  --dir /path/to/downloaded-v0.1.1
+```
+
+Then verify every subject:
+
+```sh
+scripts/verify-release-attestations.sh \
+  /path/to/downloaded-v0.1.1 \
+  v0.1.1 \
+  d4954356e733af42500061885dae36996281547e \
+  torjan0/cirewind \
+  .github/workflows/release-candidate.yml
+```
+
+The wrapper fails closed when the installed `gh` lacks a required policy flag.
+It also rejects an incomplete or additional root asset set. After provenance
+verification, change to that release directory and use a local checksum utility.
+For example, on Linux:
+
+```sh
+cd /path/to/downloaded-v0.1.1
 sha256sum --check SHA256SUMS
 ```
 
 On macOS use `shasum -a 256 -c SHA256SUMS`. On Windows use
 `Get-FileHash -Algorithm SHA256` and compare each result to the authenticated
-checksum list. The final README installation text must name the authentication
-mechanism actually selected for v0.1 rather than promising one in advance.
+checksum list. Attestation proves the signed build claim and checksum identity;
+it does not prove that the program is secure or that a forensic conclusion is
+correct.
 
 ## Runtime smoke boundaries
 
@@ -204,8 +237,8 @@ workflow artifact ID. Checkout credentials are never persisted.
 The `draft` job runs only after the `release-draft` environment gate. In the
 current solo-maintainer repository, the gate requires the repository-owner user
 as its sole reviewer but permits that user to approve a run they initiated.
-It receives the exact artifact ID without rebuilding the release, deep-verifies the
-distribution, and runs `gh attestation verify` on every subject. Verification
+It receives the exact artifact ID without rebuilding the release, deep-verifies
+the distribution, and runs `gh attestation verify` on every subject. Verification
 requires all of the following before any `gh release create` call:
 
 - the repository identity;
@@ -224,9 +257,10 @@ permissions are `none`.
 
 If the explicit boolean `publish` input is true, the `publish` job waits at the
 separate `release-publish` environment. It downloads the original artifact by
-ID, rechecks the tag and every attestation, downloads and byte-compares the draft
-immediately before changing it, and finally runs `gh release edit --draft=false
---verify-tag`. It never rebuilds or substitutes a release asset. Running first
+ID, rechecks the tag and provenance for every subject, downloads and
+byte-compares the draft immediately before changing it, and finally runs
+`gh release edit --draft=false --verify-tag`. It never rebuilds or substitutes a
+release asset. Running first
 with `publish=false` leaves an inspectable draft; a later `publish=true` run can
 reproduce and attest the same bytes, accept that exact draft, and enter the
 publication gate.
@@ -264,11 +298,31 @@ and passed all nine required checks on GitHub-generated merge object
 [`32556880171`](https://github.com/torjan0/cirewind/actions/runs/32556880171)
 passed the same nine checks at that exact commit. These runs qualify the
 corrected source path only.
-The final pre-tag revision and protected `v0.1.1` tag remain open, as do official
-artifact construction and attestations, draft inspection, downloaded-asset
-smokes, final GO, publication, and public verification. All draft inspection and
-publication gates run again for `v0.1.1`; no prior workflow artifact is
-substituted.
+
+Release preparation was reviewed in
+[PR #2](https://github.com/torjan0/cirewind/pull/2). Run
+[`32557676966`](https://github.com/torjan0/cirewind/actions/runs/32557676966)
+was associated with head `3dba4ceb2115f1092b57a124c64347889c0c9136`
+and passed all nine required checks on GitHub-generated merge object
+`62b9d8a9d55c081ba55fd9af8be84b8228498e8d`; exact squash commit
+`d4954356e733af42500061885dae36996281547e` passed the same matrix in main run
+[`32557942570`](https://github.com/torjan0/cirewind/actions/runs/32557942570).
+Protected annotated tag `v0.1.1` identifies that exact source.
+
+Draft run
+[`32559258464`](https://github.com/torjan0/cirewind/actions/runs/32559258464)
+passed the build, reproducibility, smoke, 14-subject attestation, protected draft,
+download, and exact byte-comparison gates. Independent review repeated checksum,
+SPDX, provenance, native Linux, locked-down container, and Wine compatibility
+checks on the downloaded draft. Publication run
+[`32559856110`](https://github.com/torjan0/cirewind/actions/runs/32559856110)
+reproduced the subjects, and its draft job accepted only the byte-identical
+existing draft. After the separate publication environment passed, its publish
+job changed that verified draft to public without rebuilding or replacing an
+asset. The public assets remained the verified run-1 draft bytes; run 2
+independently reproduced byte-identical subjects for verification. The immutable
+public release is
+[`v0.1.1`](https://github.com/torjan0/cirewind/releases/tag/v0.1.1).
 
 ### Required repository settings
 
@@ -342,9 +396,11 @@ not. No source-controlled step pushes or creates a tag.
 GitHub's attestation documentation describes provenance as a signed claim about
 where and how bytes were built, not proof that the bytes are secure. The retained
 `v0.1.0` workflow subjects are verified attested candidate subjects, not release
-assets. Local recovery candidates remain unsigned. Until the protected workflow,
-draft inspection, supported-host smokes, and publication gates pass for
-`v0.1.1`, do not call any files a supported install or completed v0.1 release.
+assets. Local recovery candidates remain unauthenticated. The protected workflow,
+draft inspection, supported-host smokes, publication, and anonymous public
+verification gates passed for `v0.1.1`; its release assets are the published v0.1
+distribution. The experimental scope and native-versus-cross-build boundaries
+remain those documented in `IMPLEMENTATION_STATUS.md` and ADR 0011.
 
 Primary references, retrieved 2026-08-21:
 

@@ -1,14 +1,16 @@
 # CIRewind test strategy
 
-Status: v0.1 verification contract; release gates not complete
+Status: v0.1 verification contract; bounded v0.1.1 release gates completed
 Planning date: 2026-08-20
 Normative semantics: [EVIDENCE_MODEL.md](EVIDENCE_MODEL.md)
 Threat model: [THREAT_MODEL.md](THREAT_MODEL.md)
 
-Local unit/mock tests and the synthetic demo pass for the snapshot recorded in
-[IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md). That evidence does not
-satisfy the live, sustained-fuzz, scale, browser, or supported-platform gates in
-this document.
+The exact v0.1.1 release completed the bounded local, controlled-live, hosted,
+draft, provenance, publication, and post-public checks recorded in
+[IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md) and ADR 0011. That evidence
+does not satisfy every broader live, sustained-fuzz, scale, or native-platform
+compatibility contract in this document; those open contracts remain future
+qualification work rather than implicit support claims.
 
 ## Quality objective
 
@@ -25,9 +27,13 @@ No test executes fetched third-party Action code. The controlled lab executes on
 
 ## Release gates
 
-v0.1 cannot release unless:
+Within the qualification envelope accepted by ADR 0011, a v0.1 release cannot
+proceed unless:
 
-- The fixed feasibility spike hard gates in [PLAN.md](PLAN.md) pass.
+- The controlled explicit-repository feasibility gates incorporated by ADR
+  0011's release decision rule pass. Broader hard gates in
+  [PLAN.md](PLAN.md) remain roadmap contracts and are not presented as
+  satisfied.
 - The exact ten finding-state spellings are enforced by schema/DB/API/report contract tests.
 - All eight mandatory invariants have a positive test and a prohibited-conclusion test.
 - Scenarios A–P pass deterministic acceptance fixtures; the central A→B→A scenario passes live.
@@ -36,7 +42,9 @@ v0.1 cannot release unless:
 - Every download test establishes preparation completion, not merely a pre-download announcement.
 - Every negative test closes incident-relevant coverage; deleting one required source changes the result away from `NO_MATCH_CONFIRMED`.
 - Archive replay passes with DNS/HTTP/process creation disabled.
-- Fuzz/security/cross-platform/scale gates below pass under published configurations.
+- The fuzz/security/cross-platform/scale subset required by ADR 0011 passes
+  under the published configurations. Broader contracts below remain
+  compatibility work until their original acceptance criteria are satisfied.
 - Test fixtures contain no real secret values, customer data, compromised payloads, or fabricated real-incident identities.
 
 ## Deterministic test harness
