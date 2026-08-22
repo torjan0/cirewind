@@ -12,9 +12,12 @@ platform/race/vulnerability/release-contract matrix and was tagged `v0.1.0`.
 Its authenticated workflow passed every build and provenance check but failed
 closed before draft creation because the runner's GitHub CLI rejects
 `--notes-from-tag` together with `--repo`. No GitHub Release or release asset was
-created. The immutable candidate tag remains an audit record; the corrected
-workflow, exact `v0.1.1` candidate, draft/asset inspection, and project-wide
-publication decision remain separate gates. The sanitized record is
+created. The immutable candidate tag remains an audit record. The workflow
+correction was reviewed in PR #1 and passed all nine required checks on the
+GitHub-generated PR merge object and again at the exact squash commit on `main`;
+this qualifies the recovery source, not a tagged or attested `v0.1.1`
+distribution. The exact `v0.1.1` candidate, draft/asset inspection, and
+project-wide publication decision remain separate gates. The sanitized record is
 [`docs/validation/2026-08-22-hosted-release-qualification.md`](validation/2026-08-22-hosted-release-qualification.md).
 
 ## Build contract
@@ -249,8 +252,23 @@ asset.
 This is a release-tooling compatibility failure, not a successful draft. The
 protected `v0.1.0` tag must not be moved, deleted, or reused. Recovery requires a
 reviewed release-creation invocation, complete exact-revision qualification, and
-a new protected annotated `v0.1.1` tag. All draft inspection and publication
-gates then run again for `v0.1.1`; no prior workflow artifact is substituted.
+a new protected annotated `v0.1.1` tag.
+
+The invocation correction was reviewed in
+[PR #1](https://github.com/torjan0/cirewind/pull/1). PR CI run
+[`32556616946`](https://github.com/torjan0/cirewind/actions/runs/32556616946)
+was associated with PR head `a1ec0cb23f2a5204781a9ccf17393139181aa2c4`
+and passed all nine required checks on GitHub-generated merge object
+`c916b0b8174ec5c561bf34f60c1d65ae224cc6fa`. GitHub squash-merged it as
+`a56a880c4fadf2ab85945b3b96099b5b2cf62a25`, and `main` CI run
+[`32556880171`](https://github.com/torjan0/cirewind/actions/runs/32556880171)
+passed the same nine checks at that exact commit. These runs qualify the
+corrected source path only.
+The final pre-tag revision and protected `v0.1.1` tag remain open, as do official
+artifact construction and attestations, draft inspection, downloaded-asset
+smokes, final GO, publication, and public verification. All draft inspection and
+publication gates run again for `v0.1.1`; no prior workflow artifact is
+substituted.
 
 ### Required repository settings
 

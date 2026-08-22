@@ -71,11 +71,21 @@ passed all exact build and provenance checks, then failed closed before draft
 creation because the runner's GitHub CLI rejects `--notes-from-tag` together
 with `--repo`. No draft, published release, or release asset was created, and
 publication was skipped. `v0.1.1` is the first actual publication target.
-Remaining release blockers are candidate-scoped: correct and review that
-invocation, qualify the exact recovery revision, create its protected annotated
-tag, inspect and smoke the protected draft/assets, separately approve
-publication, and verify the public release. No broad task checkbox below is
-closed by this status audit.
+The recovery invocation was corrected and reviewed in
+[PR #1](https://github.com/torjan0/cirewind/pull/1). PR CI run
+[`32556616946`](https://github.com/torjan0/cirewind/actions/runs/32556616946)
+was associated with PR head `a1ec0cb23f2a5204781a9ccf17393139181aa2c4`
+and passed all nine required checks on GitHub-generated merge object
+`c916b0b8174ec5c561bf34f60c1d65ae224cc6fa`. The squash commit
+`a56a880c4fadf2ab85945b3b96099b5b2cf62a25` passed the same nine checks at
+that exact `main` object in run
+[`32556880171`](https://github.com/torjan0/cirewind/actions/runs/32556880171).
+Those checks qualify the recovery implementation, not a `v0.1.1` candidate or
+release. Remaining release blockers are candidate-scoped: qualify the exact
+final pre-tag revision, create its protected annotated tag, build and attest the
+official artifacts, inspect and smoke the protected draft/assets, record final
+GO, separately approve publication, and verify the public release. No broad task
+checkbox below is closed by this status audit.
 Organization saturation, full token-type qualification, live
 immutable-package grammar, all runner versions, broad resource inventories,
 local workspace proof, and data above the measured scale envelope are explicit

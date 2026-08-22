@@ -20,7 +20,17 @@ and a remote-object security scan. The final `v0.1.0` candidate revision
 run [`32554210398`](https://github.com/torjan0/cirewind/actions/runs/32554210398).
 Its protected annotated tag and verified workflow attestations exist, but no
 draft, published GitHub Release, or release asset exists. `v0.1.1` is the
-recovery publication target. See the
+recovery publication target. The recovery source was reviewed in
+[PR #1](https://github.com/torjan0/cirewind/pull/1). Run
+[`32556616946`](https://github.com/torjan0/cirewind/actions/runs/32556616946),
+associated with PR head `a1ec0cb23f2a5204781a9ccf17393139181aa2c4`, passed all
+nine required checks on GitHub-generated merge object
+`c916b0b8174ec5c561bf34f60c1d65ae224cc6fa`. The squash commit
+`a56a880c4fadf2ab85945b3b96099b5b2cf62a25` passed all nine again at that
+exact `main` object in run
+[`32556880171`](https://github.com/torjan0/cirewind/actions/runs/32556880171).
+No `v0.1.1` tag, official artifact, attestation, draft, or release exists yet.
+See the
 [`hosted-release qualification record`](validation/2026-08-22-hosted-release-qualification.md).
 
 ## Gate A — reviewed source tree
@@ -137,13 +147,23 @@ not close any final `v0.1.1` draft, asset, publication, or verification gate.
   closed before draft creation because the GitHub CLI rejects
   `--notes-from-tag` together with `--repo`. No draft, release, or release asset
   was created; publication was skipped.
-- [ ] Correct and review the release-creation invocation, run every applicable
-  local and hosted check on the exact recovery revision, create the protected
-  annotated `v0.1.1` tag from green `main`, and push only that tag.
-- [ ] Dispatch the corrected workflow for `v0.1.1` with `publish=false`; approve
-  the draft gate, then verify version metadata, source revision, checksums,
-  archive contents, SPDX documents, license indexes, build provenance, signer
-  workflow/ref, and every downloaded draft asset byte.
+- [x] Correct and review the release-creation invocation. PR #1 CI run
+  [`32556616946`](https://github.com/torjan0/cirewind/actions/runs/32556616946)
+  was associated with PR head `a1ec0cb23f2a5204781a9ccf17393139181aa2c4`
+  and passed all nine required checks on GitHub-generated merge object
+  `c916b0b8174ec5c561bf34f60c1d65ae224cc6fa`. Squash commit
+  `a56a880c4fadf2ab85945b3b96099b5b2cf62a25` passed the same nine checks at
+  that exact `main` object in run
+  [`32556880171`](https://github.com/torjan0/cirewind/actions/runs/32556880171).
+  This closes recovery-source qualification only.
+- [ ] Complete and qualify the final pre-tag documentation revision at its
+  exact green `main` object, create the protected annotated `v0.1.1` tag, and
+  push only that tag.
+- [ ] Dispatch the corrected workflow for `v0.1.1` with `publish=false`; build
+  and attest the official artifacts, approve the draft gate, then verify version
+  metadata, source revision, checksums, archive contents, SPDX documents,
+  license indexes, build provenance, signer workflow/ref, and every downloaded
+  draft asset byte.
 - [ ] Independently smoke the downloaded release on each advertised runtime-
   qualified platform. Label cross-build-only or Wine-only targets accurately.
 - [ ] Dispatch the separate `v0.1.1` `publish=true` run, approve the publication
