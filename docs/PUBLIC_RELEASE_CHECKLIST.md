@@ -15,9 +15,12 @@ the private hosted-CI run
 clean-clone/offline reproduction, and the local deep-qualification gates. This
 source baseline also passed public-visibility CI run
 [`32553662965`](https://github.com/torjan0/cirewind/actions/runs/32553662965)
-and a remote-object security scan. This status-document update still requires
-its applicable final checks. No release tag, draft, release attestation, or
-published release exists. See the
+and a remote-object security scan. The final `v0.1.0` candidate revision
+`2088f133df395f472180848ba6e929919c743b0d` passed all nine jobs in public CI
+run [`32554210398`](https://github.com/torjan0/cirewind/actions/runs/32554210398).
+Its protected annotated tag and verified workflow attestations exist, but no
+draft, published GitHub Release, or release asset exists. `v0.1.1` is the
+recovery publication target. See the
 [`hosted-release qualification record`](validation/2026-08-22-hosted-release-qualification.md).
 
 ## Gate A — reviewed source tree
@@ -97,7 +100,7 @@ published release exists. See the
 - [x] Keep default workflow permissions read-only and enable dependency alerts,
   secret scanning/push protection, and private vulnerability reporting where
   GitHub makes them available.
-- [ ] Protect `main` against force push/deletion and require only check names that
+- [x] Protect `main` against force push/deletion and require only check names that
   have actually run. Configure rules compatible with the solo-maintainer model.
 - [x] Create `release-draft` and `release-publish` environments with the exact
   reviewer, no-admin-bypass, and `tag:v*` policy required by
@@ -108,32 +111,47 @@ published release exists. See the
 - [x] Re-run public-source scans against the Git object GitHub received, not only
   the working tree.
 
-## Gate D — public v0.1.0 release
+## Gate D — public v0.1 recovery release (`v0.1.1` target)
+
+Checked `v0.1.0` items below record completed historical actions only. They do
+not close any final `v0.1.1` draft, asset, publication, or verification gate.
 
 - [x] Confirm public-visibility CI run
-  [`32553662965`](https://github.com/torjan0/cirewind/actions/runs/32553662965)
+  [`32554210398`](https://github.com/torjan0/cirewind/actions/runs/32554210398)
   completes successfully for the exact
-  `7c548ebb56c1a5fecb55b65aebd8f582ae5dc6ba` revision.
+  `2088f133df395f472180848ba6e929919c743b0d` revision.
 - [ ] Record a final **GO** confirming all failures inside ADR 0011's supported
   envelope are closed and all remaining limitations are explicitly documented.
 - [x] Change repository visibility to public and verify private vulnerability
   reporting, dependency alerts/security updates, secret scanning and push
   protection, release-tag rules, read-only workflow defaults, SHA pinning, and
   the selected-Action allowlist remain configured after the visibility change.
-- [ ] Create the reviewed annotated `v0.1.0` tag from the exact green `main`
-  revision and push only that tag.
-- [ ] Dispatch the release workflow with `publish=false`; approve the draft gate,
-  then verify version metadata, source revision, checksums, archive contents,
-  SPDX documents, license indexes, build provenance, signer workflow/ref, and
-  every downloaded asset byte.
+- [x] Create the reviewed annotated `v0.1.0` tag from exact green revision
+  `2088f133df395f472180848ba6e929919c743b0d` and push only that tag. The active
+  no-bypass tag ruleset protects it from deletion or non-fast-forward change.
+- [x] Dispatch the initial `v0.1.0` workflow with `publish=false` and approve the
+  draft gate. Run
+  [`32554866238`](https://github.com/torjan0/cirewind/actions/runs/32554866238)
+  passed all exact build, reproducibility, smoke, subject-attestation,
+  distribution, environment, and provenance-verification checks, then failed
+  closed before draft creation because the GitHub CLI rejects
+  `--notes-from-tag` together with `--repo`. No draft, release, or release asset
+  was created; publication was skipped.
+- [ ] Correct and review the release-creation invocation, run every applicable
+  local and hosted check on the exact recovery revision, create the protected
+  annotated `v0.1.1` tag from green `main`, and push only that tag.
+- [ ] Dispatch the corrected workflow for `v0.1.1` with `publish=false`; approve
+  the draft gate, then verify version metadata, source revision, checksums,
+  archive contents, SPDX documents, license indexes, build provenance, signer
+  workflow/ref, and every downloaded draft asset byte.
 - [ ] Independently smoke the downloaded release on each advertised runtime-
   qualified platform. Label cross-build-only or Wine-only targets accurately.
-- [ ] Dispatch the separate `publish=true` run, approve the publication gate,
-  ensure it accepts the exact existing draft without rebuilding/substitution,
-  and publish it.
-- [ ] Verify the public tag, release page, immutable assets, `SHA256SUMS`, GitHub
-  attestations, source archives, README links, `SECURITY.md`, and changelog from
-  an unauthenticated view.
+- [ ] Dispatch the separate `v0.1.1` `publish=true` run, approve the publication
+  gate, ensure it accepts the exact existing draft without rebuilding or
+  substitution, and publish it.
+- [ ] Verify the public `v0.1.1` tag, release page, immutable assets,
+  `SHA256SUMS`, GitHub attestations, source archives, README links, `SECURITY.md`,
+  and changelog from an unauthenticated view.
 - [ ] Update this snapshot with the release URL, workflow run IDs, attestation
   verification result, and any nonblocking follow-up—without adding credentials,
   private lab identifiers, or assistant credit.

@@ -1,6 +1,7 @@
 # Hosted release qualification — 2026-08-22
 
-Status: **pre-tag qualification; publication not yet authorized by this record**
+Status: **protected v0.1.0 candidate retained; no draft or release; v0.1.1 is
+the recovery publication target**
 
 This record captures only sanitized release-readiness facts for the public
 repository. It contains no controlled-lab identifiers, credentials, raw logs, or
@@ -27,6 +28,14 @@ confirmed the required case-file set and expected synthetic counts, and verified
 `manifest.sha256`. These checks used no GitHub credential for the product command
 path and made no live-collection claim.
 
+The final `v0.1.0` candidate revision
+`2088f133df395f472180848ba6e929919c743b0d` included the reviewed public-release
+status record. Public CI run
+[`32554210398`](https://github.com/torjan0/cirewind/actions/runs/32554210398)
+completed successfully from that exact object. All six native-platform test,
+vet, and build jobs, the race detector, the reachable-vulnerability scan, and
+the reproducible release-packaging contract passed.
+
 ## Public repository controls
 
 After the repository became public, the following settings were read back from
@@ -45,31 +54,59 @@ GitHub on 2026-08-22 UTC:
   deletion and non-fast-forward changes, and has no bypass actor.
 
 The optional non-provider secret patterns and secret-validity checks were not
-enabled. `main` was not yet protected at this snapshot; its release-required
-check names must be selected from completed public runs rather than guessed.
+enabled. The active `Protect main` ruleset now covers the default branch with no
+bypass actor, blocks deletion and non-fast-forward updates, requires linear
+history and pull requests, and requires the nine check contexts observed in the
+successful public CI run.
 
 The exact Git object received by GitHub was checked independently of the working
 tree. Gitleaks, TruffleHog, and the repository-tree policy audit reported no
 findings, and the settings read-back matched the controls above.
 
-## Open publication gates
+## Protected v0.1.0 candidate attempt
 
 Public-visibility CI run
 [`32553662965`](https://github.com/torjan0/cirewind/actions/runs/32553662965)
 completed successfully from the same exact source baseline on 2026-08-22 UTC.
 Its six Linux/macOS/Windows architecture jobs, race detector,
 reachable-vulnerability scan, and reproducible release-packaging contract all
-passed. The final documentation revision must still receive its applicable
-integrity and hosted checks before tagging.
+passed. The subsequent final candidate run `32554210398` passed the same nine
+checks at `2088f133df395f472180848ba6e929919c743b0d`.
 
-No `v0.1.0` tag, protected draft run, GitHub build-provenance attestation,
-release asset, or publication result is asserted here. Those gates remain open
-in [`PUBLIC_RELEASE_CHECKLIST.md`](../PUBLIC_RELEASE_CHECKLIST.md).
+The reviewed annotated `v0.1.0` tag points to that exact final candidate commit
+and is protected from deletion and non-fast-forward change. Authenticated
+release run
+[`32554866238`](https://github.com/torjan0/cirewind/actions/runs/32554866238)
+then established the following bounded result:
+
+- exact dispatch/tag/commit validation, two byte-identical builds, the native
+  Linux smoke, all fourteen subject attestations, and immutable workflow-artifact
+  transfer passed;
+- the protected draft job revalidated the tag and distribution and successfully
+  verified every expected build-provenance subject before any release creation;
+- draft creation failed closed because the installed GitHub CLI rejects
+  `gh release create --notes-from-tag` when `--repo` is also supplied; and
+- the release-asset comparison was skipped, the publication job was skipped,
+  and the GitHub Releases API reported no draft or published release for
+  `v0.1.0`.
+
+The retained Actions workflow artifact is candidate transport, not a GitHub
+Release asset. No draft, published release, or release asset was created. The
+failed invocation did not weaken or bypass the tag, environment, distribution,
+or provenance checks; it prevented the first release write.
+
+Because the protected `v0.1.0` tag is an immutable audit record, it will not be
+moved or reused. `v0.1.1` is the recovery publication target. Its corrected
+workflow revision, final CI, annotated tag, protected draft inspection,
+downloaded-asset smoke, separate publication approval, and unauthenticated
+release verification remain open in
+[`PUBLIC_RELEASE_CHECKLIST.md`](../PUBLIC_RELEASE_CHECKLIST.md).
 
 ## Scope of the conclusion
 
-The facts above establish a qualified public, pre-tag source baseline and
-repository readiness for the protected release workflow. They do not establish
-publisher authenticity for local candidate bytes, attest the final release
-assets, qualify GitHub.com behavior outside the documented experimental
-envelope, or make the v0.1 publication decision.
+The facts above establish a qualified source baseline and verified provenance
+for the retained workflow subjects. They do not establish a release-asset set,
+a published v0.1, or final publisher verification for downloaded assets. They
+also do not qualify GitHub.com behavior outside the documented experimental
+envelope. Publication remains blocked pending the complete `v0.1.1` recovery
+sequence.
