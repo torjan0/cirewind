@@ -49,10 +49,22 @@ implemented subset is sufficient for the experimental release decision. The
 status documents and public-release checklist are the authoritative record of
 what v0.1 actually supports.
 
-Remaining release blockers are candidate-scoped: full exact-revision
-test/vet/race/security/release checks, staged/private-data review, clean hosted
-CI, repository security settings, protected draft and publish environments,
-annotated tag, artifact/attestation inspection, and public publication.
+The exact product-source revision
+`7c548ebb56c1a5fecb55b65aebd8f582ae5dc6ba` passed the local deep gates,
+private hosted CI run
+[`32553126718`](https://github.com/torjan0/cirewind/actions/runs/32553126718),
+public hosted CI run
+[`32553662965`](https://github.com/torjan0/cirewind/actions/runs/32553662965),
+clean-clone/offline reproduction, and a remote-object security recheck. The
+repository is public with read-only workflow defaults, selected full-SHA
+Actions, vulnerability reporting and security scanning, protected release
+environments, and an active no-bypass release-tag ruleset. The sanitized status
+is recorded in the
+[`hosted-release qualification`](docs/validation/2026-08-22-hosted-release-qualification.md).
+Remaining release blockers are candidate-scoped: applicable checks for the final
+reviewed documentation revision, `main` protection using observed check names,
+annotated tag, protected draft and artifact/attestation inspection, separate
+publication approval, and public release verification.
 Organization saturation, full token-type qualification, live
 immutable-package grammar, all runner versions, broad resource inventories,
 local workspace proof, and data above the measured scale envelope are explicit

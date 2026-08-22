@@ -1,14 +1,20 @@
 # Release-candidate build and verification process
 
-Status: implemented experimental-v0.1 candidate and authenticated-release
-tooling
+Status: public pre-tag experimental-v0.1 candidate; authenticated-release
+tooling and protected environments configured, not yet exercised
 
 The local process creates deterministic, hash-verifiable release candidates.
 The manual GitHub workflow can add GitHub build-provenance attestations and,
 after two separately protected environment gates, create and publish a release.
 No release workflow has yet been exercised on GitHub, and a local checksum still
-does not prove who built an artifact. Supported-host runtime qualification and
-the project-wide release decision remain separate release gates.
+does not prove who built an artifact. The exact source revision
+`7c548ebb56c1a5fecb55b65aebd8f582ae5dc6ba` passed private six-platform hosted
+CI plus race, vulnerability, and release-contract jobs, and was reproduced from
+a clean clone. The same exact revision then passed the equivalent public hosted
+CI run and a remote-object security scan. The final documentation revision,
+annotated tag, draft/attestation inspection, and the project-wide release
+decision remain separate release gates. The sanitized record is
+[`docs/validation/2026-08-22-hosted-release-qualification.md`](validation/2026-08-22-hosted-release-qualification.md).
 
 ## Build contract
 
@@ -254,6 +260,15 @@ gates:
 6. Review `.github/actions-pins.json`. Each action reference is a full object ID
    retrieved from its official `actions/*` repository; a tag comment is context,
    never the security boundary.
+
+As of 2026-08-22, both environments satisfy items 1–3 and the read-only verifier
+accepts their sole-reviewer, no-admin-bypass, custom-policy, and `tag:v*`
+configuration. An active repository ruleset separately blocks deletion and
+non-fast-forward updates of `refs/tags/v*` with no bypass actor. Repository
+workflow permissions default to read-only; SHA pinning and the reviewed
+selected-Action allowlist are enabled. These settings establish readiness for
+the first tagged dispatch but do not substitute for a successful release run or
+attestation verification.
 
 Allowing the initiator to approve is a conscious solo-maintainer residual risk,
 not independent review. The environment approval remains a deliberate pause and

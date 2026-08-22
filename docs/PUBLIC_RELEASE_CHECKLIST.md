@@ -8,34 +8,41 @@ release. It applies the bounded qualification decision in
 waive the canonical evidence semantics, hostile-input rules, or release-candidate
 integrity requirements.
 
-At this snapshot, the local repository is on unborn `main`, the configured
-GitHub remote is private and empty, and no commit, CI run, tag, draft, attestation,
-or release exists. The repository owner has authorized a push and public release
-only after every applicable gate below is green. Do not publish early.
+At this snapshot, the repository is public and its qualified product-source
+baseline is `7c548ebb56c1a5fecb55b65aebd8f582ae5dc6ba`. That exact revision passed
+the private hosted-CI run
+[`32553126718`](https://github.com/torjan0/cirewind/actions/runs/32553126718),
+clean-clone/offline reproduction, and the local deep-qualification gates. This
+source baseline also passed public-visibility CI run
+[`32553662965`](https://github.com/torjan0/cirewind/actions/runs/32553662965)
+and a remote-object security scan. This status-document update still requires
+its applicable final checks. No release tag, draft, release attestation, or
+published release exists. See the
+[`hosted-release qualification record`](validation/2026-08-22-hosted-release-qualification.md).
 
 ## Gate A — reviewed source tree
 
-- [ ] Review `git status`, all untracked files, and the complete staged diff.
+- [x] Review `git status`, all untracked files, and the complete staged diff.
   Exclude caches, binaries, temporary directories, generated cases, databases,
   WAL/SHM files, archives, raw logs, editor data, and machine-specific paths.
-- [ ] Confirm only the generic synthetic incident pack is shipped. Search for
+- [x] Confirm only the generic synthetic incident pack is shipped. Search for
   private controlled repository names, run/job/object IDs, real incident values,
   customer data, personal paths, signed URLs, and production evidence.
-- [ ] Scan staged content for credentials, authorization headers, token prefixes,
+- [x] Scan staged content for credentials, authorization headers, token prefixes,
   private keys, secret values, shell history, and accidental raw logs.
-- [ ] Confirm `AGENTS.md` is present and that source, docs, commits, release notes,
+- [x] Confirm `AGENTS.md` is present and that source, docs, commits, release notes,
   and generated artifacts contain no assistant, agent, or automation authorship
   credit.
-- [ ] Verify Apache-2.0, DCO instructions, complete applicable dependency notices,
+- [x] Verify Apache-2.0, DCO instructions, complete applicable dependency notices,
   privacy/security policies, issue templates, and incident-pack review rules.
-- [ ] Verify all third-party Actions are pinned by reviewed full object IDs and
+- [x] Verify all third-party Actions are pinned by reviewed full object IDs and
   match `.github/actions-pins.json`; actionlint and shellcheck must pass.
-- [ ] Confirm local Markdown links and schema references resolve and no checked-in
+- [x] Confirm local Markdown links and schema references resolve and no checked-in
   schema depends on an unowned project website.
-- [ ] Confirm the ten state identifiers, five provenance identifiers, and eight
+- [x] Confirm the ten state identifiers, five provenance identifiers, and eight
   mandatory invariant sentences match model, schemas, fixtures, README, evidence
   model, test strategy, and report output.
-- [ ] Configure the human maintainer Git identity and create a DCO-signed commit
+- [x] Configure the human maintainer Git identity and create a DCO-signed commit
   without an assistant/tool co-author trailer.
 
 ## Gate B — exact-candidate deep qualification
@@ -58,54 +65,61 @@ only after every applicable gate below is green. Do not publish early.
 - [x] Confirm archive replay after committed-WAL interruption and finalized case
   sealing; manifest verification must survive ordinary read-only SQLite
   inspection and reject unexpected sidecars or changed files.
-- [ ] Run `gofmt` verification, `go mod tidy -diff`, `go mod verify`,
+- [x] Run `gofmt` verification, `go mod tidy -diff`, `go mod verify`,
   `go test ./... -count=1`, `go vet ./...`, and `go test -race ./... -count=1`.
-- [ ] Run the checked-in fuzz seed corpora and the documented sustained parser
+- [x] Run the checked-in fuzz seed corpora and the documented sustained parser
   campaigns. Keep `SEC-002` open as a broad future campaign; the v0.1 release
   claim is limited to the recorded targets/budgets.
-- [ ] Run the small and medium relational profiles and confirm indexed query
+- [x] Run the small and medium relational profiles and confirm indexed query
   plans. Keep 3,000,000 executions unsupported; do not relabel the two-hour
   timeout as a pass.
-- [ ] Run reachable-vulnerability, license bundle, offline safety/strace,
+- [x] Run reachable-vulnerability, license bundle, offline safety/strace,
   browser/CSP/injection, schema, action-pin, shell, and credential/private-data
   audits.
-- [ ] Run `make demo` into a new directory, assert finding counts and required
+- [x] Run `make demo` into a new directory, assert finding counts and required
   outputs, verify its manifest, and inspect the self-contained report offline.
-- [ ] Run deterministic release packaging twice, byte-compare it, validate every
+- [x] Run deterministic release packaging twice, byte-compare it, validate every
   SPDX document independently, run supported native/container/Wine smokes with
   their limits stated, and verify tamper rejection.
-- [ ] From the exact reviewed index, run
+- [x] From the exact reviewed index, run
   `CIREWIND_PREFLIGHT_REQUIRE_STAGED=1 make preflight` and retain the command
   summary outside the repository.
 
 ## Gate C — private publication and hosted CI
 
-- [ ] Push the reviewed signed-off `main` commit to the private remote. Do not
+- [x] Push the reviewed signed-off `main` commit to the private remote. Do not
   force-push or include any file outside the reviewed index.
-- [ ] Wait for every configured Linux, macOS, and Windows CI job; fix failures in
+- [x] Wait for every configured Linux, macOS, and Windows CI job; fix failures in
   a new reviewed commit and repeat the exact-candidate local gates.
-- [ ] Perform a clean clone from GitHub and reproduce build, tests, pack
+- [x] Perform a clean clone from GitHub and reproduce build, tests, pack
   validation, demo, expected case outputs, and manifest verification using the
   published instructions.
-- [ ] Keep default workflow permissions read-only and enable dependency alerts,
+- [x] Keep default workflow permissions read-only and enable dependency alerts,
   secret scanning/push protection, and private vulnerability reporting where
   GitHub makes them available.
 - [ ] Protect `main` against force push/deletion and require only check names that
   have actually run. Configure rules compatible with the solo-maintainer model.
-- [ ] Create `release-draft` and `release-publish` environments with the exact
+- [x] Create `release-draft` and `release-publish` environments with the exact
   reviewer, no-admin-bypass, and `tag:v*` policy required by
   [`RELEASE_PROCESS.md`](RELEASE_PROCESS.md); inspect both through the read-only
   verifier.
-- [ ] Re-run public-source scans against the Git object GitHub received, not only
+- [x] Enable an active repository ruleset for `refs/tags/v*` that blocks tag
+  deletion and non-fast-forward updates and permits no bypass actor.
+- [x] Re-run public-source scans against the Git object GitHub received, not only
   the working tree.
 
 ## Gate D — public v0.1.0 release
 
+- [x] Confirm public-visibility CI run
+  [`32553662965`](https://github.com/torjan0/cirewind/actions/runs/32553662965)
+  completes successfully for the exact
+  `7c548ebb56c1a5fecb55b65aebd8f582ae5dc6ba` revision.
 - [ ] Record a final **GO** confirming all failures inside ADR 0011's supported
   envelope are closed and all remaining limitations are explicitly documented.
-- [ ] Change repository visibility to public only after Gate C is green; verify
-  private vulnerability reporting, security features, rules, and Actions remain
-  configured after the visibility change.
+- [x] Change repository visibility to public and verify private vulnerability
+  reporting, dependency alerts/security updates, secret scanning and push
+  protection, release-tag rules, read-only workflow defaults, SHA pinning, and
+  the selected-Action allowlist remain configured after the visibility change.
 - [ ] Create the reviewed annotated `v0.1.0` tag from the exact green `main`
   revision and push only that tag.
 - [ ] Dispatch the release workflow with `publish=false`; approve the draft gate,

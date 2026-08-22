@@ -4,9 +4,12 @@ Status snapshot: **2026-08-22**
 
 Release decision: **candidate GO for an experimental v0.1 inside
 [`ADR 0011`](adr/0011-experimental-v0-1-qualification-envelope.md)**. The final
-controlled archive/replay and browser audit passed; exact-revision deep checks,
-hosted CI, repository controls, attestations, and publication remain separate
-release gates.
+controlled archive/replay, exact-revision local qualification, private hosted
+CI, public hosted CI, clean-clone/offline reproduction, remote-object security
+scan, and repository-control checks passed at
+`7c548ebb56c1a5fecb55b65aebd8f582ae5dc6ba`. The repository is public, but the
+final status-document checks, protected `main`, annotated release tag,
+attestations, draft inspection, and publication remain separate release gates.
 
 This document distinguishes implemented behavior from live qualification and
 from known limits. A passing fixture is not a claim about every GitHub runner,
@@ -269,20 +272,40 @@ stages and is not a passing database. Replay independently rejects more than
 1,000,000 facts or 256 MiB of compact snapshot data. See the
 [`fuzz/scale record`](validation/2026-08-21-fuzz-scale-hardening.md).
 
+## Hosted release qualification
+
+The qualified public product-source baseline
+`7c548ebb56c1a5fecb55b65aebd8f582ae5dc6ba` passed private hosted CI run
+[`32553126718`](https://github.com/torjan0/cirewind/actions/runs/32553126718):
+six Linux/macOS/Windows architecture jobs plus race, reachable-vulnerability,
+and reproducible-release-contract jobs all completed successfully. A clean
+clone of that remote revision reproduced the documented offline build, tests,
+pack validation, demo outputs, and manifest verification.
+
+After the visibility transition, read-only workflow defaults, full-SHA pinning,
+the selected-Action allowlist, dependency alerts/security updates, private
+vulnerability reporting, secret scanning/push protection, both protected
+release environments, and an active no-bypass `refs/tags/v*` deletion/non-fast-
+forward ruleset were verified. Public hosted-CI run
+[`32553662965`](https://github.com/torjan0/cirewind/actions/runs/32553662965)
+then passed the same nine-job matrix for the exact baseline. A remote-object
+Gitleaks, TruffleHog, tree, and settings recheck was clean. `main` protection is
+not yet configured. See the
+[`hosted-release qualification record`](validation/2026-08-22-hosted-release-qualification.md).
+
 ## Release blockers
 
 Before the public tag/release, the exact candidate revision must still:
 
-1. pass formatting, module verification, full tests, vet, race, vulnerability,
-   license, schemas, actionlint, shellcheck, offline safety, browser, fuzz-seed,
-   demo, release reproducibility, SPDX, manifest, and credential/private-data
-   scans;
-2. pass clean-clone and published Linux/macOS/Windows GitHub CI for the advertised
-   matrix, with any platform not runtime-qualified described accurately;
-3. enable private vulnerability reporting and least-privilege repository
-   settings; and
-4. build, attest, inspect, and publish the exact annotated `v0.1.0` candidate
-   through the protected release workflow.
+1. run the applicable integrity and hosted checks for the final reviewed
+   status-document revision;
+2. protect `main` against force push/deletion and require only check contexts
+   that have actually completed on the public repository;
+3. create the exact annotated `v0.1.0` tag and build, attest, and inspect its
+   protected draft; and
+4. approve the separate publication gate, publish the byte-identical draft
+   through the protected release workflow, and verify the release and
+   attestations from an unauthenticated view.
 
 Failures inside the ADR 0011 qualification envelope are blocking. The explicit
 experimental limitations above are non-blocking only while they remain visible
