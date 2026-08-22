@@ -4,15 +4,17 @@ Status snapshot: **2026-08-22**
 
 Release decision: **product candidate GO for an experimental v0.1 inside
 [`ADR 0011`](adr/0011-experimental-v0-1-qualification-envelope.md), publication
-still NO-GO pending recovery**. The final
+still NO-GO pending candidate and publication gates**. The final
 controlled archive/replay, exact-revision local qualification, private hosted
 CI, public hosted CI, clean-clone/offline reproduction, remote-object security
 scan, and repository-control checks passed at
 `2088f133df395f472180848ba6e929919c743b0d`. The repository is public and that
 revision is retained as the protected, unpublished `v0.1.0` candidate tag.
 Candidate build/provenance checks passed, but draft creation failed closed before
-any GitHub Release existed. `v0.1.1` is the recovery publication target; its
-exact-revision checks, protected draft inspection, and publication remain open.
+any GitHub Release existed. The recovery source was reviewed and merged through
+PR #1 and passed the required PR and `main` CI matrices. `v0.1.1` is the recovery
+publication target; its tag, official artifact/attestation run, protected draft
+inspection, final GO, publication, and public verification remain open.
 
 This document distinguishes implemented behavior from live qualification and
 from known limits. A passing fixture is not a claim about every GitHub runner,
@@ -312,18 +314,32 @@ skipped. The Releases API contained no `v0.1.0` release, so no draft, published
 release, or release asset was created. The workflow artifact and attestations
 remain candidate evidence, not published release assets.
 
+The release-creation compatibility fix was reviewed in
+[PR #1](https://github.com/torjan0/cirewind/pull/1). All nine required checks
+passed in PR CI run
+[`32556616946`](https://github.com/torjan0/cirewind/actions/runs/32556616946)
+on GitHub-generated merge object `c916b0b8174ec5c561bf34f60c1d65ae224cc6fa`;
+the run was associated with PR head
+`a1ec0cb23f2a5204781a9ccf17393139181aa2c4`. The change was squash-merged as
+`a56a880c4fadf2ab85945b3b96099b5b2cf62a25`, and all nine checks passed
+again at that exact `main` object in CI run
+[`32556880171`](https://github.com/torjan0/cirewind/actions/runs/32556880171).
+This qualifies the recovery source path only; no `v0.1.1` tag, official
+artifact, attestation, draft, or release was created by either CI run.
+
 ## Release blockers
 
-Before the public release, the exact `v0.1.1` recovery revision must still:
+The release-creation correction and recovery-source CI are complete. Before the
+public release, the exact `v0.1.1` candidate must still:
 
-1. correct and review the incompatible release-creation invocation without
-   weakening the tag, environment, distribution, or provenance gates;
-2. run the applicable local integrity and hosted checks for the final recovery
-   revision, then create the exact protected annotated `v0.1.1` tag;
-3. build, attest, create, inspect, download, and smoke its protected draft; and
-4. approve the separate publication gate, publish the byte-identical draft
-   through the protected release workflow, and verify the release and
-   attestations from an unauthenticated view.
+1. complete and qualify the final pre-tag documentation revision at its exact
+   `main` object;
+2. create the exact protected annotated `v0.1.1` tag;
+3. build and attest the official artifacts, create and inspect the protected
+   draft, and download and smoke every draft asset; and
+4. record final GO, approve the separate publication gate, publish the
+   byte-identical draft through the protected release workflow, and verify the
+   release and attestations from an unauthenticated view.
 
 Failures inside the ADR 0011 qualification envelope are blocking. The explicit
 experimental limitations above are non-blocking only while they remain visible

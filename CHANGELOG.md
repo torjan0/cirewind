@@ -6,12 +6,13 @@ All notable changes to CIRewind are documented here. The format follows
 
 ## [Unreleased]
 
-### v0.1.1 recovery candidate
+No changes yet.
 
-`v0.1.1` is the planned first experimental public release. It contains the
-evidence-first, deliberately bounded v0.1 feature set recorded under the
-retained `v0.1.0` candidate below; it is not a universal GitHub Actions
-completeness claim.
+## [0.1.1] - 2026-08-22
+
+First experimental public release. It contains the evidence-first, deliberately
+bounded v0.1 feature set recorded under the retained `v0.1.0` candidate below;
+it is not a universal GitHub Actions completeness claim.
 
 ### Fixed
 
@@ -30,7 +31,22 @@ and provenance-verification checks, then failed closed before draft creation
 because the runner's GitHub CLI rejects `--notes-from-tag` together with
 `--repo`. No GitHub Release or release asset was created, and the publication
 job did not run. The immutable candidate tag is retained as an audit record;
-the corrected workflow must be requalified under a new `v0.1.1` tag.
+the corrected workflow must be exercised under a new `v0.1.1` tag.
+
+The recovery source change was reviewed in
+[PR #1](https://github.com/torjan0/cirewind/pull/1). All nine required checks
+passed in PR CI run
+[`32556616946`](https://github.com/torjan0/cirewind/actions/runs/32556616946)
+on GitHub-generated merge object `c916b0b8174ec5c561bf34f60c1d65ae224cc6fa`;
+the run was associated with PR head
+`a1ec0cb23f2a5204781a9ccf17393139181aa2c4`. The change was squash-merged as
+`a56a880c4fadf2ab85945b3b96099b5b2cf62a25`, and all nine checks passed
+again at that exact `main` object in CI run
+[`32556880171`](https://github.com/torjan0/cirewind/actions/runs/32556880171).
+Those results qualify the recovery source only. At this final pre-tag revision,
+the `v0.1.1` tag, official artifacts and attestations, protected draft,
+downloaded-asset smokes, final GO, publication, and public verification remain
+open gates.
 
 ## [0.1.0] - 2026-08-22 (unpublished candidate)
 
@@ -117,5 +133,6 @@ deliberately bounded, not a universal GitHub Actions completeness claim.
 - No verified real-world incident pack is included. The bundled pack and lab
   inputs are unmistakably synthetic.
 
-[Unreleased]: https://github.com/torjan0/cirewind/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/torjan0/cirewind/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/torjan0/cirewind/releases/tag/v0.1.1
 [0.1.0]: https://github.com/torjan0/cirewind/tree/v0.1.0

@@ -1,7 +1,7 @@
 # Hosted release qualification — 2026-08-22
 
-Status: **protected v0.1.0 candidate retained; no draft or release; v0.1.1 is
-the recovery publication target**
+Status: **protected v0.1.0 candidate retained; recovery source qualified; no
+v0.1.1 tag, draft, or release**
 
 This record captures only sanitized release-readiness facts for the public
 repository. It contains no controlled-lab identifiers, credentials, raw logs, or
@@ -99,8 +99,29 @@ Because the protected `v0.1.0` tag is an immutable audit record, it will not be
 moved or reused. `v0.1.1` is the recovery publication target. Its corrected
 workflow revision, final CI, annotated tag, protected draft inspection,
 downloaded-asset smoke, separate publication approval, and unauthenticated
-release verification remain open in
+release verification were open at that point in
 [`PUBLIC_RELEASE_CHECKLIST.md`](../PUBLIC_RELEASE_CHECKLIST.md).
+
+## Recovery-source qualification
+
+The release-creation correction was reviewed in
+[PR #1](https://github.com/torjan0/cirewind/pull/1). PR CI run
+[`32556616946`](https://github.com/torjan0/cirewind/actions/runs/32556616946)
+was associated with PR head `a1ec0cb23f2a5204781a9ccf17393139181aa2c4`
+and checked out GitHub-generated merge object
+`c916b0b8174ec5c561bf34f60c1d65ae224cc6fa`. All nine required jobs passed on
+that merge object: six Linux/macOS/Windows architecture jobs, the race detector,
+the reachable-vulnerability scan, and the reproducible release-packaging
+contract. The PR was squash-merged to `main` as
+`a56a880c4fadf2ab85945b3b96099b5b2cf62a25`. Main push CI run
+[`32556880171`](https://github.com/torjan0/cirewind/actions/runs/32556880171)
+passed the same nine checks at that exact `main` commit.
+
+Those results qualify the reviewed recovery source path only. Neither run used
+a `v0.1.1` tag or created official release artifacts, attestations, a draft, or
+a release. The final pre-tag revision, protected annotated tag, official build
+and provenance run, draft and downloaded-asset inspection, final GO,
+publication, and unauthenticated public verification remain open.
 
 ## Scope of the conclusion
 
@@ -108,5 +129,6 @@ The facts above establish a qualified source baseline and verified provenance
 for the retained workflow subjects. They do not establish a release-asset set,
 a published v0.1, or final publisher verification for downloaded assets. They
 also do not qualify GitHub.com behavior outside the documented experimental
-envelope. Publication remains blocked pending the complete `v0.1.1` recovery
-sequence.
+envelope. Publication remains blocked pending the final pre-tag qualification
+and the complete tagged `v0.1.1` artifact, draft, GO, publication, and public-
+verification sequence.
