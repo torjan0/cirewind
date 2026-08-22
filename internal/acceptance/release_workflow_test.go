@@ -226,6 +226,34 @@ func TestReleaseWorkflowIsManualLeastPrivilegeAndOrdered(t *testing.T) {
 	if verifyIndex < 0 || createIndex < 0 || verifyIndex >= createIndex {
 		t.Fatal("draft creation must occur only after exact attestation verification")
 	}
+	notesIndex := strings.Index(draftRun, "git tag --list")
+	if notesIndex < 0 || notesIndex >= createIndex {
+		t.Fatal("draft release notes must be derived from the verified annotated tag before release creation")
+	}
+	for _, required := range []string{
+		`notes_file="$RUNNER_TEMP/release-notes.txt"`,
+		`git tag --list "$RELEASE_TAG"`,
+		`--format='%(contents:subject)%0a%0a%(contents:body)'`,
+		`>"$notes_file"`,
+		`grep -q '[^[:space:]]' "$notes_file"`,
+	} {
+		if !strings.Contains(draftRun, required) {
+			t.Errorf("draft creation lacks safe explicit release-notes constraint %q", required)
+		}
+	}
+	createEnd := strings.Index(draftRun[createIndex:], `--title "$RELEASE_TAG"`)
+	if createEnd < 0 {
+		t.Fatal("draft creation command lacks its explicit release title terminator")
+	}
+	createRun := draftRun[createIndex : createIndex+createEnd]
+	for _, required := range []string{`--repo "$GITHUB_REPOSITORY"`, `--notes-file "$notes_file"`} {
+		if !strings.Contains(createRun, required) {
+			t.Errorf("gh release create lacks required scoped option %q", required)
+		}
+	}
+	if strings.Contains(draftRun, "--notes-from-tag") {
+		t.Fatal("draft creation uses the GitHub CLI-incompatible --notes-from-tag mode")
+	}
 	if !strings.Contains(draftRun, "compare-release-assets.sh") {
 		t.Fatal("draft assets are not downloaded and byte-compared")
 	}
@@ -246,6 +274,92 @@ func TestReleaseWorkflowIsManualLeastPrivilegeAndOrdered(t *testing.T) {
 	}
 	if strings.Contains(buildRun, "gh release ") || strings.Contains(draftRun, "gh release edit") || strings.Contains(publishRun, "gh release create") {
 		t.Fatal("release write authority is present in the wrong job")
+	}
+}
+
+func TestReleaseTagNotesExtractionIsLiteralAndExcludesSignatures(t *testing.T) {
+	repository := t.TempDir()
+	emptyGlobalConfig := filepath.Join(t.TempDir(), "empty-gitconfig")
+	if err := os.WriteFile(emptyGlobalConfig, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	gitEnvironment := make([]string, 0, len(os.Environ())+2)
+	for _, value := range os.Environ() {
+		name, _, _ := strings.Cut(value, "=")
+		if strings.HasPrefix(strings.ToUpper(name), "GIT_") {
+			continue
+		}
+		gitEnvironment = append(gitEnvironment, value)
+	}
+	gitEnvironment = append(gitEnvironment,
+		"GIT_CONFIG_GLOBAL="+emptyGlobalConfig,
+		"GIT_CONFIG_NOSYSTEM=1",
+	)
+
+	runGit := func(stdin string, arguments ...string) []byte {
+		t.Helper()
+		command := exec.Command("git", arguments...)
+		command.Dir = repository
+		command.Env = gitEnvironment
+		if stdin != "" {
+			command.Stdin = strings.NewReader(stdin)
+		}
+		output, err := command.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %s: %v\n%s", strings.Join(arguments, " "), err, output)
+		}
+		return output
+	}
+	extract := func(tag string) []byte {
+		t.Helper()
+		return runGit("", "tag", "--list", tag, "--format=%(contents:subject)%0a%0a%(contents:body)")
+	}
+
+	runGit("", "init", "--quiet")
+	runGit("", "config", "user.name", "CIRewind Test")
+	runGit("", "config", "user.email", "test@example.invalid")
+	runGit("", "config", "commit.gpgSign", "false")
+	runGit("", "config", "tag.gpgSign", "false")
+	runGit("", "commit", "--allow-empty", "--quiet", "--message", "initial")
+
+	payload := "literal quotes ' \" and shell text $(touch cirewind-should-not-exist) `still-literal` <script>"
+	runGit("", "tag", "--annotate", "v0.0.1", "--message", "Release subject", "--message", payload)
+	want := "Release subject\n\n" + payload + "\n\n"
+	if got := string(extract("v0.0.1")); got != want {
+		t.Fatalf("literal tag notes = %q, want %q", got, want)
+	}
+	if _, err := os.Stat(filepath.Join(repository, "cirewind-should-not-exist")); !os.IsNotExist(err) {
+		t.Fatalf("tag-message shell text was not inert: %v", err)
+	}
+
+	commit := strings.TrimSpace(string(runGit("", "rev-parse", "HEAD")))
+	signedTag := strings.Join([]string{
+		"object " + commit,
+		"type commit",
+		"tag v0.0.2",
+		"tagger CIRewind Test <test@example.invalid> 0 +0000",
+		"",
+		"Signed subject",
+		"",
+		"Signed body",
+		"-----BEGIN PGP SIGNATURE-----",
+		"synthetic-signature-material",
+		"-----END PGP SIGNATURE-----",
+		"",
+	}, "\n")
+	tagObject := strings.TrimSpace(string(runGit(signedTag, "hash-object", "-t", "tag", "-w", "--stdin")))
+	runGit("", "update-ref", "refs/tags/v0.0.2", tagObject)
+	signedNotes := string(extract("v0.0.2"))
+	if signedNotes != "Signed subject\n\nSigned body\n\n" || strings.Contains(signedNotes, "SIGNATURE") {
+		t.Fatalf("signed tag notes did not exclude the signature: %q", signedNotes)
+	}
+
+	runGit("", "tag", "--annotate", "v0.0.3", "--message", "   ")
+	if notes := extract("v0.0.3"); len(bytes.TrimSpace(notes)) != 0 {
+		t.Fatalf("whitespace-only tag unexpectedly produced material notes: %q", notes)
+	}
+	if notes := extract("v9.9.9"); len(notes) != 0 {
+		t.Fatalf("absent tag unexpectedly produced notes: %q", notes)
 	}
 }
 

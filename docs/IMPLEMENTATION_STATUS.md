@@ -2,14 +2,17 @@
 
 Status snapshot: **2026-08-22**
 
-Release decision: **candidate GO for an experimental v0.1 inside
-[`ADR 0011`](adr/0011-experimental-v0-1-qualification-envelope.md)**. The final
+Release decision: **product candidate GO for an experimental v0.1 inside
+[`ADR 0011`](adr/0011-experimental-v0-1-qualification-envelope.md), publication
+still NO-GO pending recovery**. The final
 controlled archive/replay, exact-revision local qualification, private hosted
 CI, public hosted CI, clean-clone/offline reproduction, remote-object security
 scan, and repository-control checks passed at
-`7c548ebb56c1a5fecb55b65aebd8f582ae5dc6ba`. The repository is public, but the
-final status-document checks, protected `main`, annotated release tag,
-attestations, draft inspection, and publication remain separate release gates.
+`2088f133df395f472180848ba6e929919c743b0d`. The repository is public and that
+revision is retained as the protected, unpublished `v0.1.0` candidate tag.
+Candidate build/provenance checks passed, but draft creation failed closed before
+any GitHub Release existed. `v0.1.1` is the recovery publication target; its
+exact-revision checks, protected draft inspection, and publication remain open.
 
 This document distinguishes implemented behavior from live qualification and
 from known limits. A passing fixture is not a claim about every GitHub runner,
@@ -289,20 +292,35 @@ release environments, and an active no-bypass `refs/tags/v*` deletion/non-fast-
 forward ruleset were verified. Public hosted-CI run
 [`32553662965`](https://github.com/torjan0/cirewind/actions/runs/32553662965)
 then passed the same nine-job matrix for the exact baseline. A remote-object
-Gitleaks, TruffleHog, tree, and settings recheck was clean. `main` protection is
-not yet configured. See the
+Gitleaks, TruffleHog, tree, and settings recheck was clean. Final candidate
+revision `2088f133df395f472180848ba6e929919c743b0d` then passed all nine jobs in
+public CI run
+[`32554210398`](https://github.com/torjan0/cirewind/actions/runs/32554210398).
+`main` is protected by an active no-bypass ruleset that blocks deletion and
+non-fast-forward updates and requires the nine observed CI check contexts. See the
 [`hosted-release qualification record`](validation/2026-08-22-hosted-release-qualification.md).
+
+The protected annotated `v0.1.0` tag identifies that final candidate revision.
+Authenticated release run
+[`32554866238`](https://github.com/torjan0/cirewind/actions/runs/32554866238)
+passed exact tag/commit validation, double-build reproducibility, native smoke,
+all subject attestations, distribution verification, environment verification,
+and build-provenance verification. It then failed closed at the first release
+creation command because the runner's GitHub CLI does not support
+`--notes-from-tag` together with `--repo`. Asset comparison and publication were
+skipped. The Releases API contained no `v0.1.0` release, so no draft, published
+release, or release asset was created. The workflow artifact and attestations
+remain candidate evidence, not published release assets.
 
 ## Release blockers
 
-Before the public tag/release, the exact candidate revision must still:
+Before the public release, the exact `v0.1.1` recovery revision must still:
 
-1. run the applicable integrity and hosted checks for the final reviewed
-   status-document revision;
-2. protect `main` against force push/deletion and require only check contexts
-   that have actually completed on the public repository;
-3. create the exact annotated `v0.1.0` tag and build, attest, and inspect its
-   protected draft; and
+1. correct and review the incompatible release-creation invocation without
+   weakening the tag, environment, distribution, or provenance gates;
+2. run the applicable local integrity and hosted checks for the final recovery
+   revision, then create the exact protected annotated `v0.1.1` tag;
+3. build, attest, create, inspect, download, and smoke its protected draft; and
 4. approve the separate publication gate, publish the byte-identical draft
    through the protected release workflow, and verify the release and
    attestations from an unauthenticated view.

@@ -56,15 +56,26 @@ private hosted CI run
 public hosted CI run
 [`32553662965`](https://github.com/torjan0/cirewind/actions/runs/32553662965),
 clean-clone/offline reproduction, and a remote-object security recheck. The
-repository is public with read-only workflow defaults, selected full-SHA
-Actions, vulnerability reporting and security scanning, protected release
-environments, and an active no-bypass release-tag ruleset. The sanitized status
-is recorded in the
+final `v0.1.0` candidate revision
+`2088f133df395f472180848ba6e929919c743b0d` passed all nine jobs in public CI
+run [`32554210398`](https://github.com/torjan0/cirewind/actions/runs/32554210398).
+The repository is public with read-only workflow defaults, selected full-SHA
+Actions, vulnerability reporting and security scanning, protected `main`,
+protected release environments, and active no-bypass main/release-tag rulesets.
+The sanitized status is recorded in the
 [`hosted-release qualification`](docs/validation/2026-08-22-hosted-release-qualification.md).
-Remaining release blockers are candidate-scoped: applicable checks for the final
-reviewed documentation revision, `main` protection using observed check names,
-annotated tag, protected draft and artifact/attestation inspection, separate
-publication approval, and public release verification.
+
+The protected annotated `v0.1.0` tag remains an unpublished candidate. Release
+run [`32554866238`](https://github.com/torjan0/cirewind/actions/runs/32554866238)
+passed all exact build and provenance checks, then failed closed before draft
+creation because the runner's GitHub CLI rejects `--notes-from-tag` together
+with `--repo`. No draft, published release, or release asset was created, and
+publication was skipped. `v0.1.1` is the first actual publication target.
+Remaining release blockers are candidate-scoped: correct and review that
+invocation, qualify the exact recovery revision, create its protected annotated
+tag, inspect and smoke the protected draft/assets, separately approve
+publication, and verify the public release. No broad task checkbox below is
+closed by this status audit.
 Organization saturation, full token-type qualification, live
 immutable-package grammar, all runner versions, broad resource inventories,
 local workspace proof, and data above the measured scale envelope are explicit

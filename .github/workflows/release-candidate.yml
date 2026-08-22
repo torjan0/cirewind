@@ -181,11 +181,18 @@ jobs:
               exit 1
             }
           else
+            notes_file="$RUNNER_TEMP/release-notes.txt"
+            git tag --list "$RELEASE_TAG" \
+              --format='%(contents:subject)%0a%0a%(contents:body)' >"$notes_file"
+            grep -q '[^[:space:]]' "$notes_file" || {
+              echo "annotated release tag has no notes" >&2
+              exit 1
+            }
             gh release create "$RELEASE_TAG" "$RUNNER_TEMP/release-subjects"/* \
               --repo "$GITHUB_REPOSITORY" \
               --verify-tag \
               --draft \
-              --notes-from-tag \
+              --notes-file "$notes_file" \
               --title "$RELEASE_TAG"
           fi
       - name: Download and byte-compare the created draft assets

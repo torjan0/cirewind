@@ -1,19 +1,20 @@
 # Release-candidate build and verification process
 
-Status: public pre-tag experimental-v0.1 candidate; authenticated-release
-tooling and protected environments configured, not yet exercised
+Status: protected `v0.1.0` candidate retained but unpublished; `v0.1.1` is the
+recovery publication target
 
 The local process creates deterministic, hash-verifiable release candidates.
-The manual GitHub workflow can add GitHub build-provenance attestations and,
-after two separately protected environment gates, create and publish a release.
-No release workflow has yet been exercised on GitHub, and a local checksum still
-does not prove who built an artifact. The exact source revision
-`7c548ebb56c1a5fecb55b65aebd8f582ae5dc6ba` passed private six-platform hosted
-CI plus race, vulnerability, and release-contract jobs, and was reproduced from
-a clean clone. The same exact revision then passed the equivalent public hosted
-CI run and a remote-object security scan. The final documentation revision,
-annotated tag, draft/attestation inspection, and the project-wide release
-decision remain separate release gates. The sanitized record is
+The manual GitHub workflow adds GitHub build-provenance attestations and, after
+two separately protected environment gates, can create and publish a release.
+A local checksum still does not prove who built an artifact. Final candidate
+revision `2088f133df395f472180848ba6e929919c743b0d` passed the public nine-job
+platform/race/vulnerability/release-contract matrix and was tagged `v0.1.0`.
+Its authenticated workflow passed every build and provenance check but failed
+closed before draft creation because the runner's GitHub CLI rejects
+`--notes-from-tag` together with `--repo`. No GitHub Release or release asset was
+created. The immutable candidate tag remains an audit record; the corrected
+workflow, exact `v0.1.1` candidate, draft/asset inspection, and project-wide
+publication decision remain separate gates. The sanitized record is
 [`docs/validation/2026-08-22-hosted-release-qualification.md`](validation/2026-08-22-hosted-release-qualification.md).
 
 ## Build contract
@@ -49,8 +50,8 @@ Run the complete source-controlled build only from a committed annotated tag:
 
 ```sh
 make release \
-  RELEASE_TAG=v0.1.0 \
-  RELEASE_OUT=/new/path/cirewind-v0.1.0 \
+  RELEASE_TAG=v0.1.1 \
+  RELEASE_OUT=/new/path/cirewind-v0.1.1 \
   RELEASE_WORK_ROOT=/large/private/work/path
 ```
 
@@ -105,7 +106,7 @@ Verify an intact local candidate from source with:
 
 ```sh
 make release-verify \
-  RELEASE_OUT=/path/to/cirewind-v0.1.0 \
+  RELEASE_OUT=/path/to/cirewind-v0.1.1 \
   RELEASE_WORK_ROOT=/large/private/work/path
 ```
 
@@ -120,7 +121,7 @@ operator-installed, reviewed version of the official SPDX tools-python CLI:
 
 ```sh
 make release-spdx \
-  RELEASE_OUT=/path/to/cirewind-v0.1.0 \
+  RELEASE_OUT=/path/to/cirewind-v0.1.1 \
   SPDX_VALIDATOR=/reviewed/venv/bin/pyspdxtools \
   SPDX_TOOLS_VERSION=0.8.5
 ```
@@ -227,7 +228,31 @@ with `publish=false` leaves an inspectable draft; a later `publish=true` run can
 reproduce and attest the same bytes, accept that exact draft, and enter the
 publication gate.
 
-### Repository settings required before the first run
+## First protected dispatch and recovery
+
+The first protected `publish=false` dispatch, GitHub Actions run
+[`32554866238`](https://github.com/torjan0/cirewind/actions/runs/32554866238),
+used annotated tag `v0.1.0` at
+`2088f133df395f472180848ba6e929919c743b0d`. The build job validated that exact
+binding, built twice with byte-identical output, ran the native Linux smoke,
+attested every one of the fourteen subjects, and transferred the immutable
+workflow artifact. After environment approval, the draft job deep-verified the
+distribution and every expected provenance subject.
+
+The next command attempted `gh release create` with both `--notes-from-tag` and
+`--repo`. The GitHub CLI version on the runner rejects that flag combination, so
+the command exited before creating a release. The draft-asset comparison and
+publish job were consequently skipped. GitHub's Releases API showed no draft or
+published release for `v0.1.0`; the retained workflow artifact is not a release
+asset.
+
+This is a release-tooling compatibility failure, not a successful draft. The
+protected `v0.1.0` tag must not be moved, deleted, or reused. Recovery requires a
+reviewed release-creation invocation, complete exact-revision qualification, and
+a new protected annotated `v0.1.1` tag. All draft inspection and publication
+gates then run again for `v0.1.1`; no prior workflow artifact is substituted.
+
+### Required repository settings
 
 The workflow file cannot configure its own protection rules without acquiring
 administrative authority, so the following are maintainer-controlled release
@@ -267,8 +292,9 @@ configuration. An active repository ruleset separately blocks deletion and
 non-fast-forward updates of `refs/tags/v*` with no bypass actor. Repository
 workflow permissions default to read-only; SHA pinning and the reviewed
 selected-Action allowlist are enabled. These settings establish readiness for
-the first tagged dispatch but do not substitute for a successful release run or
-attestation verification.
+a recovery dispatch. A separate active no-bypass ruleset protects `main` and
+requires the nine observed CI contexts. These settings do not substitute for a
+successful draft, release-asset verification, or publication.
 
 Allowing the initiator to approve is a conscious solo-maintainer residual risk,
 not independent review. The environment approval remains a deliberate pause and
@@ -286,8 +312,8 @@ without embedding credentials in a command:
 
 ```sh
 gh workflow run release-candidate.yml \
-  --ref v0.1.0 \
-  -f tag=v0.1.0 \
+  --ref v0.1.1 \
+  -f tag=v0.1.1 \
   -f publish=false
 ```
 
@@ -296,11 +322,11 @@ workflow performs GitHub writes; local release commands and default tests do
 not. No source-controlled step pushes or creates a tag.
 
 GitHub's attestation documentation describes provenance as a signed claim about
-where and how bytes were built, not proof that the bytes are secure. Until the
-protected workflow and supported-host gates pass for the eventual tag,
-acceptable terms remain “unsigned local release candidate” and “Wine
-compatibility-tested.” Do not call the files a supported install or completed
-v0.1 release.
+where and how bytes were built, not proof that the bytes are secure. The retained
+`v0.1.0` workflow subjects are verified attested candidate subjects, not release
+assets. Local recovery candidates remain unsigned. Until the protected workflow,
+draft inspection, supported-host smokes, and publication gates pass for
+`v0.1.1`, do not call any files a supported install or completed v0.1 release.
 
 Primary references, retrieved 2026-08-21:
 

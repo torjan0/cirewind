@@ -6,12 +6,37 @@ All notable changes to CIRewind are documented here. The format follows
 
 ## [Unreleased]
 
-No changes yet.
+### v0.1.1 recovery candidate
 
-## [0.1.0] - 2026-08-22
+`v0.1.1` is the planned first experimental public release. It contains the
+evidence-first, deliberately bounded v0.1 feature set recorded under the
+retained `v0.1.0` candidate below; it is not a universal GitHub Actions
+completeness claim.
 
-First experimental public release. v0.1 is evidence-first and deliberately
-bounded; it is not a universal GitHub Actions completeness claim.
+### Fixed
+
+- The authenticated release workflow now materializes release notes from the
+  already-verified annotated tag and passes them through `--notes-file` while
+  retaining explicit repository scoping. This avoids the GitHub CLI's
+  incompatible `--notes-from-tag` and `--repo` combination without weakening
+  the tag, environment, distribution, or provenance gates.
+
+### Release recovery
+
+The protected `v0.1.0` candidate tag was not published: authenticated release run
+[`32554866238`](https://github.com/torjan0/cirewind/actions/runs/32554866238)
+passed the exact build, reproducibility, smoke, subject-attestation, distribution,
+and provenance-verification checks, then failed closed before draft creation
+because the runner's GitHub CLI rejects `--notes-from-tag` together with
+`--repo`. No GitHub Release or release asset was created, and the publication
+job did not run. The immutable candidate tag is retained as an audit record;
+the corrected workflow must be requalified under a new `v0.1.1` tag.
+
+## [0.1.0] - 2026-08-22 (unpublished candidate)
+
+This protected candidate was never published as a GitHub Release. Its contents
+describe the intended first experimental release: evidence-first and
+deliberately bounded, not a universal GitHub Actions completeness claim.
 
 ### Added
 
@@ -93,4 +118,4 @@ bounded; it is not a universal GitHub Actions completeness claim.
   inputs are unmistakably synthetic.
 
 [Unreleased]: https://github.com/torjan0/cirewind/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/torjan0/cirewind/releases/tag/v0.1.0
+[0.1.0]: https://github.com/torjan0/cirewind/tree/v0.1.0
