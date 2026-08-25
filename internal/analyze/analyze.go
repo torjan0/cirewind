@@ -23,6 +23,18 @@ import (
 
 const EngineVersion = "cirewind-analyzer/v1alpha1"
 
+// OIDCCapabilityRuleVersion identifies the bounded inference from a
+// runtime-observed GITHUB_TOKEN permission of id-token:write to the ability to
+// request a GitHub Actions OIDC token. It never establishes that a token was
+// requested, accepted by a relying party, exchanged, or used to assume a
+// cloud identity.
+const OIDCCapabilityRuleVersion = "oidc-minting-capability/v1"
+
+var requiredNegativeCoverageKinds = [...]model.CoverageKind{
+	model.CoverageJobLog,
+	model.CoverageParserGrammar,
+}
+
 const (
 	ModeInvestigate = "investigate"
 	ModeReplay      = "replay"
@@ -33,20 +45,21 @@ type Result struct {
 }
 
 type index struct {
-	repositories    map[model.RepositoryID]model.RepositorySubject
-	runs            map[string]archive.RunFact
-	attempts        map[string]archive.AttemptFact
-	jobs            map[string]archive.JobFact
-	repositoryFacts map[model.RepositoryID]archive.Fact
-	runFacts        map[string]archive.Fact
-	attemptFacts    map[string]archive.Fact
-	jobFacts        map[string]archive.Fact
-	factsByID       map[string]archive.Fact
-	actions         []archive.Fact
-	dependencies    []archive.Fact
-	exposures       []archive.Fact
-	coverage        []archive.Fact
-	gaps            []archive.Fact
+	retainedLegacyCredentialBasis bool
+	repositories                  map[model.RepositoryID]model.RepositorySubject
+	runs                          map[string]archive.RunFact
+	attempts                      map[string]archive.AttemptFact
+	jobs                          map[string]archive.JobFact
+	repositoryFacts               map[model.RepositoryID]archive.Fact
+	runFacts                      map[string]archive.Fact
+	attemptFacts                  map[string]archive.Fact
+	jobFacts                      map[string]archive.Fact
+	factsByID                     map[string]archive.Fact
+	actions                       []archive.Fact
+	dependencies                  []archive.Fact
+	exposures                     []archive.Fact
+	coverage                      []archive.Fact
+	gaps                          []archive.Fact
 }
 
 // Derive deterministically applies one validated pack to one compact snapshot.
@@ -74,6 +87,9 @@ func Derive(snapshot archive.Snapshot, pack *incident.ValidatedPack, analysisTim
 	}
 	metadata := buildMetadata(snapshot, pack, analysisTime, mode, idx)
 	caseValue := report.Case{Metadata: metadata, Graph: graph.Graph{SchemaVersion: graph.SchemaVersion}}
+	if archive.HasRetainedLegacyCredentialBasis(snapshot) {
+		report.EnableRetainedLegacyCredentialBasis(&caseValue)
+	}
 	caseValue.Metadata.CaseID = deterministicID("case1", snapshot.Metadata.ArchiveID, pack.CanonicalSHA256, analysisTime.Format(time.RFC3339Nano), mode)
 
 	components := make(map[string]incident.Component, len(pack.Pack.Spec.Components))
@@ -89,6 +105,10 @@ func Derive(snapshot archive.Snapshot, pack *incident.ValidatedPack, analysisTim
 		caseValue.Findings = append(caseValue.Findings, findings...)
 	}
 	caseValue.Graph = buildGraph(idx, caseValue.Findings)
+	caseValue.GraphV2, err = buildGraphV2(idx, caseValue.Graph, caseValue.Findings, pack, metadata.CaseKind)
+	if err != nil {
+		return Result{}, fmt.Errorf("project v0.2 evidence graph: %w", err)
+	}
 	if err := caseValue.NormalizeAndValidate(); err != nil {
 		return Result{}, err
 	}
@@ -97,7 +117,8 @@ func Derive(snapshot archive.Snapshot, pack *incident.ValidatedPack, analysisTim
 
 func buildIndex(snapshot archive.Snapshot) (index, error) {
 	idx := index{
-		repositories: map[model.RepositoryID]model.RepositorySubject{}, runs: map[string]archive.RunFact{},
+		retainedLegacyCredentialBasis: archive.HasRetainedLegacyCredentialBasis(snapshot),
+		repositories:                  map[model.RepositoryID]model.RepositorySubject{}, runs: map[string]archive.RunFact{},
 		attempts: map[string]archive.AttemptFact{}, jobs: map[string]archive.JobFact{},
 		repositoryFacts: map[model.RepositoryID]archive.Fact{}, runFacts: map[string]archive.Fact{},
 		attemptFacts: map[string]archive.Fact{}, jobFacts: map[string]archive.Fact{}, factsByID: map[string]archive.Fact{},
@@ -292,6 +313,8 @@ func deriveIndicator(idx index, pack *incident.ValidatedPack, component incident
 		if strongerRuntimeObservationExists(idx, fact, component, indicator) {
 			continue
 		}
+		coverageIDs, coverageClosed := requiredNegativeCoverageClosed(idx, fact.Subject)
+		contradictions, contradictionEvidence := runtimeDefinitionContradictions(idx, fact)
 		candidate := match.Candidate{
 			SameAttemptExactRuntime: identityMatch || knownGood,
 			KnownGoodExactRuntime:   knownGood,
@@ -300,13 +323,12 @@ func deriveIndicator(idx index, pack *incident.ValidatedPack, component incident
 			LifecycleStarted:        obs.Kind.SupportsExecuted(),
 			DownloadAnnouncedOnly:   obs.Kind == model.ObservationDownloadAnnounced || obs.Kind == model.ObservationResolutionObserved,
 			MaterialEvidenceGap:     hasMaterialGap(idx, fact.Subject),
-			RequiredCoverageClosed:  !hasMaterialGap(idx, fact.Subject),
-			CoverageIDs:             coverageFor(idx, fact.Subject),
+			RequiredCoverageClosed:  coverageClosed,
+			CoverageIDs:             coverageIDs,
+			MaterialContradiction:   len(contradictions) != 0,
 		}
-		// Exact known-good evidence supports a negative only with independently
-		// closed coverage; absence of a coverage record is not closure.
-		if knownGood && len(candidate.CoverageIDs) == 0 {
-			candidate.RequiredCoverageClosed = false
+		if candidate.MaterialContradiction {
+			candidate.EvidenceIDs = model.SortEvidenceIDs(append(candidate.EvidenceIDs, contradictionEvidence...))
 		}
 		decision, err := match.Derive(candidate)
 		if err != nil {
@@ -315,6 +337,9 @@ func deriveIndicator(idx index, pack *incident.ValidatedPack, component incident
 		finding, err := makeFinding(idx, pack, indicator, fact.Subject, obs.Step, obs.EventTime, candidate, decision, analysisTime)
 		if err != nil {
 			return nil, err
+		}
+		if candidate.MaterialContradiction {
+			finding.ContradictoryEvidence = append([]string(nil), contradictions...)
 		}
 		appendUnique(&findings, seen, finding)
 	}
@@ -325,7 +350,11 @@ func deriveIndicator(idx index, pack *incident.ValidatedPack, component incident
 			continue
 		}
 		candidate := match.Candidate{EvidenceIDs: append([]model.EvidenceID(nil), fact.EvidenceIDs...), CoverageIDs: coverageFor(idx, fact.Subject)}
-		candidate.MaterialContradiction = len(dep.ContradictsFactIDs) != 0
+		contradictions, contradictionEvidence := dependencyRuntimeContradictions(idx, fact)
+		candidate.MaterialContradiction = len(contradictions) != 0
+		if candidate.MaterialContradiction {
+			candidate.EvidenceIDs = model.SortEvidenceIDs(append(candidate.EvidenceIDs, contradictionEvidence...))
+		}
 		switch indicator.Kind {
 		case "action-commit", "digest":
 			if !dependencyExactMatches(indicator, *dep) {
@@ -342,7 +371,7 @@ func deriveIndicator(idx index, pack *incident.ValidatedPack, component incident
 			if !dependencyExactMatches(indicator, *dep) {
 				continue
 			}
-			if (dep.Execution != nil || dep.AttemptExecution != nil) && dep.TargetCalledWorkflowObjectID != nil {
+			if dep.Basis == archive.DefinitionRuntimeAttemptMetadata && dep.AttemptExecution != nil && dep.Execution == nil && dep.TargetCalledWorkflowObjectID != nil {
 				candidate.ExactCalledWorkflow = true
 			} else if dep.Basis == archive.DefinitionCurrentSnapshot {
 				candidate.CurrentReferenceOnly = true
@@ -381,7 +410,7 @@ func deriveIndicator(idx index, pack *incident.ValidatedPack, component incident
 			return nil, err
 		}
 		if candidate.MaterialContradiction {
-			finding.ContradictoryEvidence = append([]string(nil), dep.ContradictsFactIDs...)
+			finding.ContradictoryEvidence = append([]string(nil), contradictions...)
 		}
 		appendUnique(&findings, seen, finding)
 	}
@@ -830,6 +859,131 @@ func hasMaterialGap(idx index, subject archive.FactSubject) bool {
 	return false
 }
 
+// requiredNegativeCoverageClosed applies the fixed v0.2 closure predicate for
+// an exact-runtime negative. A random terminal coverage row cannot certify a
+// clean result: every required capability must have an execution-scoped,
+// required-for-negative, count-closed COLLECTED assessment, and no required
+// material gap may exist at that execution scope.
+func requiredNegativeCoverageClosed(idx index, subject archive.FactSubject) ([]model.CoverageAssessmentID, bool) {
+	if subject.RunID == nil || subject.RunAttempt == nil || subject.JobID == nil {
+		return nil, false
+	}
+	closed := make(map[model.CoverageKind]model.CoverageAssessmentID, len(requiredNegativeCoverageKinds))
+	valid := true
+	for _, fact := range idx.coverage {
+		if fact.Coverage == nil || !exactCoverageExecution(fact.Coverage.Unit.Scope, subject) || !fact.Coverage.Unit.RequiredForNegative {
+			continue
+		}
+		kind := fact.Coverage.Unit.Kind
+		if !requiredNegativeCoverageKind(kind) {
+			continue
+		}
+		assessment := fact.Coverage.Assessment
+		if assessment.Status != model.CoverageCollected || assessment.ExpectedCount == nil || *assessment.ExpectedCount == 0 || assessment.ObservedCount != *assessment.ExpectedCount {
+			valid = false
+			continue
+		}
+		if previous, exists := closed[kind]; exists && previous != assessment.ID {
+			valid = false
+			continue
+		}
+		closed[kind] = assessment.ID
+	}
+	for _, fact := range idx.gaps {
+		if fact.CoverageGap == nil || !exactCoverageExecution(fact.CoverageGap.Unit.Scope, subject) || !fact.CoverageGap.Unit.RequiredForNegative || !requiredNegativeCoverageKind(fact.CoverageGap.Unit.Kind) {
+			continue
+		}
+		valid = false
+	}
+	ids := make([]model.CoverageAssessmentID, 0, len(requiredNegativeCoverageKinds))
+	for _, kind := range requiredNegativeCoverageKinds {
+		id, ok := closed[kind]
+		if !ok {
+			valid = false
+			continue
+		}
+		ids = append(ids, id)
+	}
+	return model.SortCoverageAssessmentIDs(ids), valid
+}
+
+func requiredNegativeCoverageKind(kind model.CoverageKind) bool {
+	for _, required := range requiredNegativeCoverageKinds {
+		if kind == required {
+			return true
+		}
+	}
+	return false
+}
+
+func exactCoverageExecution(scope model.CoverageScope, subject archive.FactSubject) bool {
+	return scope.RepositoryID != nil && scope.RunID != nil && scope.RunAttempt != nil && scope.JobID != nil &&
+		*scope.RepositoryID == subject.RepositoryID && *scope.RunID == *subject.RunID &&
+		*scope.RunAttempt == *subject.RunAttempt && *scope.JobID == *subject.JobID &&
+		(scope.StepKey == "" || scope.StepKey == subject.StepKey)
+}
+
+// runtimeDefinitionContradictions accepts only an explicit contradiction link
+// whose referenced historical definition concerns the exact same step and
+// repository but resolves to a different exact Action identity. Arbitrary
+// ContradictsFactIDs, two static declarations, or two different steps cannot
+// self-certify CONTRADICTORY_EVIDENCE.
+func runtimeDefinitionContradictions(idx index, runtime archive.Fact) ([]string, []model.EvidenceID) {
+	if runtime.ActionOccurrence == nil || !exactRuntimeIdentityObserved(runtime.ActionOccurrence.Observation) || runtime.Subject.StepKey == "" {
+		return nil, nil
+	}
+	var factIDs []string
+	var evidenceIDs []model.EvidenceID
+	for _, definition := range idx.dependencies {
+		dep := definition.Dependency
+		if dep == nil || dep.Basis != archive.DefinitionHistoricalAtRun || dep.TargetActionObjectID == nil ||
+			dep.TargetRepository != runtime.ActionOccurrence.Observation.ActionRepository || dep.TargetPath != runtime.ActionOccurrence.Observation.ActionSubpath || !sameExactOccurrence(definition.Subject, runtime.Subject) ||
+			!containsString(dep.ContradictsFactIDs, runtime.ID) || *dep.TargetActionObjectID == *runtime.ActionOccurrence.Observation.SourceObjectID {
+			continue
+		}
+		factIDs = append(factIDs, definition.ID)
+		evidenceIDs = append(evidenceIDs, definition.EvidenceIDs...)
+	}
+	sort.Strings(factIDs)
+	return factIDs, model.SortEvidenceIDs(evidenceIDs)
+}
+
+func dependencyRuntimeContradictions(idx index, definition archive.Fact) ([]string, []model.EvidenceID) {
+	if definition.Dependency == nil || definition.Dependency.Basis != archive.DefinitionHistoricalAtRun || definition.Dependency.TargetActionObjectID == nil || definition.Subject.StepKey == "" {
+		return nil, nil
+	}
+	var factIDs []string
+	var evidenceIDs []model.EvidenceID
+	for _, linkedID := range definition.Dependency.ContradictsFactIDs {
+		runtime, ok := idx.factsByID[linkedID]
+		if !ok || runtime.ActionOccurrence == nil || !exactRuntimeIdentityObserved(runtime.ActionOccurrence.Observation) ||
+			runtime.ActionOccurrence.Observation.ActionRepository != definition.Dependency.TargetRepository || runtime.ActionOccurrence.Observation.ActionSubpath != definition.Dependency.TargetPath || !sameExactOccurrence(runtime.Subject, definition.Subject) ||
+			*runtime.ActionOccurrence.Observation.SourceObjectID == *definition.Dependency.TargetActionObjectID {
+			continue
+		}
+		factIDs = append(factIDs, runtime.ID)
+		evidenceIDs = append(evidenceIDs, runtime.EvidenceIDs...)
+	}
+	sort.Strings(factIDs)
+	return factIDs, model.SortEvidenceIDs(evidenceIDs)
+}
+
+func exactRuntimeIdentityObserved(observation model.RuntimeActionObservation) bool {
+	return observation.SourceObjectID != nil && (observation.Kind == model.ObservationResolutionObserved || observation.Kind == model.ObservationDownloadAnnounced || observation.Kind.SupportsDownloaded())
+}
+
+func sameExactOccurrence(left, right archive.FactSubject) bool {
+	return left.RepositoryID == right.RepositoryID && left.RunID != nil && right.RunID != nil && *left.RunID == *right.RunID &&
+		left.RunAttempt != nil && right.RunAttempt != nil && *left.RunAttempt == *right.RunAttempt &&
+		left.JobID != nil && right.JobID != nil && *left.JobID == *right.JobID &&
+		left.StepKey != "" && left.StepKey == right.StepKey
+}
+
+func containsString(values []string, wanted string) bool {
+	index := sort.SearchStrings(values, wanted)
+	return index < len(values) && values[index] == wanted
+}
+
 func coverageFor(idx index, subject archive.FactSubject) []model.CoverageAssessmentID {
 	var ids []model.CoverageAssessmentID
 	for _, fact := range idx.coverage {
@@ -902,6 +1056,12 @@ func exposuresFor(idx index, subject archive.FactSubject, state model.FindingSta
 			continue
 		}
 		if exposure.Credential != nil {
+			// OIDC capability is derived only from the typed runtime-observed
+			// id-token:write permission. A precomputed OIDC assertion cannot
+			// bypass this rule or self-certify from conclusion prose.
+			if exposure.Credential.Kind == model.ExposureOIDCMintingCapability {
+				continue
+			}
 			name := ""
 			if exposure.Credential.SecretName != nil {
 				name = string(*exposure.Credential.SecretName)
@@ -911,10 +1071,19 @@ func exposuresFor(idx index, subject archive.FactSubject, state model.FindingSta
 				capability += ":" + exposure.Credential.Access
 			}
 			basis := string(exposure.Credential.Basis)
-			if basis == "" {
-				basis = "evidence-backed"
+			if basis == "" && idx.retainedLegacyCredentialBasis {
+				basis = report.RetainedLegacyUnclassifiedBasis
 			}
 			credentials = append(credentials, report.Exposure{Kind: string(exposure.Credential.Kind), Name: name, Capability: capability, Basis: basis, Conclusion: exposure.Credential.Conclusion, EvidenceIDs: idsToStrings(exposure.Credential.EvidenceIDs)})
+			if runtimeObservedOIDCPermission(*exposure.Credential) {
+				credentials = append(credentials, report.Exposure{
+					Kind:        string(model.ExposureOIDCMintingCapability),
+					Capability:  "id-token:write",
+					Basis:       string(model.ExposureBasisRuntimeObserved),
+					Conclusion:  "Runtime-observed id-token: write supports only OIDC minting capability under " + OIDCCapabilityRuleVersion + "; no token request, cloud trust, exchange, cloud identity, or role assumption was proven.",
+					EvidenceIDs: idsToStrings(exposure.Credential.EvidenceIDs),
+				})
+			}
 		}
 		if exposure.Resource != nil {
 			resources = append(resources, report.Exposure{Kind: string(exposure.Resource.Kind), Name: exposure.Resource.ResourceID, Basis: string(exposure.Resource.Correlation), Conclusion: exposure.Resource.Conclusion, EvidenceIDs: idsToStrings(exposure.Resource.EvidenceIDs)})
@@ -934,6 +1103,13 @@ func exposuresFor(idx index, subject archive.FactSubject, state model.FindingSta
 		}
 	}
 	return credentials, resources
+}
+
+func runtimeObservedOIDCPermission(credential model.CredentialExposure) bool {
+	return credential.Kind == model.ExposureGitHubTokenPermission &&
+		credential.Basis == model.ExposureBasisRuntimeObserved &&
+		credential.Permission == "id-token" && credential.Access == "write" &&
+		len(credential.EvidenceIDs) != 0
 }
 
 func buildMetadata(snapshot archive.Snapshot, pack *incident.ValidatedPack, analysisTime time.Time, mode string, idx index) report.Metadata {
@@ -1000,7 +1176,8 @@ func buildMetadata(snapshot archive.Snapshot, pack *incident.ValidatedPack, anal
 	}
 	warnings := []string{"Analysis is complete only for structured facts retained by the archive; discarded raw-log literals remain evidence gaps."}
 	return report.Metadata{
-		SchemaVersion: report.MetadataSchema, Mode: mode, IncidentID: pack.Pack.Metadata.ID,
+		SchemaVersion: report.MetadataSchemaV2, CaseContractVersion: report.CaseContractV2,
+		CaseKind: caseKind(snapshot), RawMaterialized: boolPointer(false), Mode: mode, IncidentID: pack.Pack.Metadata.ID,
 		IncidentPackVersion: pack.Pack.Metadata.PackVersion, CanonicalPackSHA256: pack.CanonicalSHA256,
 		SourcePackSHA256: pack.OriginalSHA256, EngineVersion: EngineVersion, AnalysisTime: analysisTime.Format(time.RFC3339Nano),
 		RawLogsRetained: rawLogsRetained, WatchHorizonDays: 65, Coverage: coverage,
@@ -1008,6 +1185,32 @@ func buildMetadata(snapshot archive.Snapshot, pack *incident.ValidatedPack, anal
 		Warnings:    warnings,
 	}
 }
+
+func caseKind(snapshot archive.Snapshot) report.CaseKind {
+	var synthetic, collected bool
+	for _, session := range snapshot.Collections {
+		switch session.Mode {
+		case "fixture":
+			synthetic = true
+		case "archive", "investigate":
+			collected = true
+		default:
+			return report.CaseKindUnknown
+		}
+	}
+	switch {
+	case synthetic && collected:
+		return report.CaseKindMixed
+	case synthetic:
+		return report.CaseKindSynthetic
+	case collected:
+		return report.CaseKindCollected
+	default:
+		return report.CaseKindUnknown
+	}
+}
+
+func boolPointer(value bool) *bool { return &value }
 
 func requestedRepositoryCount(snapshot archive.Snapshot, fallback int) int {
 	requested := make(map[model.RepositoryID]struct{})

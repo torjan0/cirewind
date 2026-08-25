@@ -60,7 +60,7 @@ release-spdx:
 	sh ./scripts/validate-release-spdx.sh "$(RELEASE_OUT)" "$(SPDX_VALIDATOR)" "$(SPDX_TOOLS_VERSION)"
 
 release-workflow-audit:
-	$(GO_EXACT) test ./internal/acceptance -run 'TestReleaseWorkflow|TestActionPins|TestCIUsesExactSixTarget|TestReleaseEnvironmentPolicy'
+	$(GO_EXACT) test ./internal/acceptance -run 'TestReleaseWorkflow|TestActionPins|TestCIUsesExactSixTarget|TestCIDarwinArm64RunsNativeDemoQualification|TestReleaseEnvironmentPolicy'
 
 preflight:
 	sh ./scripts/preflight.sh

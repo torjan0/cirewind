@@ -183,7 +183,10 @@ The command must not:
 - mutate global clocks, environment variables, or package state.
 
 Temporary private staging created by the existing case builder is permitted and
-must be removed on failure or cancellation.
+must be removed on failure or cancellation. Neither its randomized
+`.cirewind-case-*` basename nor its absolute parent path may appear in CLI
+diagnostics; failures retain only a safe operational category while preserving
+internal error causality for programmatic checks.
 
 ## Determinism contract
 
@@ -391,6 +394,10 @@ transcript; do not publish only the median.
 - Context cancellation removes private staging and returns the established code.
 - Terminal-control, newline, bidi, and oversized path diagnostics are inert and
   bounded.
+- An injected post-builder error containing the private staging path reaches CLI
+  stderr only as a safe path-withheld operational diagnostic.
+- A per-call GitHub-client factory spy observes zero client constructions during
+  `demo`; no package-global hook is permitted.
 
 ### Embedded bundle and semantics
 
@@ -443,7 +450,7 @@ transcript; do not publish only the median.
 |---|---|
 | Embedded pack fails validation | Abort before output publication; report bounded internal bundle failure. |
 | Synthetic oracle mismatch | Abort; identify the mismatched state/count without publishing a case. |
-| Case generation fails | Remove private staging; preserve any existing target. |
+| Case generation fails | Remove private staging; preserve any existing target; do not expose the private staging basename or absolute path in CLI diagnostics. |
 | Manifest verification fails | Verify the complete private staging case before atomic publication. On failure, abort, remove only owned staging, leave the requested destination absent, and never print a verified-case message. Post-publication verification remains a defense-in-depth repeat, not the first check. |
 | SVG limit reached | Generate an explicit bounded omission notice; never silently omit material relationships or alter findings. |
 | Context canceled | Stop scheduling work, close stores, remove private staging, return cancellation. |

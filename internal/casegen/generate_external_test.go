@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/url"
 	"os"
@@ -35,6 +36,7 @@ var requiredCaseFiles = []string{
 	"evidence.jsonl",
 	"findings.json",
 	"graph.json",
+	"graph.svg",
 	"manifest.sha256",
 	"report.html",
 	"summary.md",
@@ -43,17 +45,30 @@ var requiredCaseFiles = []string{
 func TestGenerateEndToEndPersistsVerifiableIdentityContract(t *testing.T) {
 	ctx := context.Background()
 	snapshot, pack, derived := fixture(t, ctx)
+	reordered := reverseSnapshotInput(t, snapshot)
+	reorderedDerived, err := analyze.Derive(reordered, pack, time.Date(2026, 8, 20, 12, 0, 0, 0, time.UTC), analyze.ModeReplay)
+	if err != nil {
+		t.Fatal(err)
+	}
 	first := filepath.Join(t.TempDir(), "case-one")
 	second := filepath.Join(t.TempDir(), "case-two")
-	for _, output := range []string{first, second} {
-		if err := casegen.Generate(ctx, casegen.Options{Output: output, Snapshot: snapshot, Pack: pack, Case: derived.Case}); err != nil {
-			t.Fatalf("Generate(%s): %v", output, err)
+	inputs := []struct {
+		output   string
+		snapshot archive.Snapshot
+		derived  analyze.Result
+	}{
+		{output: first, snapshot: snapshot, derived: derived},
+		{output: second, snapshot: reordered, derived: reorderedDerived},
+	}
+	for _, input := range inputs {
+		if err := casegen.Generate(ctx, casegen.Options{Output: input.output, Snapshot: input.snapshot, Pack: pack, Case: input.derived.Case}); err != nil {
+			t.Fatalf("Generate(%s): %v", input.output, err)
 		}
-		if err := casefile.VerifyManifest(ctx, output); err != nil {
-			t.Fatalf("VerifyManifest(%s): %v", output, err)
+		if err := casefile.VerifyManifest(ctx, input.output); err != nil {
+			t.Fatalf("VerifyManifest(%s): %v", input.output, err)
 		}
 		for _, name := range requiredCaseFiles {
-			info, err := os.Stat(filepath.Join(output, name))
+			info, err := os.Stat(filepath.Join(input.output, name))
 			if err != nil {
 				t.Fatalf("required case file %s: %v", name, err)
 			}
@@ -64,7 +79,7 @@ func TestGenerateEndToEndPersistsVerifiableIdentityContract(t *testing.T) {
 				t.Fatalf("case output %s has permissive mode %o", name, info.Mode().Perm())
 			}
 		}
-		verifyOrdinaryReadOnlyInspectionDoesNotInvalidate(t, ctx, output)
+		verifyOrdinaryReadOnlyInspectionDoesNotInvalidate(t, ctx, input.output)
 	}
 
 	for _, name := range requiredCaseFiles {
@@ -99,6 +114,28 @@ func TestGenerateEndToEndPersistsVerifiableIdentityContract(t *testing.T) {
 	}
 	if err := casefile.VerifyManifest(ctx, first); err == nil {
 		t.Fatal("tampered generated case passed manifest verification")
+	}
+}
+
+func reverseSnapshotInput(t *testing.T, source archive.Snapshot) archive.Snapshot {
+	t.Helper()
+	encoded, err := json.Marshal(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var cloned archive.Snapshot
+	if err := json.Unmarshal(encoded, &cloned); err != nil {
+		t.Fatal(err)
+	}
+	reverseSlice(cloned.Collections)
+	reverseSlice(cloned.Evidence)
+	reverseSlice(cloned.Facts)
+	return cloned
+}
+
+func reverseSlice[T any](values []T) {
+	for left, right := 0, len(values)-1; left < right; left, right = left+1, right-1 {
+		values[left], values[right] = values[right], values[left]
 	}
 }
 
@@ -153,6 +190,12 @@ type fixtureRawSource map[string][]byte
 func (s fixtureRawSource) CopyRaw(_ context.Context, digest string, destination io.Writer) error {
 	_, err := destination.Write(s[digest])
 	return err
+}
+
+type fixtureRawSourceFunc func(context.Context, string, io.Writer) error
+
+func (f fixtureRawSourceFunc) CopyRaw(ctx context.Context, digest string, destination io.Writer) error {
+	return f(ctx, digest, destination)
 }
 
 func TestGenerateCopiesOptedInRawEvidenceOnceAndManifestsIt(t *testing.T) {
@@ -230,6 +273,146 @@ func TestGenerateCopiesOptedInRawEvidenceOnceAndManifestsIt(t *testing.T) {
 	}
 	if rawMaterialized != "false" {
 		t.Fatalf("compact case raw materialization marker=%q", rawMaterialized)
+	}
+}
+
+func TestGenerateRawCopyFailsClosedAndCleansStaging(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		copy fixtureRawSourceFunc
+	}{
+		{
+			name: "one overlong write",
+			copy: func(_ context.Context, _ string, destination io.Writer) error {
+				_, _ = destination.Write([]byte("abc!"))
+				return nil
+			},
+		},
+		{
+			name: "extra write error ignored by source",
+			copy: func(_ context.Context, _ string, destination io.Writer) error {
+				if _, err := destination.Write([]byte("abc")); err != nil {
+					return err
+				}
+				_, _ = destination.Write([]byte("!"))
+				return nil
+			},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			ctx := context.Background()
+			snapshot, pack, derived, _ := rawFixture(t, ctx, []byte("abc"), 3)
+			parent := t.TempDir()
+			output := filepath.Join(parent, "case")
+			err := casegen.Generate(ctx, casegen.Options{Output: output, Raw: true, RawSource: test.copy, Snapshot: snapshot, Pack: pack, Case: derived.Case})
+			if err == nil || !strings.Contains(err.Error(), "declared byte length") {
+				t.Fatalf("Generate error = %v, want declared-length rejection", err)
+			}
+			assertNoPublishedOrStagedCase(t, parent, output)
+		})
+	}
+}
+
+func TestGenerateRawCopyHonorsMidStreamCancellationAndCleansStaging(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	snapshot, pack, derived, _ := rawFixture(t, ctx, []byte("ab"), 2)
+	source := fixtureRawSourceFunc(func(_ context.Context, _ string, destination io.Writer) error {
+		if _, err := destination.Write([]byte("a")); err != nil {
+			return err
+		}
+		cancel()
+		_, _ = destination.Write([]byte("b"))
+		return nil
+	})
+	parent := t.TempDir()
+	output := filepath.Join(parent, "case")
+	err := casegen.Generate(ctx, casegen.Options{Output: output, Raw: true, RawSource: source, Snapshot: snapshot, Pack: pack, Case: derived.Case})
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("Generate error = %v, want context cancellation", err)
+	}
+	assertNoPublishedOrStagedCase(t, parent, output)
+}
+
+func TestGenerateRawMaterializationPreflightRunsBeforeSource(t *testing.T) {
+	ctx := context.Background()
+	const oversized = uint64(2<<30) + 1
+	snapshot, pack, derived, _ := rawFixture(t, ctx, nil, oversized)
+	called := false
+	source := fixtureRawSourceFunc(func(context.Context, string, io.Writer) error {
+		called = true
+		return nil
+	})
+	parent := t.TempDir()
+	output := filepath.Join(parent, "case")
+	err := casegen.Generate(ctx, casegen.Options{Output: output, Raw: true, RawSource: source, Snapshot: snapshot, Pack: pack, Case: derived.Case})
+	if err == nil || !strings.Contains(err.Error(), "exceeds the 2147483648-byte limit") {
+		t.Fatalf("Generate error = %v, want per-object preflight rejection", err)
+	}
+	if called {
+		t.Fatal("raw source was called before the materialization plan passed preflight")
+	}
+	assertNoPublishedOrStagedCase(t, parent, output)
+}
+
+func TestGenerateRawDisabledDoesNotApplyMaterializationLimits(t *testing.T) {
+	ctx := context.Background()
+	const oversized = uint64(2<<30) + 1
+	snapshot, pack, derived, _ := rawFixture(t, ctx, nil, oversized)
+	output := filepath.Join(t.TempDir(), "compact-case")
+	if err := casegen.Generate(ctx, casegen.Options{Output: output, Raw: false, Snapshot: snapshot, Pack: pack, Case: derived.Case}); err != nil {
+		t.Fatalf("compact generation applied a raw materialization limit: %v", err)
+	}
+	if _, err := os.Lstat(filepath.Join(output, "raw")); !os.IsNotExist(err) {
+		t.Fatalf("raw directory exists in compact case: %v", err)
+	}
+	if err := casefile.VerifyManifest(ctx, output); err != nil {
+		t.Fatalf("verify compact raw-bearing case: %v", err)
+	}
+}
+
+func rawFixture(t *testing.T, ctx context.Context, sourceBytes []byte, length uint64) (archive.Snapshot, *incident.ValidatedPack, analyze.Result, string) {
+	t.Helper()
+	snapshot, pack, _ := fixture(t, ctx)
+	sum := sha256.Sum256(sourceBytes)
+	digest := hex.EncodeToString(sum[:])
+	snapshot.Evidence = append(snapshot.Evidence, rawEnvelope(t, snapshot, digest, length))
+	snapshot.Collections[0].RawRetention = true
+	foundRawCapability := false
+	for index := range snapshot.Capabilities {
+		if snapshot.Capabilities[index].Name != "raw_logs" {
+			continue
+		}
+		foundRawCapability = true
+		snapshot.Capabilities[index].Status = archive.CapabilityRetained
+		snapshot.Capabilities[index].Details = map[string]string{"policy": "exact-opt-in", "retained_count": "1"}
+	}
+	if !foundRawCapability {
+		snapshot.Capabilities = append(snapshot.Capabilities, archive.Capability{Name: "raw_logs", Status: archive.CapabilityRetained, Details: map[string]string{"policy": "exact-opt-in", "retained_count": "1"}})
+	}
+	normalized, err := archive.NormalizeSnapshot(snapshot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	derived, err := analyze.Derive(normalized, pack, time.Date(2026, 8, 20, 12, 0, 0, 0, time.UTC), analyze.ModeReplay)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return normalized, pack, derived, digest
+}
+
+func assertNoPublishedOrStagedCase(t *testing.T, parent, output string) {
+	t.Helper()
+	if _, err := os.Lstat(output); !os.IsNotExist(err) {
+		t.Fatalf("failed generation published output: %v", err)
+	}
+	entries, err := os.ReadDir(parent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range entries {
+		if strings.HasPrefix(entry.Name(), ".cirewind-case-") {
+			t.Fatalf("failed generation left staging directory %q", entry.Name())
+		}
 	}
 }
 

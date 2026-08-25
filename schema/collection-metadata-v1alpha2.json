@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "collection-metadata-v1alpha2.json",
+  "title": "CIRewind collection metadata v1alpha2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "caseContractVersion",
+    "caseKind",
+    "caseId",
+    "mode",
+    "incidentId",
+    "incidentPackVersion",
+    "canonicalPackSha256",
+    "sourcePackSha256",
+    "engineVersion",
+    "analysisTime",
+    "rawLogsRetained",
+    "rawMaterialized",
+    "coverage",
+    "limitPolicy"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "cirewind.collection-metadata/v1alpha2" },
+    "caseContractVersion": { "const": "cirewind.case/v1alpha2" },
+    "caseKind": { "enum": ["synthetic", "collected", "mixed", "unknown"] },
+    "caseId": { "type": "string", "pattern": "^case1:[0-9a-f]{64}$" },
+    "mode": { "enum": ["investigate", "replay"] },
+    "incidentId": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "incidentPackVersion": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "canonicalPackSha256": { "$ref": "#/$defs/sha256" },
+    "sourcePackSha256": { "$ref": "#/$defs/sha256" },
+    "engineVersion": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "analysisTime": { "type": "string", "format": "date-time" },
+    "githubApiVersion": { "type": "string", "maxLength": 128 },
+    "rawLogsRetained": { "type": "boolean" },
+    "rawMaterialized": { "type": "boolean" },
+    "watchHorizonDays": { "type": "integer", "minimum": 0, "maximum": 3650 },
+    "coverage": { "$ref": "#/$defs/coverage" },
+    "limitPolicy": { "type": "string", "minLength": 1, "maxLength": 4096 },
+    "warnings": {
+      "type": "array",
+      "maxItems": 1024,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1, "maxLength": 4096 }
+    }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "stringSet": {
+      "type": "array",
+      "maxItems": 100000,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1, "maxLength": 4096 }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "partial",
+        "repositoriesRequested",
+        "repositoriesAccessible",
+        "repositoriesDenied",
+        "runsEnumerated",
+        "attemptsEnumerated",
+        "jobsEnumerated",
+        "logsRetrieved",
+        "logsMissing",
+        "workflowDefinitionsRetrieved",
+        "actionDefinitionsRetrieved"
+      ],
+      "properties": {
+        "partial": { "type": "boolean" },
+        "repositoriesRequested": { "type": "integer", "minimum": 0 },
+        "repositoriesAccessible": { "type": "integer", "minimum": 0 },
+        "repositoriesDenied": { "type": "integer", "minimum": 0 },
+        "runsEnumerated": { "type": "integer", "minimum": 0 },
+        "attemptsEnumerated": { "type": "integer", "minimum": 0 },
+        "jobsEnumerated": { "type": "integer", "minimum": 0 },
+        "logsRetrieved": { "type": "integer", "minimum": 0 },
+        "logsMissing": { "type": "integer", "minimum": 0 },
+        "workflowDefinitionsRetrieved": { "type": "integer", "minimum": 0 },
+        "actionDefinitionsRetrieved": { "type": "integer", "minimum": 0 },
+        "optionalCapabilitiesDenied": { "$ref": "#/$defs/stringSet" },
+        "incompleteEvidence": { "$ref": "#/$defs/stringSet" }
+      }
+    }
+  }
+}

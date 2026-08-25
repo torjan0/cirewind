@@ -63,6 +63,7 @@ type workflowMatrixEntry struct {
 type workflowStep struct {
 	Name string         `yaml:"name"`
 	ID   string         `yaml:"id"`
+	If   string         `yaml:"if"`
 	Uses string         `yaml:"uses"`
 	Run  string         `yaml:"run"`
 	With map[string]any `yaml:"with"`
@@ -379,6 +380,49 @@ func TestCIUsesExactSixTargetHostedRunnerMatrix(t *testing.T) {
 	}
 	if !reflect.DeepEqual(testJob.Strategy.Matrix.Include, want) {
 		t.Fatalf("CI test matrix = %#v, want exact supported matrix %#v", testJob.Strategy.Matrix.Include, want)
+	}
+}
+
+func TestCIDarwinArm64RunsNativeDemoQualification(t *testing.T) {
+	workflow := decodeWorkflow(t, ".github/workflows/ci.yml")
+	testJob := requiredWorkflowJob(t, workflow, "test")
+	var harnessTest, qualification *workflowStep
+	for index := range testJob.Steps {
+		step := &testJob.Steps[index]
+		switch step.Name {
+		case "Test native demo qualification harness":
+			harnessTest = step
+		case "Qualify native macOS 15 arm64 demo":
+			qualification = step
+		}
+	}
+	if harnessTest == nil {
+		t.Fatal("CI omits the Linux-local demo qualification harness test")
+	}
+	if harnessTest.If != "matrix.name == 'linux-amd64'" || harnessTest.Run != "PYTHONDONTWRITEBYTECODE=1 python3 scripts/qualify_demo_test.py" {
+		t.Fatalf("Linux-local harness test is not narrowly scoped: %+v", *harnessTest)
+	}
+	if qualification == nil {
+		t.Fatal("CI omits native macOS 15 arm64 demo qualification")
+	}
+	if qualification.If != "matrix.name == 'darwin-arm64'" {
+		t.Fatalf("native demo qualification condition = %q", qualification.If)
+	}
+	if strings.Contains(qualification.Run, `--binary "$GITHUB_WORKSPACE`) {
+		t.Fatal("native demo qualification uses a binary inside the checkout")
+	}
+	for _, required := range []string{
+		"python3 scripts/qualify_demo.py",
+		`--source-root "$GITHUB_WORKSPACE"`,
+		`--source-commit "$GITHUB_SHA"`,
+		`--work-root "$RUNNER_TEMP/cirewind-demo-qualification"`,
+		"--require-macos-major 15",
+		"--require-machine arm64",
+		"--require-homebrew",
+	} {
+		if !strings.Contains(qualification.Run, required) {
+			t.Errorf("native demo qualification lacks %q", required)
+		}
 	}
 }
 

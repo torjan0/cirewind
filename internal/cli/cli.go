@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/torjan0/cirewind/internal/buildinfo"
 	"github.com/torjan0/cirewind/internal/sanitize"
@@ -20,6 +21,7 @@ Usage:
   cirewind investigate [flags]   collect GitHub-hosted incident evidence
   cirewind archive [flags]       preserve a compact execution ledger
   cirewind replay [flags]        apply an incident pack to an archive offline
+  cirewind demo --out CASE_DIR   generate a verified synthetic case offline
   cirewind pack validate FILE    validate an incident pack offline
   cirewind verify CASE_DIR       verify a case manifest offline
   cirewind version               print build version
@@ -33,6 +35,10 @@ requests.
 
 // Run executes the CLI and returns a process exit code.
 func Run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
+	return runWithDependencies(ctx, args, stdout, stderr, productionCommandDependencies())
+}
+
+func runWithDependencies(ctx context.Context, args []string, stdout, stderr io.Writer, dependencies commandDependencies) int {
 	if len(args) == 0 {
 		fmt.Fprint(stdout, usage)
 		return 0
@@ -50,8 +56,8 @@ func Run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 			return 2
 		}
 		switch args[1] {
-		case "investigate", "archive", "replay", "pack", "verify":
-			err = runCommand(ctx, []string{args[1], "--help"}, stdout, stdout)
+		case "investigate", "archive", "replay", "demo", "pack", "verify":
+			err = runCommandWithDependencies(ctx, []string{args[1], "--help"}, stdout, stdout, dependencies)
 		case "version":
 			fmt.Fprintln(stdout, "Usage:\n  cirewind version\n\nPrints the build version, source revision, and build time.")
 			return 0
@@ -65,17 +71,21 @@ func Run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	case "version", "--version":
 		fmt.Fprintf(stdout, "cirewind %s (commit %s, built %s)\n", buildinfo.Version, buildinfo.Commit, buildinfo.Date)
 		return 0
-	case "investigate", "archive", "replay", "pack", "verify":
+	case "investigate", "archive", "replay", "demo", "pack", "verify":
 		commandErrors := stderr
 		if len(args) == 2 && (args[1] == "--help" || args[1] == "-h") {
 			commandErrors = stdout
 		}
-		err = runCommand(ctx, args, stdout, commandErrors)
+		err = runCommandWithDependencies(ctx, args, stdout, commandErrors, dependencies)
 	default:
 		fmt.Fprintf(stderr, "cirewind: unknown command %q\n\n%s", sanitizeDiagnostic(args[0]), usage)
 		return 2
 	}
 
+	return writeCLIError(stderr, err)
+}
+
+func writeCLIError(stderr io.Writer, err error) int {
 	if err == nil {
 		return 0
 	}
@@ -95,5 +105,11 @@ func Run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 }
 
 func sanitizeDiagnostic(value string) string {
+	if strings.Contains(value, ".cirewind-case-") {
+		// A post-builder filesystem or SQLite error may include the randomized
+		// owner-only staging path. Keep a useful operational category without
+		// publishing private path or temporary-parent details to the terminal.
+		value = "case operation failed in private staging; private path withheld"
+	}
 	return sanitize.Terminal(value, maxCLIDiagnosticBytes)
 }

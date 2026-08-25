@@ -330,7 +330,7 @@ func (e CredentialExposure) Validate() error {
 	if !e.Kind.Valid() {
 		return fmt.Errorf("invalid credential-exposure kind %q", e.Kind)
 	}
-	if e.Basis != "" && !e.Basis.Valid() {
+	if !e.Basis.Valid() {
 		return fmt.Errorf("invalid credential-exposure basis %q", e.Basis)
 	}
 	if e.SecretName != nil {

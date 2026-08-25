@@ -226,9 +226,30 @@ def audit(report: Path, driver: Driver) -> dict[str, object]:
 const counted = [...document.querySelectorAll('[data-finding-item][data-counted="true"]')];
 const visible = () => counted.filter(item => !item.hidden).length;
 const displayed = () => document.getElementById('visible-count').textContent;
+const laneElements = [...document.querySelectorAll('[data-graph-item][data-visual-lane="true"][data-revision]')];
+const unique = values => [...new Set(values)].sort();
+const tableRevisions = unique(counted.map(item => item.dataset.revision));
+const laneRevisions = unique(laneElements.map(item => item.dataset.revision));
+const visualSnapshot = () => {
+  const visibleFindings = unique(counted.filter(item => !item.hidden).map(item => item.dataset.revision));
+  const visibleLanes = unique(laneElements.filter(item => !item.hasAttribute('hidden')).map(item => item.dataset.revision));
+  const expectedShown = visibleFindings.filter(revision => laneRevisions.includes(revision));
+  return {
+    visibleFindings,
+    visibleLanes,
+    expectedShown,
+    expectedOmitted: visibleFindings.length - expectedShown.length,
+    shownText: Number(document.getElementById('visual-shown').textContent),
+    omittedText: Number(document.getElementById('visual-omitted').textContent),
+    laneVisibilityConsistent: laneRevisions.every(revision => {
+      const values = laneElements.filter(item => item.dataset.revision === revision).map(item => item.hasAttribute('hidden'));
+      return values.every(value => value === values[0]);
+    })
+  };
+};
 const filter = document.querySelector('[data-filter="state"]');
 const option = filter ? [...filter.options].find(candidate => candidate.value) : null;
-const initial = {visible: visible(), displayed: displayed()};
+const initial = {visible: visible(), displayed: displayed(), visual: visualSnapshot()};
 let filtered = null;
 if (filter && option) {
   filter.value = option.value;
@@ -237,7 +258,10 @@ if (filter && option) {
     state: option.value,
     visible: visible(),
     displayed: displayed(),
-    expected: counted.filter(item => item.dataset.state === option.value).length
+    expected: counted.filter(item => item.dataset.state === option.value).length,
+    tableRows: counted.length,
+    tableRevisions: unique(counted.map(item => item.dataset.revision)),
+    visual: visualSnapshot()
   };
   document.getElementById('filter-reset').click();
 }
@@ -247,9 +271,11 @@ return {
   scripts: [...document.scripts].map(element => ({src: element.src, text: element.textContent})),
   styles: [...document.querySelectorAll('style')].map(element => element.textContent),
   counted: counted.length,
+  tableRevisions,
+  laneRevisions,
   initial,
   filtered,
-  reset: {visible: visible(), displayed: displayed()}
+  reset: {visible: visible(), displayed: displayed(), visual: visualSnapshot()}
 };
 """,
             "args": [],
@@ -268,14 +294,40 @@ return {
         raise AuditError("initial report filter hid findings")
     if state["initial"]["displayed"] != str(state["counted"]):
         raise AuditError("initial visible-count text is inconsistent")
+    if len(state["tableRevisions"]) != state["counted"]:
+        raise AuditError("complete findings table contains duplicate or missing revisions")
+    if not set(state["laneRevisions"]).issubset(state["tableRevisions"]):
+        raise AuditError("visual contains a lane absent from the complete findings table")
     if state["filtered"] is None:
         raise AuditError("report has no usable state filter")
     if state["filtered"]["visible"] != state["filtered"]["expected"]:
         raise AuditError("state filter displayed the wrong findings")
     if state["filtered"]["displayed"] != str(state["filtered"]["expected"]):
         raise AuditError("filtered visible-count text is inconsistent")
+    if state["filtered"]["tableRows"] != state["counted"]:
+        raise AuditError("filter removed a finding from the complete findings table")
+    if state["filtered"]["tableRevisions"] != state["tableRevisions"]:
+        raise AuditError("filter changed the complete findings-table revision set")
     if state["reset"]["visible"] != state["counted"]:
         raise AuditError("filter reset did not restore all findings")
+
+    def assert_visual_intersection(label: str, snapshot: dict[str, object]) -> None:
+        visible_lanes = snapshot["visibleLanes"]
+        expected_shown = snapshot["expectedShown"]
+        if visible_lanes != expected_shown:
+            raise AuditError(
+                f"{label} filter admitted a nonmatching/non-rendered lane or hid a matching rendered lane"
+            )
+        if snapshot["shownText"] != len(expected_shown):
+            raise AuditError(f"{label} visual shown-count is inconsistent")
+        if snapshot["omittedText"] != snapshot["expectedOmitted"]:
+            raise AuditError(f"{label} visual omitted-count is inconsistent")
+        if not snapshot["laneVisibilityConsistent"]:
+            raise AuditError(f"{label} inline and accessible lane copies disagree")
+
+    assert_visual_intersection("initial", state["initial"]["visual"])
+    assert_visual_intersection("filtered", state["filtered"]["visual"])
+    assert_visual_intersection("reset", state["reset"]["visual"])
 
     directives = parse_csp(state["csp"])
     required_none = (
@@ -316,6 +368,8 @@ return {
         "findings": state["counted"],
         "filterState": state["filtered"]["state"],
         "filterMatches": state["filtered"]["visible"],
+        "visualLanes": len(state["laneRevisions"]),
+        "visualOmittedForFilter": state["filtered"]["visual"]["omittedText"],
         "pageRequests": len(requests),
         "externalRequests": len(external),
         "consoleErrors": len(severe),

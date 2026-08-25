@@ -241,6 +241,10 @@ func DeriveWithRaw(ctx context.Context, snapshot archive.Snapshot, pack *inciden
 
 	analysis.Case.Findings = findings
 	analysis.Case.Graph = buildGraph(idx, analysis.Case.Findings)
+	analysis.Case.GraphV2, err = buildGraphV2(idx, analysis.Case.Graph, analysis.Case.Findings, pack, analysis.Case.Metadata.CaseKind)
+	if err != nil {
+		return RawResult{}, fmt.Errorf("project retained-literal v0.2 evidence graph: %w", err)
+	}
 	if err := analysis.Case.NormalizeAndValidate(); err != nil {
 		return RawResult{}, err
 	}

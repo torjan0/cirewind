@@ -158,10 +158,24 @@ func readMetadata(ctx context.Context, database *sql.DB) (SnapshotMetadata, erro
 // Append atomically completes a prepared batch. Repeating an identical batch
 // is a no-op. A batch prepared before interruption is resumed by content ID.
 func (a *Archive) Append(ctx context.Context, input Batch) error {
+	return a.append(ctx, input, false)
+}
+
+func (a *Archive) appendRetained(ctx context.Context, input Batch) error {
+	return a.append(ctx, input, true)
+}
+
+func (a *Archive) append(ctx context.Context, input Batch, allowRetainedLegacyBasis bool) error {
 	if a.readOnly {
 		return errors.New("cannot append to a read-only replay archive")
 	}
-	batch, err := NormalizeBatch(input)
+	var batch Batch
+	var err error
+	if allowRetainedLegacyBasis {
+		batch, err = normalizeRetainedBatch(input)
+	} else {
+		batch, err = NormalizeBatch(input)
+	}
 	if err != nil {
 		return err
 	}

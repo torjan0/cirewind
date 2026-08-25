@@ -191,13 +191,17 @@ class.
 
 Retained v1 archives require a narrow compatibility rule because a legal legacy
 credential exposure can have an empty or now-unrecognized `basis`. Replay must
-preserve that canonical finding, its exposure payload, evidence links, and the
-archive bytes. It omits only the v1alpha2 relationship that cannot be classified
-without invention and emits a scoped presentation notice with closed code
-`UNCLASSIFIABLE_LEGACY_BASIS`, the finding revision ID, affected relationship,
-and the source evidence IDs. The notice appears in `graph.json` projection
-notices, the SVG lane, and the accessible fallback; it is not an edge, canonical
-finding state, provenance level, or replacement collection-coverage fact. The
+preserve that canonical finding, source exposure fact, evidence links, counts,
+and archive bytes. Because the frozen findings schema requires a nonempty
+presentation basis, an empty source basis is rendered as the explicit
+non-classifying value `legacy-unclassified`; a bounded safe unrecognized value
+is preserved verbatim. It omits only the v1alpha2 relationship that cannot be
+classified without invention and emits a scoped presentation notice with closed
+code `UNCLASSIFIABLE_LEGACY_BASIS`, the finding revision ID, affected
+relationship, and the source evidence IDs. The notice appears in `graph.json`
+projection notices, the SVG lane, and the accessible fallback; it is not an
+edge, canonical finding state, provenance level, or replacement
+collection-coverage fact. The
 visual states that its relationship projection is partial. It must not infer a
 class from relationship type, finding provenance, exposure kind, the legacy
 `Inferred` Boolean, or renderer defaults. New v0.2 facts—including the embedded
@@ -683,7 +687,9 @@ may contain an execution edge.
     above and are never content-parsed.
 12. Manual accessibility checklist passes on the exact release candidate.
 13. Replaying a retained v1 archive with an empty credential basis preserves
-    findings/exposures and archive bytes, omits only the unclassifiable v2 edge,
+    findings, counts, source exposure facts, and archive bytes; uses
+    `legacy-unclassified` only in the schema-valid presentation exposure; omits
+    only the unclassifiable v2 edge,
     emits the distinct scoped projection notice in every presentation without
     changing UNKNOWN/finding/provenance/exposure/coverage counts or claiming the
     evidence itself is missing, and performs no network call.

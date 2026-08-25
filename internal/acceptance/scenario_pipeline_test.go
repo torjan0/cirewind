@@ -17,6 +17,7 @@ import (
 	"github.com/torjan0/cirewind/internal/incident"
 	"github.com/torjan0/cirewind/internal/logparse"
 	"github.com/torjan0/cirewind/internal/model"
+	"github.com/torjan0/cirewind/internal/report"
 	"github.com/torjan0/cirewind/internal/store"
 	"github.com/torjan0/cirewind/internal/workflow"
 )
@@ -415,25 +416,36 @@ func (b *snapshotBuilder) addContradictionFacts(executions []fixtureExecution) {
 	callerObject := mustCallerObject(b.t, b.inventory.Identifiers.HistoricalWorkflowSHA)
 	safeObject := mustActionObject(b.t, b.item.DeclaredSHA)
 	affectedObject := mustActionObject(b.t, b.item.RuntimeSHA)
+	runtime := b.exactRuntimeFact(execution, targetRepository, affectedObject)
 	scope := scopeFor(logScope{RunID: execution.RunID, RunAttempt: execution.RunAttempt, JobID: execution.JobID}, b.inventory.Repository.ID)
 	workflowEvidence := b.addEnvelope("workflow/"+b.item.ID, evidence.SourceRepositoryContent, scope, b.executionEvent(execution), workflowBytes)
-	static := b.addFact(archive.Fact{Kind: archive.FactDependency, EvidenceIDs: []model.EvidenceID{workflowEvidence}, Dependency: &archive.DependencyFact{
+	b.addFact(archive.Fact{Kind: archive.FactDependency, EvidenceIDs: []model.EvidenceID{workflowEvidence}, Dependency: &archive.DependencyFact{
 		Relation: archive.DependencyWorkflowDeclaredAction, TargetKind: archive.DependencyTargetAction,
 		Basis: archive.DefinitionHistoricalAtRun, CallerRepositoryID: model.RepositoryID(b.inventory.Repository.ID),
 		CallerRepository: callerRepository, CallerPath: ".github/workflows/" + filepathBase(b.item.Workflow),
 		CallerWorkflowObjectID: &callerObject, TargetRepository: targetRepository, DeclaredRef: declaration.Ref,
 		TargetActionObjectID: &safeObject, Execution: ptrModel(execution.model(b.inventory.Repository.ID)),
-		ContradictsFactIDs: []string{}, EventTime: b.executionEvent(execution),
+		StepKey: runtime.Subject.StepKey, ContradictsFactIDs: []string{runtime.ID}, EventTime: b.executionEvent(execution),
 	}})
-	setupEvidence := b.firstSetupEvidence(execution)
-	b.addFact(archive.Fact{Kind: archive.FactDependency, EvidenceIDs: []model.EvidenceID{setupEvidence}, Dependency: &archive.DependencyFact{
-		Relation: archive.DependencyRefResolvedTo, TargetKind: archive.DependencyTargetAction,
-		Basis: archive.DefinitionHistoricalAtRun, CallerRepositoryID: model.RepositoryID(b.inventory.Repository.ID),
-		CallerRepository: callerRepository, CallerPath: ".github/workflows/" + filepathBase(b.item.Workflow),
-		CallerWorkflowObjectID: &callerObject, TargetRepository: targetRepository, DeclaredRef: declaration.Ref,
-		TargetActionObjectID: &affectedObject, Execution: ptrModel(execution.model(b.inventory.Repository.ID)),
-		ContradictsFactIDs: []string{static.ID}, EventTime: b.executionEvent(execution),
-	}})
+}
+
+func (b *snapshotBuilder) exactRuntimeFact(execution fixtureExecution, repository model.RepositorySlug, object model.ActionSourceObjectID) archive.Fact {
+	var matches []archive.Fact
+	for _, fact := range b.facts {
+		if fact.ActionOccurrence == nil || fact.Subject.StepKey == "" {
+			continue
+		}
+		observation := fact.ActionOccurrence.Observation
+		if observation.Execution.String() != execution.model(b.inventory.Repository.ID).String() ||
+			observation.ActionRepository != repository || observation.SourceObjectID == nil || *observation.SourceObjectID != object {
+			continue
+		}
+		matches = append(matches, fact)
+	}
+	if len(matches) != 1 {
+		b.t.Fatalf("contradiction fixture requires one exact runtime occurrence, got %d", len(matches))
+	}
+	return matches[0]
 }
 
 func (b *snapshotBuilder) addCoverageFacts(executions []fixtureExecution) {
@@ -455,48 +467,49 @@ func (b *snapshotBuilder) addCoverageFacts(executions []fixtureExecution) {
 			evidenceIDs = append(evidenceIDs, b.addEnvelope("coverage/"+b.item.ID+"/"+execution.key(), evidence.SourceAPIJSON, scope, unknownEvent(), encoded))
 		}
 		evidenceIDs = model.SortEvidenceIDs(evidenceIDs)
-		unit := model.CoverageUnit{Kind: model.CoverageJobLog, Scope: scope, LogicalKey: "job-log:" + identity.String(), RequiredForNegative: true}
 		availability := b.logAvailability(execution)
 		notApplicable := availability == "NOT_GENERATED" && !b.jobStarted(execution)
 		parserGap := b.hasIncompleteParsedLog(execution)
 		retentionGap := availability == "EXPIRED"
-		if notApplicable {
-			unit.RequiredForNegative = false
+		parserGapReason := model.GapUnsupportedGrammar
+		parserGapMessage := "synthetic log did not satisfy the pinned parser grammar"
+		if retentionGap {
+			parserGapReason = model.GapRetentionOrDeletion
+			parserGapMessage = "synthetic retained logs are unavailable to the pinned parser grammar"
 		}
-		var err error
-		unit.ID, err = evidence.NewCoverageUnitID(unit)
-		if err != nil {
-			b.t.Fatal(err)
-		}
-		one := uint64(1)
-		assessment := model.CoverageAssessment{UnitID: unit.ID, ExpectedCount: &one, EvidenceIDs: evidenceIDs}
-		gap := retentionGap || parserGap
-		switch {
-		case notApplicable:
-			assessment.Status = model.CoverageNotApplicable
-		case gap:
-			assessment.Status = model.CoverageGap
-			reason := model.GapRetentionOrDeletion
-			message := "synthetic retained logs are unavailable"
-			if parserGap {
-				reason = model.GapUnsupportedGrammar
-				message = "synthetic log did not satisfy the pinned parser grammar"
-			}
-			assessment.Gap = &model.CoverageGapDetail{Reason: reason, Material: true, SanitizedMessage: message}
-		default:
-			assessment.Status = model.CoverageCollected
-			assessment.ObservedCount = 1
-		}
-		assessment.ID, err = evidence.NewCoverageAssessmentID(assessment)
-		if err != nil {
-			b.t.Fatal(err)
-		}
-		if gap {
-			b.addFact(archive.Fact{Kind: archive.FactCoverageGap, EvidenceIDs: evidenceIDs, CoverageGap: &archive.CoverageGapFact{Unit: unit, Assessment: assessment}})
-		} else {
-			b.addFact(archive.Fact{Kind: archive.FactCoverage, EvidenceIDs: evidenceIDs, Coverage: &archive.CoverageFact{Unit: unit, Assessment: assessment}})
-		}
+		b.addCoverageFact(identity, scope, model.CoverageJobLog, "job-log:", evidenceIDs, notApplicable, retentionGap, model.GapRetentionOrDeletion, "synthetic retained logs are unavailable")
+		b.addCoverageFact(identity, scope, model.CoverageParserGrammar, "parser-grammar:", evidenceIDs, notApplicable, retentionGap || parserGap, parserGapReason, parserGapMessage)
 	}
+}
+
+func (b *snapshotBuilder) addCoverageFact(identity model.JobExecutionIdentity, scope model.CoverageScope, kind model.CoverageKind, logicalPrefix string, evidenceIDs []model.EvidenceID, notApplicable, gap bool, gapReason model.GapReason, gapMessage string) {
+	unit := model.CoverageUnit{Kind: kind, Scope: scope, LogicalKey: logicalPrefix + identity.String(), RequiredForNegative: !notApplicable}
+	var err error
+	unit.ID, err = evidence.NewCoverageUnitID(unit)
+	if err != nil {
+		b.t.Fatal(err)
+	}
+	one := uint64(1)
+	assessment := model.CoverageAssessment{UnitID: unit.ID, ExpectedCount: &one, EvidenceIDs: evidenceIDs}
+	switch {
+	case notApplicable:
+		assessment.Status = model.CoverageNotApplicable
+	case gap:
+		assessment.Status = model.CoverageGap
+		assessment.Gap = &model.CoverageGapDetail{Reason: gapReason, Material: true, SanitizedMessage: gapMessage}
+	default:
+		assessment.Status = model.CoverageCollected
+		assessment.ObservedCount = 1
+	}
+	assessment.ID, err = evidence.NewCoverageAssessmentID(assessment)
+	if err != nil {
+		b.t.Fatal(err)
+	}
+	if gap {
+		b.addFact(archive.Fact{Kind: archive.FactCoverageGap, EvidenceIDs: evidenceIDs, CoverageGap: &archive.CoverageGapFact{Unit: unit, Assessment: assessment}})
+		return
+	}
+	b.addFact(archive.Fact{Kind: archive.FactCoverage, EvidenceIDs: evidenceIDs, Coverage: &archive.CoverageFact{Unit: unit, Assessment: assessment}})
 }
 
 func (b *snapshotBuilder) addEnvelope(label string, kind evidence.SourceKind, scope model.CoverageScope, event model.EventInterval, source []byte) model.EvidenceID {
@@ -555,16 +568,6 @@ func (b *snapshotBuilder) eventForRun(runID int64, attempt int) model.EventInter
 		}
 	}
 	return unknownEvent()
-}
-
-func (b *snapshotBuilder) firstSetupEvidence(execution fixtureExecution) model.EvidenceID {
-	for _, value := range b.parsed {
-		if value.Entry.Role == string(logparse.RoleSetup) && executionKey(value.Entry.Scope.RunID, value.Entry.Scope.RunAttempt, value.Entry.Scope.JobID) == execution.key() {
-			return b.logEvidence[value.Entry.Path]
-		}
-	}
-	b.t.Fatalf("scenario %s has no setup evidence for %s", b.item.ID, execution.key())
-	return ""
 }
 
 func (b *snapshotBuilder) logAvailability(execution fixtureExecution) string {
@@ -676,6 +679,38 @@ func assertScenarioFindings(t testing.TB, item scenario, result scenarioPipeline
 	}
 	if item.ExpectedRuntimeObservationCount != nil && len(result.RuntimeObservations) != *item.ExpectedRuntimeObservationCount {
 		t.Errorf("runtime observation count = %d, want %d", len(result.RuntimeObservations), *item.ExpectedRuntimeObservationCount)
+	}
+	assertTightenedScenarioSemantics(t, item, findings)
+}
+
+func assertTightenedScenarioSemantics(t testing.TB, item scenario, findings []report.Finding) {
+	t.Helper()
+	switch item.ID {
+	case "E", "F":
+		for _, finding := range findings {
+			if finding.IndicatorID != "affected-commit" || finding.State != string(model.NoMatchConfirmed) || finding.RunAttempt != 2 {
+				continue
+			}
+			if len(finding.CollectionCoverage) != 2 || finding.CollectionCoverage[0] == finding.CollectionCoverage[1] {
+				t.Fatalf("scenario %s exact-runtime negative lacks distinct job-log and parser-grammar closure: %+v", item.ID, finding.CollectionCoverage)
+			}
+			return
+		}
+		t.Fatalf("scenario %s lacks its attempt-2 exact-runtime negative", item.ID)
+	case "P":
+		if len(findings) != 1 {
+			t.Fatalf("contradiction scenario findings = %d, want exactly one: %+v", len(findings), findings)
+		}
+		finding := findings[0]
+		if finding.State != string(model.ContradictoryEvidence) || finding.RunAttempt != 1 || finding.JobID != 920017 || finding.StepIdentity == "" {
+			t.Fatalf("contradiction was not bound to the exact runtime step: %+v", finding)
+		}
+		if len(finding.ContradictoryEvidence) != 1 {
+			t.Fatalf("contradiction lacks one explicit historical-definition fact link: %+v", finding.ContradictoryEvidence)
+		}
+		if len(finding.EvidenceIDs) < 3 {
+			t.Fatalf("contradiction evidence chain omits historical or runtime support: %+v", finding.EvidenceIDs)
+		}
 	}
 }
 

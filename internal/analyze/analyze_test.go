@@ -343,17 +343,20 @@ func TestKnownGoodRuntimeNeedsExplicitClosedCoverageForNoMatch(t *testing.T) {
 	step := model.StepIdentity{Job: execution, APIStepNumber: &stepNumber, LifecyclePhase: model.LifecycleMain, Occurrence: 1}
 	evidenceID := model.EvidenceID("ev1:" + strings.Repeat("a", 64))
 	coverageID := model.CoverageAssessmentID("cova1:" + strings.Repeat("d", 64))
-	coverage := archive.Fact{
-		ID: "fact1:" + strings.Repeat("e", 64), Kind: archive.FactCoverage,
-		Subject:     archive.FactSubject{RepositoryID: 1, RunID: ptr(model.WorkflowRunID(10)), RunAttempt: ptr(model.RunAttempt(1)), JobID: ptr(model.JobID(20))},
-		EvidenceIDs: []model.EvidenceID{evidenceID},
-		Coverage:    &archive.CoverageFact{Assessment: model.CoverageAssessment{ID: coverageID, Status: model.CoverageCollected}},
-	}
+	grammarCoverageID := model.CoverageAssessmentID("cova1:" + strings.Repeat("e", 64))
+	one := uint64(1)
+	coverageScope := model.CoverageScope{RepositoryID: ptr(model.RepositoryID(1)), RunID: ptr(model.WorkflowRunID(10)), RunAttempt: ptr(model.RunAttempt(1)), JobID: ptr(model.JobID(20))}
+	coverage := archive.Fact{ID: "fact1:" + strings.Repeat("e", 64), Kind: archive.FactCoverage,
+		Subject: archive.FactSubject{RepositoryID: 1, RunID: ptr(model.WorkflowRunID(10)), RunAttempt: ptr(model.RunAttempt(1)), JobID: ptr(model.JobID(20))}, EvidenceIDs: []model.EvidenceID{evidenceID},
+		Coverage: &archive.CoverageFact{Unit: model.CoverageUnit{Kind: model.CoverageJobLog, Scope: coverageScope, RequiredForNegative: true}, Assessment: model.CoverageAssessment{ID: coverageID, Status: model.CoverageCollected, ExpectedCount: &one, ObservedCount: 1}}}
+	grammarCoverage := archive.Fact{ID: "fact1:" + strings.Repeat("f", 64), Kind: archive.FactCoverage,
+		Subject: archive.FactSubject{RepositoryID: 1, RunID: ptr(model.WorkflowRunID(10)), RunAttempt: ptr(model.RunAttempt(1)), JobID: ptr(model.JobID(20))}, EvidenceIDs: []model.EvidenceID{evidenceID},
+		Coverage: &archive.CoverageFact{Unit: model.CoverageUnit{Kind: model.CoverageParserGrammar, Scope: coverageScope, RequiredForNegative: true}, Assessment: model.CoverageAssessment{ID: grammarCoverageID, Status: model.CoverageCollected, ExpectedCount: &one, ObservedCount: 1}}}
 	snapshot := archive.Snapshot{Metadata: archive.SnapshotMetadata{ArchiveID: "arc1:" + strings.Repeat("b", 64)}, Facts: []archive.Fact{
 		{Kind: archive.FactRepository, Subject: archive.FactSubject{RepositoryID: 1}, Repository: &archive.RepositoryFact{Repository: model.RepositorySubject{ID: 1, Name: repository}}},
 		{Kind: archive.FactRun, Subject: archive.FactSubject{RepositoryID: 1}, Run: &archive.RunFact{RepositoryID: 1, RunID: 10, WorkflowPath: &workflowPath, EventTime: event}},
 		{ID: "fact1:" + strings.Repeat("c", 64), Kind: archive.FactActionOccurrence, Subject: archive.FactSubject{RepositoryID: 1, RunID: ptr(model.WorkflowRunID(10)), RunAttempt: ptr(model.RunAttempt(1)), JobID: ptr(model.JobID(20)), StepKey: step.Key()}, EvidenceIDs: []model.EvidenceID{evidenceID}, ActionOccurrence: &archive.ActionOccurrenceFact{Observation: model.RuntimeActionObservation{Kind: model.ObservationLifecycleStarted, Execution: execution, Step: &step, ActionRepository: actionRepository, SourceObjectID: &safeAction, EventTime: event}}},
-		coverage,
+		coverage, grammarCoverage,
 	}}
 	result, err := Derive(snapshot, loadPack(t), when.Time, "replay")
 	if err != nil {
@@ -363,7 +366,7 @@ func TestKnownGoodRuntimeNeedsExplicitClosedCoverageForNoMatch(t *testing.T) {
 	for _, finding := range result.Case.Findings {
 		if finding.State == string(model.NoMatchConfirmed) {
 			found = true
-			if len(finding.CollectionCoverage) != 1 || finding.CollectionCoverage[0] != string(coverageID) {
+			if len(finding.CollectionCoverage) != 2 {
 				t.Fatalf("NO_MATCH_CONFIRMED lost coverage support: %#v", finding.CollectionCoverage)
 			}
 		}
@@ -372,9 +375,20 @@ func TestKnownGoodRuntimeNeedsExplicitClosedCoverageForNoMatch(t *testing.T) {
 		t.Fatal("known-good exact runtime plus explicit closed coverage did not produce NO_MATCH_CONFIRMED")
 	}
 
+	onlyJobLog := snapshot
+	onlyJobLog.Facts = append([]archive.Fact(nil), snapshot.Facts[:4]...)
+	result, err = Derive(onlyJobLog, loadPack(t), when.Time, "replay")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, finding := range result.Case.Findings {
+		if finding.State == string(model.NoMatchConfirmed) {
+			t.Fatal("one arbitrary required coverage capability produced NO_MATCH_CONFIRMED")
+		}
+	}
+
 	withoutCoverage := snapshot
-	withoutCoverage.Facts = withoutCoverage.Facts[:2]
-	withoutCoverage.Facts = append(withoutCoverage.Facts, snapshot.Facts[2])
+	withoutCoverage.Facts = withoutCoverage.Facts[:3]
 	result, err = Derive(withoutCoverage, loadPack(t), when.Time, "replay")
 	if err != nil {
 		t.Fatal(err)
@@ -387,6 +401,138 @@ func TestKnownGoodRuntimeNeedsExplicitClosedCoverageForNoMatch(t *testing.T) {
 			t.Fatalf("known-good runtime was mislabeled as affected: %s", finding.State)
 		}
 	}
+}
+
+func TestCalledWorkflowConfirmationRequiresExactAttemptMetadata(t *testing.T) {
+	when := model.MustInstant(time.Date(2026, 8, 19, 10, 30, 0, 0, time.UTC))
+	event := model.EventInterval{Start: &when, Precision: model.PrecisionSecond, Approximation: model.ApproximationExact, Basis: model.TimeBasisAPIField}
+	repository, _ := model.NewRepositorySlug("acme/service")
+	target, _ := model.NewRepositorySlug("cirewind-fixtures/harmless-workflows")
+	workflowPath, _ := model.NewWorkflowPath(".github/workflows/build.yml")
+	caller := model.CallerWorkflowObjectID(model.GitObjectID{Algorithm: model.HashSHA1, Value: strings.Repeat("2", 40)})
+	called := model.CalledWorkflowObjectID(model.GitObjectID{Algorithm: model.HashSHA1, Value: strings.Repeat("3", 40)})
+	execution := model.JobExecutionIdentity{RepositoryID: 1, RunID: 10, RunAttempt: 2, JobID: 20}
+	attempt := model.RunAttemptIdentity{RepositoryID: 1, RunID: 10, RunAttempt: 2}
+	evidenceID := model.EvidenceID("ev1:" + strings.Repeat("a", 64))
+	base := []archive.Fact{
+		{Kind: archive.FactRepository, Subject: archive.FactSubject{RepositoryID: 1}, Repository: &archive.RepositoryFact{Repository: model.RepositorySubject{ID: 1, Name: repository}}},
+		{Kind: archive.FactRun, Subject: archive.FactSubject{RepositoryID: 1, RunID: ptr(model.WorkflowRunID(10))}, Run: &archive.RunFact{RepositoryID: 1, RunID: 10, WorkflowPath: &workflowPath, EventTime: event}},
+	}
+	historical := archive.Fact{ID: "fact1:" + strings.Repeat("b", 64), Kind: archive.FactDependency, Subject: archive.FactSubject{RepositoryID: 1, RunID: ptr(model.WorkflowRunID(10)), RunAttempt: ptr(model.RunAttempt(2)), JobID: ptr(model.JobID(20))}, EvidenceIDs: []model.EvidenceID{evidenceID}, Dependency: &archive.DependencyFact{
+		Relation: archive.DependencyWorkflowCalledWorkflow, TargetKind: archive.DependencyTargetReusableWorkflow, Basis: archive.DefinitionHistoricalAtRun,
+		CallerRepositoryID: 1, CallerRepository: repository, CallerPath: ".github/workflows/build.yml", CallerWorkflowObjectID: &caller,
+		TargetRepository: target, TargetPath: ".github/workflows/reusable.yaml", TargetCalledWorkflowObjectID: &called, Execution: &execution, ContradictsFactIDs: []string{}, EventTime: event,
+	}}
+	runtime := archive.Fact{ID: "fact1:" + strings.Repeat("c", 64), Kind: archive.FactDependency, Subject: archive.FactSubject{RepositoryID: 1, RunID: ptr(model.WorkflowRunID(10)), RunAttempt: ptr(model.RunAttempt(2))}, EvidenceIDs: []model.EvidenceID{evidenceID}, Dependency: &archive.DependencyFact{
+		Relation: archive.DependencyWorkflowCalledWorkflow, TargetKind: archive.DependencyTargetReusableWorkflow, Basis: archive.DefinitionRuntimeAttemptMetadata,
+		CallerRepositoryID: 1, CallerRepository: repository, CallerPath: ".github/workflows/build.yml", TargetRepository: target,
+		TargetPath: ".github/workflows/reusable.yaml", TargetCalledWorkflowObjectID: &called, AttemptExecution: &attempt, ContradictsFactIDs: []string{}, EventTime: event,
+	}}
+	for _, test := range []struct {
+		name string
+		fact archive.Fact
+		want model.FindingState
+	}{
+		{name: "historical YAML is declaration only", fact: historical, want: model.DeclaredAtRunSHA},
+		{name: "GitHub attempt metadata confirms call", fact: runtime, want: model.ConfirmedCalledWorkflow},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			snapshot := archive.Snapshot{Metadata: archive.SnapshotMetadata{ArchiveID: "arc1:" + strings.Repeat("d", 64)}, Facts: append(append([]archive.Fact(nil), base...), test.fact)}
+			result, err := Derive(snapshot, loadPack(t), when.Time.Add(time.Hour), ModeReplay)
+			if err != nil {
+				t.Fatal(err)
+			}
+			found := false
+			for _, finding := range result.Case.Findings {
+				if finding.IndicatorID == "synthetic-called-workflow" {
+					found = true
+					if finding.State != string(test.want) {
+						t.Fatalf("state=%s, want %s", finding.State, test.want)
+					}
+				}
+			}
+			if !found {
+				t.Fatal("called-workflow indicator produced no finding")
+			}
+		})
+	}
+}
+
+func TestContradictionRequiresLinkedStaticRuntimeConflictAtSameStep(t *testing.T) {
+	repository, _ := model.NewRepositorySlug("cirewind-fixtures/harmless-action")
+	safe := mustTestActionOID(t, strings.Repeat("0", 40))
+	affected := mustTestActionOID(t, strings.Repeat("1", 40))
+	execution := model.JobExecutionIdentity{RepositoryID: 1, RunID: 10, RunAttempt: 1, JobID: 20}
+	stepNumber := model.APIStepNumber(2)
+	step := model.StepIdentity{Job: execution, APIStepNumber: &stepNumber, LifecyclePhase: model.LifecycleMain, Occurrence: 1}
+	runtime := archive.Fact{ID: "fact1:" + strings.Repeat("a", 64), Kind: archive.FactActionOccurrence, Subject: archive.FactSubject{RepositoryID: 1, RunID: ptr(model.WorkflowRunID(10)), RunAttempt: ptr(model.RunAttempt(1)), JobID: ptr(model.JobID(20)), StepKey: step.Key()}, EvidenceIDs: []model.EvidenceID{model.EvidenceID("ev1:" + strings.Repeat("a", 64))}, ActionOccurrence: &archive.ActionOccurrenceFact{Observation: model.RuntimeActionObservation{Kind: model.ObservationLifecycleStarted, Execution: execution, Step: &step, ActionRepository: repository, SourceObjectID: &affected}}}
+	definition := archive.Fact{ID: "fact1:" + strings.Repeat("b", 64), Kind: archive.FactDependency, Subject: runtime.Subject, EvidenceIDs: []model.EvidenceID{model.EvidenceID("ev1:" + strings.Repeat("b", 64))}, Dependency: &archive.DependencyFact{Basis: archive.DefinitionHistoricalAtRun, TargetRepository: repository, TargetActionObjectID: &safe, ContradictsFactIDs: []string{runtime.ID}}}
+	idx := index{actions: []archive.Fact{runtime}, dependencies: []archive.Fact{definition}, factsByID: map[string]archive.Fact{runtime.ID: runtime, definition.ID: definition}}
+	ids, evidenceIDs := runtimeDefinitionContradictions(idx, runtime)
+	if len(ids) != 1 || ids[0] != definition.ID || len(evidenceIDs) != 1 {
+		t.Fatalf("valid contradiction ids=%v evidence=%v", ids, evidenceIDs)
+	}
+
+	for _, test := range []struct {
+		name   string
+		mutate func(*archive.Fact)
+	}{
+		{name: "arbitrary missing link", mutate: func(fact *archive.Fact) {
+			fact.Dependency.ContradictsFactIDs = []string{"fact1:" + strings.Repeat("f", 64)}
+		}},
+		{name: "same identity", mutate: func(fact *archive.Fact) { fact.Dependency.TargetActionObjectID = &affected }},
+		{name: "different step", mutate: func(fact *archive.Fact) { fact.Subject.StepKey += "/different" }},
+		{name: "current snapshot", mutate: func(fact *archive.Fact) { fact.Dependency.Basis = archive.DefinitionCurrentSnapshot }},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			changed := definition
+			dep := *definition.Dependency
+			changed.Dependency = &dep
+			test.mutate(&changed)
+			changedIdx := idx
+			changedIdx.dependencies = []archive.Fact{changed}
+			if ids, _ := runtimeDefinitionContradictions(changedIdx, runtime); len(ids) != 0 {
+				t.Fatalf("unqualified contradiction accepted: %v", ids)
+			}
+		})
+	}
+}
+
+func TestOIDCCapabilityRequiresTypedRuntimePermission(t *testing.T) {
+	execution := model.JobExecutionIdentity{RepositoryID: 1, RunID: 10, RunAttempt: 1, JobID: 20}
+	subject := archive.FactSubject{RepositoryID: 1, RunID: ptr(model.WorkflowRunID(10)), RunAttempt: ptr(model.RunAttempt(1)), JobID: ptr(model.JobID(20))}
+	evidenceID := model.EvidenceID("ev1:" + strings.Repeat("a", 64))
+	permission := archive.Fact{Kind: archive.FactExposure, Subject: subject, Exposure: &archive.ExposureFact{Execution: execution, Credential: &model.CredentialExposure{Kind: model.ExposureGitHubTokenPermission, Basis: model.ExposureBasisRuntimeObserved, Permission: "id-token", Access: "write", Conclusion: "typed runtime permission", EvidenceIDs: []model.EvidenceID{evidenceID}}}}
+	direct := archive.Fact{Kind: archive.FactExposure, Subject: subject, Exposure: &archive.ExposureFact{Execution: execution, Credential: &model.CredentialExposure{Kind: model.ExposureOIDCMintingCapability, Basis: model.ExposureBasisRuntimeObserved, Conclusion: "untrusted precomputed assertion", EvidenceIDs: []model.EvidenceID{evidenceID}}}}
+	credentials, _ := exposuresFor(index{exposures: []archive.Fact{permission, direct}}, subject, model.ConfirmedExecuted)
+	var capability *report.Exposure
+	for index := range credentials {
+		if credentials[index].Kind == string(model.ExposureOIDCMintingCapability) {
+			capability = &credentials[index]
+		}
+	}
+	if capability == nil || capability.Capability != "id-token:write" || !strings.Contains(capability.Conclusion, OIDCCapabilityRuleVersion) {
+		t.Fatalf("typed OIDC derivation=%#v", credentials)
+	}
+	credentials, _ = exposuresFor(index{exposures: []archive.Fact{direct}}, subject, model.ConfirmedExecuted)
+	for _, credential := range credentials {
+		if credential.Kind == string(model.ExposureOIDCMintingCapability) {
+			t.Fatal("precomputed OIDC assertion self-certified capability")
+		}
+	}
+}
+
+func mustTestActionOID(t *testing.T, value string) model.ActionSourceObjectID {
+	t.Helper()
+	object, err := model.NewGitObjectID(model.HashSHA1, value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	action, err := model.NewActionSourceObjectID(object)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return action
 }
 
 func TestInvestigateUsesRequestedWindowButReplayDoesNot(t *testing.T) {

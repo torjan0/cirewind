@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1180" viewBox="0 0 1600 1180" role="img" aria-labelledby="title description">
+  <title id="title">AWS EC2 Mac cost gate for CIRewind v0.2 qualification</title>
+  <desc id="description">Sanitized evidence summary showing the official AWS price, mandatory allocation period, cost calculation, and no-launch decision.</desc>
+  <rect width="1600" height="1180" fill="#0f172a"/>
+  <rect x="52" y="48" width="1496" height="1084" rx="18" fill="#111827" stroke="#475569" stroke-width="2"/>
+  <text x="96" y="112" fill="#f8fafc" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="36" font-weight="700">CIRewind v0.2 — AWS EC2 Mac cost gate</text>
+  <text x="96" y="154" fill="#94a3b8" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="20">Retrieved 2026-08-23 21:13 PDT / 2026-08-24T04:13Z · USD · sanitized public evidence</text>
+
+  <rect x="88" y="192" width="1424" height="168" rx="12" fill="#172033" stroke="#334155"/>
+  <text x="116" y="234" fill="#93c5fd" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="22" font-weight="700">Official AWS Price List API result</text>
+  <text x="116" y="274" fill="#e2e8f0" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="21">Instance family: mac2 · Apple M1 / arm64 · Dedicated Host · On-Demand</text>
+  <text x="116" y="310" fill="#e2e8f0" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="21">Cheapest regions: Oregon, Ohio, N. Virginia · rate: $0.6500000000 per host-hour</text>
+  <text x="116" y="342" fill="#94a3b8" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="17">Oregon rate code: XVPXG2RSWAFTBUZR.JRTCKXETXF.6YS6EN2CT7</text>
+
+  <rect x="88" y="388" width="1424" height="152" rx="12" fill="#172033" stroke="#334155"/>
+  <text x="116" y="430" fill="#fcd34d" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="22" font-weight="700">Mandatory billing constraint</text>
+  <text x="116" y="470" fill="#e2e8f0" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="21">AWS documents a 24-hour minimum allocation and billing duration for EC2 Mac Dedicated Hosts.</text>
+  <text x="116" y="506" fill="#94a3b8" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="18">The host is the compute billing unit; stopping the instance early does not remove the 24-hour floor.</text>
+
+  <rect x="88" y="568" width="1424" height="214" rx="12" fill="#172033" stroke="#334155"/>
+  <text x="116" y="610" fill="#a7f3d0" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="22" font-weight="700">Lower-bound calculation</text>
+  <text x="116" y="660" fill="#f8fafc" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="30">24 hours × $0.65 / host-hour = $15.60 compute minimum</text>
+  <text x="116" y="704" fill="#fca5a5" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="25">$15.60 &gt; $4.00 ceiling by $11.60</text>
+  <text x="116" y="744" fill="#94a3b8" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="18">Practical list estimate: $15.62 (1h test) to $15.99 (24h EBS/IPv4); tax and egress excluded.</text>
+
+  <rect x="88" y="810" width="1424" height="126" rx="12" fill="#3f1717" stroke="#b42318" stroke-width="3"/>
+  <text x="116" y="858" fill="#fecaca" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="28" font-weight="700">NO-GO: AWS resources were not allocated.</text>
+  <text x="116" y="902" fill="#f8fafc" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="21">The user-approved $4 cost ceiling was enforced before any billable API operation.</text>
+
+  <text x="96" y="982" fill="#93c5fd" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="18">Pricing feed: b0.p.awsstatic.com/pricing/2.0/meteredUnitMaps/ec2/USD/current/dedicatedhost-ondemand.json</text>
+  <text x="96" y="1018" fill="#94a3b8" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="17">Feed publication: 2026-08-21T02:02:57Z · decompressed SHA-256:</text>
+  <text x="96" y="1048" fill="#94a3b8" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="17">fede5b6c89a33b0e0ee4203362506c90d289c8a077544d2448bab3b9553c8821</text>
+  <text x="96" y="1087" fill="#93c5fd" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="18">Constraint: docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-mac-instances.html</text>
+  <text x="96" y="1117" fill="#94a3b8" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="16">No account ID, credential, host ID, AMI ID, network identifier, or authentication material is present.</text>
+</svg>

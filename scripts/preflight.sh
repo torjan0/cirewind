@@ -70,6 +70,7 @@ if [ "${CIREWIND_PREFLIGHT_REQUIRE_STAGED:-0}" = 1 ]; then
 fi
 go mod tidy -diff
 go mod verify
+PYTHONDONTWRITEBYTECODE=1 python3 scripts/qualify_demo_test.py
 go test ./... -count=1
 go vet ./...
 go test -race ./... -count=1

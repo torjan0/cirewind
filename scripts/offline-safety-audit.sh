@@ -49,6 +49,7 @@ export CGO_ENABLED=0
 binary="$work/cirewind"
 archive="$work/archive.db"
 case_dir="$work/case"
+demo_dir="$work/demo"
 pack="$root/incidents/synthetic/mutable-tag.yaml"
 
 cd "$root"
@@ -80,5 +81,6 @@ audit_command replay replay \
   --out "$case_dir" \
   --fixed-collection-time 2026-08-20T00:00:00Z
 audit_command verify verify "$case_dir"
+audit_command demo demo --out "$demo_dir"
 
 printf '%s\n' "offline syscall safety audit passed"

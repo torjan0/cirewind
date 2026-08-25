@@ -50,10 +50,24 @@ jobs:
           cache: true
       - name: Test
         run: go test ./...
+      - name: Test native demo qualification harness
+        if: matrix.name == 'linux-amd64'
+        run: PYTHONDONTWRITEBYTECODE=1 python3 scripts/qualify_demo_test.py
       - name: Vet
         run: go vet ./...
       - name: Build CLI
         run: go build -trimpath ./cmd/cirewind
+      - name: Qualify native macOS 15 arm64 demo
+        if: matrix.name == 'darwin-arm64'
+        shell: bash
+        run: |
+          python3 scripts/qualify_demo.py \
+            --source-root "$GITHUB_WORKSPACE" \
+            --source-commit "$GITHUB_SHA" \
+            --work-root "$RUNNER_TEMP/cirewind-demo-qualification" \
+            --require-macos-major 15 \
+            --require-machine arm64 \
+            --require-homebrew
 
   vulnerability:
     name: Reachable vulnerability scan

@@ -361,6 +361,75 @@ func TestArchiveRejectsCredentialLikePayloadAndUnknownSnapshotFields(t *testing.
 	}
 }
 
+func TestRetainedV1CredentialBasisCompatibilityIsReadOnlyAndNarrow(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name  string
+		basis model.CredentialExposureBasis
+	}{
+		{name: "empty", basis: ""},
+		{name: "unrecognized", basis: "removed-basis-v0"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			batch := testBatch(t)
+			var input Fact
+			for _, fact := range batch.Facts {
+				if fact.Exposure != nil && fact.Exposure.Credential != nil {
+					input = fact
+					break
+				}
+			}
+			if input.Exposure == nil {
+				t.Fatal("fixture lacks credential exposure")
+			}
+			input.Exposure.Credential.Basis = test.basis
+			input.ID = ""
+			if _, err := NormalizeFact(input); err == nil || !strings.Contains(err.Error(), "credential-exposure basis") {
+				t.Fatalf("fresh NormalizeFact accepted basis %q: %v", test.basis, err)
+			}
+			retained, err := NormalizeRetainedV1Fact(input)
+			if err != nil {
+				t.Fatalf("retained v1 fact basis %q: %v", test.basis, err)
+			}
+			if retained.Exposure.Credential.Basis != test.basis || retained.ID == "" {
+				t.Fatalf("retained fact did not preserve canonical payload: %#v", retained.Exposure.Credential)
+			}
+
+			for index := range batch.Facts {
+				if batch.Facts[index].Exposure != nil && batch.Facts[index].Exposure.Credential != nil {
+					batch.Facts[index] = retained
+				}
+			}
+			store, err := Create(context.Background(), filepath.Join(t.TempDir(), "fresh.db"), Options{CreatedAt: testInstant(0)})
+			if err != nil {
+				t.Fatal(err)
+			}
+			appendErr := store.Append(context.Background(), batch)
+			closeErr := store.Close()
+			if appendErr == nil || !strings.Contains(appendErr.Error(), "credential-exposure basis") {
+				t.Fatalf("fresh Append accepted retained-only basis %q: %v", test.basis, appendErr)
+			}
+			if closeErr != nil {
+				t.Fatal(closeErr)
+			}
+		})
+	}
+
+	input := testBatch(t).Facts[0]
+	for _, fact := range testBatch(t).Facts {
+		if fact.Exposure != nil && fact.Exposure.Credential != nil {
+			input = fact
+			break
+		}
+	}
+	input.Exposure.Credential.Basis = "<unsafe>"
+	input.ID = ""
+	if _, err := NormalizeRetainedV1Fact(input); err == nil || !strings.Contains(err.Error(), "unsupported character") {
+		t.Fatalf("unsafe retained basis was accepted: %v", err)
+	}
+}
+
 func TestReplaySnapshotRejectsUnknownPersistedFactFields(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -672,7 +741,7 @@ func testBatch(t *testing.T) Batch {
 	facts := []Fact{
 		{Kind: FactExposure, EvidenceIDs: []model.EvidenceID{evidenceID}, Exposure: &ExposureFact{
 			Execution: execution, StepKey: step.Key(), EventTime: testEvent(4),
-			Credential: &model.CredentialExposure{Kind: model.ExposureSecretPassedToStep, SecretName: &secretName,
+			Credential: &model.CredentialExposure{Kind: model.ExposureSecretPassedToStep, Basis: model.ExposureBasisHistoricalDefinitionFlow, SecretName: &secretName,
 				Conclusion: "The named secret was passed to this started step.", EvidenceIDs: []model.EvidenceID{evidenceID}},
 		}},
 		{Kind: FactJob, EvidenceIDs: []model.EvidenceID{evidenceID}, Job: &JobFact{Execution: execution, DisplayName: "build", Status: "completed", Conclusion: "success", EventTime: testEvent(3)}},

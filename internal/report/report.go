@@ -2,6 +2,7 @@
 package report
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/csv"
@@ -20,11 +21,30 @@ import (
 )
 
 const (
-	FindingsSchema = "cirewind.findings/v1alpha1"
-	MetadataSchema = "cirewind.collection-metadata/v1alpha1"
-	stylesheet     = `:root{color-scheme:light dark;font-family:system-ui,sans-serif}body{max-width:110rem;margin:auto;padding:1.5rem;line-height:1.45}h1,h2{line-height:1.2}.warning{border:.2rem solid #b45309;padding:1rem;font-weight:700}.counts{display:grid;grid-template-columns:repeat(auto-fit,minmax(13rem,1fr));gap:.8rem}.count{border:1px solid #888;padding:.8rem}.count strong{display:block;font-size:1.8rem}table{border-collapse:collapse;width:100%;font-size:.9rem}th,td{border:1px solid #888;padding:.45rem;text-align:left;vertical-align:top;overflow-wrap:anywhere}code{overflow-wrap:anywhere}.state{font-weight:700}.muted{opacity:.8}details{margin:.5rem 0}.graph{display:grid;grid-template-columns:1fr 1fr;gap:1rem}.filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(13rem,1fr));gap:.7rem;border:1px solid #888;padding:1rem;margin:1rem 0}.filters label{display:grid;gap:.25rem}.filters button{align-self:end;min-height:2.2rem}.empty{padding:.7rem;border:1px dashed #888}@media(max-width:50rem){.graph{grid-template-columns:1fr}}`
-	filterScript   = `"use strict";(()=>{const controls=[...document.querySelectorAll("[data-filter]")],items=[...document.querySelectorAll("[data-finding-item]")],graphItems=[...document.querySelectorAll("[data-graph-item]")],visibleCount=document.getElementById("visible-count"),empty=document.getElementById("filter-empty");const has=(value,token)=>(" "+(value||"")+" ").includes(" "+token+" ");const matches=item=>controls.every(control=>!control.value||(control.dataset.multi==="true"?has(item.dataset[control.dataset.filter],control.value):item.dataset[control.dataset.filter]===control.value));const apply=()=>{const visible=new Set();let count=0;for(const item of items){const show=matches(item);item.hidden=!show;if(show){visible.add(item.dataset.revision);if(item.dataset.counted==="true")count++}}for(const item of graphItems){const focus=(item.dataset.findings||"").split(" ").filter(Boolean);item.hidden=focus.length>0&&!focus.some(id=>visible.has(id))}visibleCount.textContent=String(count);empty.hidden=count!==0};for(const control of controls)control.addEventListener("change",apply);document.getElementById("filter-reset").addEventListener("click",()=>{for(const control of controls)control.value="";apply()});apply()})();`
+	FindingsSchema   = "cirewind.findings/v1alpha1"
+	MetadataSchema   = "cirewind.collection-metadata/v1alpha1"
+	MetadataSchemaV2 = "cirewind.collection-metadata/v1alpha2"
+	CaseContractV2   = "cirewind.case/v1alpha2"
+	// RetainedLegacyUnclassifiedBasis preserves a legal empty v1 source basis
+	// in schema-valid presentation output without assigning an evidence class.
+	// The typed graph still omits the corresponding relationship.
+	RetainedLegacyUnclassifiedBasis = "legacy-unclassified"
+	stylesheet                      = `:root{color-scheme:light dark;font-family:system-ui,sans-serif}body{max-width:110rem;margin:auto;padding:1.5rem;line-height:1.45}h1,h2{line-height:1.2}.warning{border:.2rem solid #b45309;padding:1rem;font-weight:700}.synthetic{border:.2rem solid #005a9c;padding:1rem;font-weight:700}.classification-unknown{border:.2rem solid #5f6368;padding:1rem;font-weight:700}.counts{display:grid;grid-template-columns:repeat(auto-fit,minmax(13rem,1fr));gap:.8rem}.count{border:1px solid #888;padding:.8rem}.count strong{display:block;font-size:1.8rem}table{border-collapse:collapse;width:100%;font-size:.9rem}th,td{border:1px solid #888;padding:.45rem;text-align:left;vertical-align:top;overflow-wrap:anywhere}code{overflow-wrap:anywhere}.state{font-weight:700}.muted{opacity:.8}details{margin:.5rem 0}.graph{display:grid;grid-template-columns:1fr 1fr;gap:1rem}.filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(13rem,1fr));gap:.7rem;border:1px solid #888;padding:1rem;margin:1rem 0}.filters label{display:grid;gap:.25rem}.filters button{align-self:end;min-height:2.2rem}.empty{padding:.7rem;border:1px dashed #888}.temporal-path{overflow:auto;border:1px solid #334155;background:#fff;padding:.5rem}.temporal-path svg{display:block;width:100%;height:auto;min-width:50rem;background:#fff}.path-fallback>section{border-block-start:1px solid #888;padding-block:.7rem}.path-legend{display:grid;grid-template-columns:repeat(auto-fit,minmax(14rem,1fr));gap:.5rem}.path-legend span{border:1px solid #888;padding:.45rem}.path-table{font-size:.82rem}[hidden]{display:none!important}@media(max-width:50rem){.graph{grid-template-columns:1fr}.temporal-path svg{min-width:42rem}}`
+	filterScript                    = `"use strict";(()=>{const controls=[...document.querySelectorAll("[data-filter]")],items=[...document.querySelectorAll("[data-finding-item]")],graphItems=[...document.querySelectorAll("[data-graph-item]")],visibleCount=document.getElementById("visible-count"),empty=document.getElementById("filter-empty"),visualShown=document.getElementById("visual-shown"),visualOmitted=document.getElementById("visual-omitted");const has=(value,token)=>(" "+(value||"")+" ").includes(" "+token+" ");const matches=item=>controls.every(control=>!control.value||(control.dataset.multi==="true"?has(item.dataset[control.dataset.filter],control.value):item.dataset[control.dataset.filter]===control.value));const apply=()=>{const visible=new Set(),shown=new Set();let count=0;for(const item of items){const show=matches(item);item.toggleAttribute("hidden",!show);if(show){visible.add(item.dataset.revision);if(item.dataset.counted==="true")count++}}for(const item of graphItems){const focus=(item.dataset.findings||"").split(" ").filter(Boolean),show=focus.length===0||focus.some(id=>visible.has(id));item.toggleAttribute("hidden",!show);if(show&&item.dataset.visualLane==="true"&&item.dataset.revision)shown.add(item.dataset.revision)}visibleCount.textContent=String(count);empty.hidden=count!==0;if(visualShown){visualShown.textContent=String(shown.size);visualOmitted.textContent=String(Math.max(0,count-shown.size))}};for(const control of controls)control.addEventListener("change",apply);document.getElementById("filter-reset").addEventListener("click",()=>{for(const control of controls)control.value="";apply()});apply()})();`
 )
+
+type CaseKind string
+
+const (
+	CaseKindSynthetic CaseKind = "synthetic"
+	CaseKindCollected CaseKind = "collected"
+	CaseKindMixed     CaseKind = "mixed"
+	CaseKindUnknown   CaseKind = "unknown"
+)
+
+func (kind CaseKind) Valid() bool {
+	return kind == CaseKindSynthetic || kind == CaseKindCollected || kind == CaseKindMixed || kind == CaseKindUnknown
+}
 
 type Exposure struct {
 	Kind        string   `json:"kind"`
@@ -82,6 +102,8 @@ type Coverage struct {
 
 type Metadata struct {
 	SchemaVersion       string   `json:"schemaVersion"`
+	CaseContractVersion string   `json:"caseContractVersion,omitempty"`
+	CaseKind            CaseKind `json:"caseKind,omitempty"`
 	CaseID              string   `json:"caseId"`
 	Mode                string   `json:"mode"`
 	IncidentID          string   `json:"incidentId"`
@@ -92,6 +114,7 @@ type Metadata struct {
 	AnalysisTime        string   `json:"analysisTime"`
 	GitHubAPIVersion    string   `json:"githubApiVersion,omitempty"`
 	RawLogsRetained     bool     `json:"rawLogsRetained"`
+	RawMaterialized     *bool    `json:"rawMaterialized,omitempty"`
 	WatchHorizonDays    int      `json:"watchHorizonDays,omitempty"`
 	Coverage            Coverage `json:"coverage"`
 	LimitPolicy         string   `json:"limitPolicy"`
@@ -99,9 +122,25 @@ type Metadata struct {
 }
 
 type Case struct {
-	Metadata Metadata    `json:"metadata"`
-	Findings []Finding   `json:"findings"`
-	Graph    graph.Graph `json:"graph"`
+	Metadata     Metadata                   `json:"metadata"`
+	Findings     []Finding                  `json:"findings"`
+	Graph        graph.Graph                `json:"-"` // frozen v1 compatibility projection
+	GraphV2      graph.GraphV2              `json:"graph"`
+	TemporalPath graph.TemporalEvidencePath `json:"-"` // deterministic presentation derived from GraphV2
+
+	// retainedLegacyCredentialBasis is enabled only by the analyzer when its
+	// source snapshot came through the retained-v1 compatibility reader. It is
+	// not serialized and does not change canonical findings or counts.
+	retainedLegacyCredentialBasis bool
+}
+
+// EnableRetainedLegacyCredentialBasis allows only the report exposure basis
+// compatibility required to replay retained v1alpha1 facts. Normal v2 cases
+// remain strict and must never call this for newly collected input.
+func EnableRetainedLegacyCredentialBasis(c *Case) {
+	if c != nil {
+		c.retainedLegacyCredentialBasis = true
+	}
 }
 
 type Counts struct {
@@ -153,11 +192,8 @@ func (c *Case) NormalizeAndValidate() error {
 	if c.Findings == nil {
 		c.Findings = []Finding{}
 	}
-	if c.Metadata.SchemaVersion == "" {
-		c.Metadata.SchemaVersion = MetadataSchema
-	}
-	if c.Metadata.SchemaVersion != MetadataSchema {
-		return fmt.Errorf("unsupported metadata schema %q", c.Metadata.SchemaVersion)
+	if err := normalizeMetadata(&c.Metadata); err != nil {
+		return err
 	}
 	seen := map[string]bool{}
 	seenLogical := map[string]int{}
@@ -212,10 +248,10 @@ func (c *Case) NormalizeAndValidate() error {
 			}
 		}
 		var err error
-		if f.CredentialExposure, err = normalizeExposures(f.CredentialExposure); err != nil {
+		if f.CredentialExposure, err = normalizeExposures(f.CredentialExposure, true, c.retainedLegacyCredentialBasis); err != nil {
 			return fmt.Errorf("finding %q credential exposure: %w", f.FindingID, err)
 		}
-		if f.ResourceExposure, err = normalizeExposures(f.ResourceExposure); err != nil {
+		if f.ResourceExposure, err = normalizeExposures(f.ResourceExposure, false, false); err != nil {
 			return fmt.Errorf("finding %q resource exposure: %w", f.FindingID, err)
 		}
 	}
@@ -241,7 +277,13 @@ func (c *Case) NormalizeAndValidate() error {
 		}
 		return a.FindingRevisionID < b.FindingRevisionID
 	})
-	return c.Graph.NormalizeAndValidate()
+	if err := c.Graph.NormalizeAndValidate(); err != nil {
+		return err
+	}
+	if c.Metadata.SchemaVersion == MetadataSchemaV2 {
+		return c.GraphV2.NormalizeAndValidate()
+	}
+	return nil
 }
 
 func (c Case) Counts() Counts {
@@ -300,8 +342,8 @@ func WriteFindingsJSON(writer io.Writer, c Case) error {
 }
 
 func WriteMetadataJSON(writer io.Writer, metadata Metadata) error {
-	if metadata.SchemaVersion == "" {
-		metadata.SchemaVersion = MetadataSchema
+	if err := normalizeMetadata(&metadata); err != nil {
+		return err
 	}
 	metadata.Coverage.OptionalCapabilitiesDenied = sortedUnique(metadata.Coverage.OptionalCapabilitiesDenied)
 	metadata.Coverage.IncompleteEvidence = sortedUnique(metadata.Coverage.IncompleteEvidence)
@@ -312,7 +354,42 @@ func WriteMetadataJSON(writer io.Writer, metadata Metadata) error {
 	return encoder.Encode(metadata)
 }
 
+func normalizeMetadata(metadata *Metadata) error {
+	if metadata.SchemaVersion == "" {
+		metadata.SchemaVersion = MetadataSchema
+	}
+	switch metadata.SchemaVersion {
+	case MetadataSchema:
+		if metadata.CaseContractVersion != "" || metadata.CaseKind != "" || metadata.RawMaterialized != nil {
+			return errors.New("legacy collection metadata cannot carry v0.2 case-contract fields")
+		}
+	case MetadataSchemaV2:
+		if metadata.CaseContractVersion != CaseContractV2 {
+			return fmt.Errorf("metadata schema %s requires case contract %s", MetadataSchemaV2, CaseContractV2)
+		}
+		if !metadata.CaseKind.Valid() {
+			return fmt.Errorf("invalid case kind %q", metadata.CaseKind)
+		}
+		if metadata.RawMaterialized == nil {
+			return errors.New("v0.2 collection metadata requires rawMaterialized")
+		}
+	default:
+		return fmt.Errorf("unsupported metadata schema %q", metadata.SchemaVersion)
+	}
+	return nil
+}
+
 func WriteGraphJSON(writer io.Writer, value graph.Graph) error {
+	if err := value.NormalizeAndValidate(); err != nil {
+		return err
+	}
+	encoder := json.NewEncoder(writer)
+	encoder.SetEscapeHTML(true)
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(value)
+}
+
+func WriteGraphV2JSON(writer io.Writer, value graph.GraphV2) error {
 	if err := value.NormalizeAndValidate(); err != nil {
 		return err
 	}
@@ -348,12 +425,48 @@ func WriteSummaryMarkdown(writer io.Writer, c Case) error {
 	if err := c.NormalizeAndValidate(); err != nil {
 		return err
 	}
+	if c.Metadata.SchemaVersion == MetadataSchemaV2 {
+		return writeSummaryMarkdownV2(writer, c)
+	}
+	return writeSummaryMarkdownV1(writer, c)
+}
+
+// writeSummaryMarkdownV1 preserves the frozen v0.1 Markdown byte contract.
+func writeSummaryMarkdownV1(writer io.Writer, c Case) error {
 	counts := c.Counts()
 	coverageWord := "complete"
 	if c.Metadata.Coverage.Partial {
 		coverageWord = "PARTIAL — conclusions are limited by evidence gaps"
 	}
 	fmt.Fprintf(writer, "# CIRewind incident handoff\n\nCase: `%s`  \nIncident: `%s`  \nCoverage: **%s**  \nPack SHA-256: `%s`\n\n", markdownText(c.Metadata.CaseID), markdownText(c.Metadata.IncidentID), coverageWord, c.Metadata.CanonicalPackSHA256)
+	writeSummaryMarkdownSections(writer, c, counts)
+	return nil
+}
+
+func writeSummaryMarkdownV2(writer io.Writer, c Case) error {
+	classification := ""
+	switch c.Metadata.CaseKind {
+	case CaseKindSynthetic:
+		classification = "SYNTHETIC DEMONSTRATION: this case contains harmless fixture evidence, not a real incident or collected organization result."
+	case CaseKindCollected:
+		classification = "COLLECTED CASE: this case was derived from collected GitHub evidence; conclusions remain bounded by recorded collection coverage."
+	case CaseKindMixed:
+		classification = "MIXED-PROVENANCE CASE: this case combines collected and synthetic or otherwise mixed source provenance; review provenance before operational use."
+	case CaseKindUnknown:
+		classification = "UNKNOWN CASE CLASSIFICATION: source provenance was not sufficient to classify this case as synthetic, collected, or mixed."
+	}
+	coverageWord := "complete"
+	coverageNotice := "COVERAGE CLOSED: coverage is closed for the evidence classes requested by this case."
+	if c.Metadata.Coverage.Partial {
+		coverageWord = "PARTIAL — conclusions are limited by evidence gaps"
+		coverageNotice = "PARTIAL COVERAGE: some material evidence is unavailable. Totals and conclusions are limited to retained evidence."
+	}
+	fmt.Fprintf(writer, "# CIRewind incident handoff\n\n> **%s**\n>\n> **%s**\n\nCase: `%s`  \nIncident: `%s`  \nCoverage: **%s**  \nPack SHA-256: `%s`\n\n", classification, coverageNotice, markdownText(c.Metadata.CaseID), markdownText(c.Metadata.IncidentID), coverageWord, c.Metadata.CanonicalPackSHA256)
+	writeSummaryMarkdownSections(writer, c, c.Counts())
+	return nil
+}
+
+func writeSummaryMarkdownSections(writer io.Writer, c Case, counts Counts) {
 	fmt.Fprintf(writer, "## Finding summary\n\n- Confirmed executions: %d\n- Prepared/downloaded without demonstrated execution: %d\n- Mutable-reference window exposures: %d\n- Unknown evidence gaps: %d\n\n", counts.ConfirmedExecuted, counts.ConfirmedDownloaded, counts.MutableRefExposure, counts.UnknownGaps)
 	fmt.Fprint(writer, "## Findings\n\n")
 	for _, finding := range c.Findings {
@@ -364,12 +477,32 @@ func WriteSummaryMarkdown(writer io.Writer, c Case) error {
 		fmt.Fprintf(writer, "- %s\n", markdownText(invariant))
 	}
 	fmt.Fprint(writer, "\nVerify this case with `cirewind verify CASE_DIR`. The SHA-256 manifest supports integrity checking; it is not an authenticity signature or legal chain-of-custody certification.\n")
-	return nil
 }
 
 func WriteHTML(writer io.Writer, c Case) error {
+	return WriteHTMLContext(context.Background(), writer, c)
+}
+
+// WriteHTMLContext renders the self-contained report while honoring caller
+// cancellation during graph re-projection and template output. WriteHTML remains
+// the compatibility wrapper for callers without a lifecycle context.
+func WriteHTMLContext(ctx context.Context, writer io.Writer, c Case) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	if err := c.NormalizeAndValidate(); err != nil {
 		return err
+	}
+	hasTemporalPath := c.Metadata.SchemaVersion == MetadataSchemaV2
+	var temporal temporalPathView
+	if hasTemporalPath {
+		if string(c.Metadata.CaseKind) != string(c.GraphV2.CaseKind) || string(c.Metadata.CaseKind) != string(c.TemporalPath.CaseKind) {
+			return errors.New("case classification disagrees across metadata, graph, and temporal evidence path")
+		}
+		if err := graph.ValidateRenderableTemporalEvidencePath(ctx, c.GraphV2, c.TemporalPath, graph.PathOptions{}); err != nil {
+			return fmt.Errorf("temporal evidence path: %w", err)
+		}
+		temporal = buildTemporalPathView(c.TemporalPath)
 	}
 	styleHash := sha256.Sum256([]byte(stylesheet))
 	scriptHash := sha256.Sum256([]byte(filterScript))
@@ -384,16 +517,38 @@ func WriteHTML(writer io.Writer, c Case) error {
 		edges[index] = graphEdgeView{Edge: edge, Focus: strings.Join(edge.FocusFindingIDs, " ")}
 	}
 	data := struct {
-		Case       Case
-		Counts     Counts
-		CSP        string
-		Invariants []string
-		Findings   []findingView
-		Nodes      []graphNodeView
-		Edges      []graphEdgeView
-		Filters    reportFilters
-	}{c, c.Counts(), csp, invariants, findings, nodes, edges, filters}
-	return reportTemplate.Execute(writer, data)
+		Case                  Case
+		Counts                Counts
+		CSP                   string
+		Invariants            []string
+		Findings              []findingView
+		Nodes                 []graphNodeView
+		Edges                 []graphEdgeView
+		Filters               reportFilters
+		HasTemporalPath       bool
+		Temporal              temporalPathView
+		Synthetic             bool
+		UnknownClassification bool
+	}{
+		Case: c, Counts: c.Counts(), CSP: csp, Invariants: invariants,
+		Findings: findings, Nodes: nodes, Edges: edges, Filters: filters,
+		HasTemporalPath: hasTemporalPath, Temporal: temporal,
+		Synthetic:             c.Metadata.CaseKind == CaseKindSynthetic,
+		UnknownClassification: c.Metadata.SchemaVersion == MetadataSchemaV2 && c.Metadata.CaseKind == CaseKindUnknown,
+	}
+	return reportTemplate.Execute(contextWriter{ctx: ctx, destination: writer}, data)
+}
+
+type contextWriter struct {
+	ctx         context.Context
+	destination io.Writer
+}
+
+func (w contextWriter) Write(data []byte) (int, error) {
+	if err := w.ctx.Err(); err != nil {
+		return 0, err
+	}
+	return w.destination.Write(data)
 }
 
 func buildFindingViews(findings []Finding) ([]findingView, reportFilters) {
@@ -491,14 +646,14 @@ var invariants = []string{
 
 var reportTemplate = template.Must(template.New("report").Parse(`<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="{{.CSP}}"><title>CIRewind case {{.Case.Metadata.CaseID}}</title><style>` + stylesheet + `</style></head><body>
-<header><h1>CIRewind incident evidence</h1><p>Case <code>{{.Case.Metadata.CaseID}}</code> · incident <code>{{.Case.Metadata.IncidentID}}</code> · pack <code>{{.Case.Metadata.CanonicalPackSHA256}}</code></p>{{if .Case.Metadata.Coverage.Partial}}<p class="warning">PARTIAL COVERAGE: some material evidence is unavailable. Totals and conclusions are limited to retained evidence.</p>{{else}}<p>Coverage is closed for the evidence classes requested by this case.</p>{{end}}</header>
+<header><h1>CIRewind incident evidence</h1><p>Case <code>{{.Case.Metadata.CaseID}}</code> · incident <code>{{.Case.Metadata.IncidentID}}</code> · pack <code>{{.Case.Metadata.CanonicalPackSHA256}}</code></p>{{if .Synthetic}}<p class="synthetic">SYNTHETIC DEMONSTRATION: this case contains harmless fixture evidence, not a real incident or collected organization result.</p>{{else if .UnknownClassification}}<p class="classification-unknown">UNKNOWN CASE CLASSIFICATION: source provenance was not sufficient to classify this case as synthetic, collected, or mixed.</p>{{end}}{{if .Case.Metadata.Coverage.Partial}}<p class="warning">PARTIAL COVERAGE: some material evidence is unavailable. Totals and conclusions are limited to retained evidence.</p>{{else}}<p>Coverage is closed for the evidence classes requested by this case.</p>{{end}}</header>
 <main><section><h2>Executive summary</h2><div class="counts"><div class="count"><strong>{{.Counts.ConfirmedExecuted}}</strong>confirmed executions</div><div class="count"><strong>{{.Counts.ConfirmedDownloaded}}</strong>prepared/downloaded; execution not demonstrated</div><div class="count"><strong>{{.Counts.MutableRefExposure}}</strong>mutable-ref window exposures</div><div class="count"><strong>{{.Counts.UnknownGaps}}</strong>unknown evidence gaps</div><div class="count"><strong>{{.Counts.WriteTokenJobs}}</strong>jobs with observed or explicitly inferred write-capable token permissions</div><div class="count"><strong>{{.Counts.NamedSecretFlows}}</strong>named secret flow relationships</div><div class="count"><strong>{{.Counts.OIDCCapableJobs}}</strong>jobs with OIDC minting capability</div><div class="count"><strong>{{.Counts.SelfHostedJobs}}</strong>affected jobs on self-hosted runners</div></div></section>
 <section><h2>Coverage and evidence gaps</h2><p>Repositories requested/accessed/denied: {{.Case.Metadata.Coverage.RepositoriesRequested}} / {{.Case.Metadata.Coverage.RepositoriesAccessible}} / {{.Case.Metadata.Coverage.RepositoriesDenied}}. Runs/attempts/jobs: {{.Case.Metadata.Coverage.RunsEnumerated}} / {{.Case.Metadata.Coverage.AttemptsEnumerated}} / {{.Case.Metadata.Coverage.JobsEnumerated}}. Logs retrieved/missing: {{.Case.Metadata.Coverage.LogsRetrieved}} / {{.Case.Metadata.Coverage.LogsMissing}}.</p>{{range .Case.Metadata.Coverage.IncompleteEvidence}}<p class="warning">{{.}}</p>{{end}}</section>
 <section><h2>Case filters</h2><div class="filters"><label>Finding state<select data-filter="state"><option value="">All states</option>{{range .Filters.States}}<option value="{{.Key}}">{{.Label}}</option>{{end}}</select></label><label>Repository<select data-filter="repository"><option value="">All repositories</option>{{range .Filters.Repositories}}<option value="{{.Key}}">{{.Label}}</option>{{end}}</select></label><label>Incident indicator<select data-filter="indicator"><option value="">All indicators</option>{{range .Filters.Indicators}}<option value="{{.Key}}">{{.Label}}</option>{{end}}</select></label><label>Evidence level<select data-filter="provenance"><option value="">All levels</option>{{range .Filters.Provenance}}<option value="{{.Key}}">{{.Label}}</option>{{end}}</select></label><label>Credential exposure<select data-filter="credentials" data-multi="true"><option value="">All credential contexts</option>{{range .Filters.Credentials}}<option value="{{.Key}}">{{.Label}}</option>{{end}}</select></label><label>Runner type<select data-filter="runners" data-multi="true"><option value="">All runner types</option>{{range .Filters.Runners}}<option value="{{.Key}}">{{.Label}}</option>{{end}}</select></label><button id="filter-reset" type="button">Reset filters</button></div><p><strong id="visible-count">{{len .Findings}}</strong> findings visible.</p><p id="filter-empty" class="empty" hidden>No findings match every selected filter.</p></section>
 <section><h2>Affected attempts</h2><table><thead><tr><th>Repository</th><th>Workflow / execution identity</th><th>State</th><th>Conclusion</th><th>Evidence</th></tr></thead><tbody>{{range .Findings}}<tr data-finding-item data-counted="true" data-revision="{{.FindingRevisionID}}" data-state="{{.StateFilter}}" data-repository="{{.RepositoryFilter}}" data-indicator="{{.IndicatorFilter}}" data-provenance="{{.ProvenanceFilter}}" data-credentials="{{.CredentialFilter}}" data-runners="{{.RunnerFilter}}"><td>{{.Repository}}</td><td>{{.Workflow}}<br><code>run={{.RunID}} attempt={{.RunAttempt}} job={{.JobID}} step={{.StepIdentity}}</code></td><td><span class="state">{{.State}}</span><br>{{.Provenance}}</td><td>{{.Conclusion}}{{range .EvidenceGaps}}<div class="warning">Gap: {{.}}</div>{{end}}</td><td>{{range .EvidenceIDs}}<code>{{.}}</code><br>{{end}}</td></tr>{{end}}</tbody></table></section>
 <section><h2>Credential, runner, and resource context</h2>{{range .Findings}}<details data-finding-item data-revision="{{.FindingRevisionID}}" data-state="{{.StateFilter}}" data-repository="{{.RepositoryFilter}}" data-indicator="{{.IndicatorFilter}}" data-provenance="{{.ProvenanceFilter}}" data-credentials="{{.CredentialFilter}}" data-runners="{{.RunnerFilter}}"><summary>{{.State}} — {{.Repository}} / run {{.RunID}} attempt {{.RunAttempt}} job {{.JobID}}</summary>{{range .CredentialExposure}}<p><strong>{{.Kind}}</strong> {{.Name}}: {{.Conclusion}} <span class="muted">Basis: {{.Basis}}.</span></p>{{end}}{{range .ResourceExposure}}<p><strong>{{.Kind}}</strong> {{.Name}}: {{.Conclusion}} <span class="muted">Basis: {{.Basis}}.</span></p>{{end}}{{if .RemediationGuidance}}<h3>Remediation guidance</h3>{{range .RemediationGuidance}}<p>{{.}}</p>{{end}}{{end}}</details>{{end}}</section>
-<section><h2>Focused evidence graph</h2><p>Relationships are typed; every displayed edge carries one or more evidence IDs. Filters hide graph items outside the selected finding subgraph.</p><div class="graph"><div><h3>Nodes</h3><ul>{{range .Nodes}}<li data-graph-item data-findings="{{.Focus}}"><code>{{.Type}}:{{.ID}}</code> — {{.Label}}</li>{{end}}</ul></div><div><h3>Evidence-backed edges</h3><ul>{{range .Edges}}<li data-graph-item data-findings="{{.Focus}}"><code>{{.Type}}</code>: {{.Source}} → {{.Target}} ({{range .EvidenceIDs}}{{.}} {{end}})</li>{{end}}</ul></div></div></section>
-<section><h2>Methodology and limitations</h2><ul>{{range .Invariants}}<li>{{.}}</li>{{end}}</ul><p>CIRewind reports evidence-backed capability and reachability, not exploitation, exfiltration, cloud-role assumption, runner persistence, or downstream causation unless independent direct evidence establishes it.</p><p>The case manifest supports SHA-256 integrity verification. It is not an authenticity signature or legal chain-of-custody certification.</p></section></main><script>` + filterScript + `</script></body></html>`))
+<section><h2>Temporal evidence path</h2><p>This bounded view is a derived presentation of evidence-backed relationships. It is not proof of exploitation or causation. Filters hide only whole pre-laid-out finding lanes and never create or alter relationships.</p>{{if .HasTemporalPath}}{{template "temporalPath" .Temporal}}{{else}}<p>This retained v0.1 report has no v0.2 temporal visual projection. Its typed compatibility graph remains available below.</p><details class="path-fallback"><summary>Legacy typed graph text view</summary><div class="graph"><div><h3>Nodes</h3><ul>{{range .Nodes}}<li data-graph-item data-findings="{{.Focus}}"><code>{{.Type}}:{{.ID}}</code> — {{.Label}}{{if .EvidenceIDs}}; evidence: {{range .EvidenceIDs}}<code>{{.}}</code> {{end}}{{end}}</li>{{end}}</ul></div><div><h3>Evidence-backed relationships</h3><ul>{{range .Edges}}<li data-graph-item data-findings="{{.Focus}}"><code>{{.Type}}</code>: {{.Source}} → {{.Target}} ({{range .EvidenceIDs}}<code>{{.}}</code> {{end}})</li>{{end}}</ul></div></div></details>{{end}}</section>
+<section><h2>Methodology and limitations</h2><ul>{{range .Invariants}}<li>{{.}}</li>{{end}}</ul><p>CIRewind reports evidence-backed capability and reachability, not exploitation, exfiltration, cloud-role assumption, runner persistence, or downstream causation unless independent direct evidence establishes it.</p><p>The case manifest supports SHA-256 integrity verification. It is not an authenticity signature or legal chain-of-custody certification.</p></section></main><script>` + filterScript + `</script></body></html>` + temporalPathTemplate))
 
 func markdownText(value string) string {
 	value = sanitize.Terminal(value, 4096)
@@ -519,13 +674,23 @@ func sortedUnique(values []string) []string {
 	return result
 }
 
-func normalizeExposures(values []Exposure) ([]Exposure, error) {
+func normalizeExposures(values []Exposure, credential, allowRetainedLegacyBasis bool) ([]Exposure, error) {
 	if values == nil {
 		return []Exposure{}, nil
 	}
 	for index := range values {
 		exposure := &values[index]
-		if exposure.Kind == "" || exposure.Basis == "" || exposure.Conclusion == "" || len(exposure.EvidenceIDs) == 0 {
+		if exposure.Kind == "" || exposure.Conclusion == "" || len(exposure.EvidenceIDs) == 0 {
+			return nil, errors.New("exposure lacks kind, basis, conclusion, or evidence")
+		}
+		if credential {
+			basis := model.CredentialExposureBasis(exposure.Basis)
+			if !basis.Valid() {
+				if !allowRetainedLegacyBasis || !safeLegacyBasis(exposure.Basis) {
+					return nil, fmt.Errorf("invalid credential-exposure basis %q", exposure.Basis)
+				}
+			}
+		} else if exposure.Basis == "" {
 			return nil, errors.New("exposure lacks kind, basis, conclusion, or evidence")
 		}
 		exposure.EvidenceIDs = sortedUnique(exposure.EvidenceIDs)
@@ -549,4 +714,18 @@ func normalizeExposures(values []Exposure) ([]Exposure, error) {
 		return left.Basis < right.Basis
 	})
 	return values, nil
+}
+
+func safeLegacyBasis(value string) bool {
+	if value == "" || len(value) > 128 {
+		return false
+	}
+	for _, char := range value {
+		if (char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z') ||
+			(char >= '0' && char <= '9') || strings.ContainsRune("_.:/-", char) {
+			continue
+		}
+		return false
+	}
+	return true
 }

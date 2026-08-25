@@ -18,6 +18,18 @@ const maxDependencyDepth = 32
 // of the identity, so a later collection can attach an additional observation
 // without rewriting the archived fact.
 func NormalizeFact(input Fact) (Fact, error) {
+	return normalizeFact(input, false)
+}
+
+// NormalizeRetainedV1Fact preserves the exact canonical identity of a retained
+// v1alpha1 exposure whose credential basis is empty or no longer part of the
+// current closed vocabulary. All other fact validation remains identical to
+// NormalizeFact. It must never be used for newly collected facts.
+func NormalizeRetainedV1Fact(input Fact) (Fact, error) {
+	return normalizeFact(input, true)
+}
+
+func normalizeFact(input Fact, allowRetainedLegacyBasis bool) (Fact, error) {
 	fact := input
 	normalizeFactSlices(&fact)
 	fact.EvidenceIDs = sortEvidenceIDs(fact.EvidenceIDs)
@@ -167,7 +179,7 @@ func NormalizeFact(input Fact) (Fact, error) {
 			return Fact{}, errors.New("exposure payload has a different fact kind")
 		}
 		var err error
-		nested, err = validateExposureFact(*fact.Exposure)
+		nested, err = validateExposureFact(*fact.Exposure, allowRetainedLegacyBasis)
 		if err != nil {
 			return Fact{}, err
 		}
@@ -423,7 +435,7 @@ func validateDependencyFact(fact DependencyFact) error {
 	return fact.EventTime.Validate()
 }
 
-func validateExposureFact(fact ExposureFact) ([]model.EvidenceID, error) {
+func validateExposureFact(fact ExposureFact, allowRetainedLegacyBasis bool) ([]model.EvidenceID, error) {
 	if err := fact.Execution.Validate(); err != nil {
 		return nil, err
 	}
@@ -437,7 +449,7 @@ func validateExposureFact(fact ExposureFact) ([]model.EvidenceID, error) {
 	var evidenceIDs []model.EvidenceID
 	if fact.Credential != nil {
 		kinds++
-		if err := fact.Credential.Validate(); err != nil {
+		if err := validateCredentialExposure(*fact.Credential, allowRetainedLegacyBasis); err != nil {
 			return nil, err
 		}
 		evidenceIDs = append(evidenceIDs, fact.Credential.EvidenceIDs...)
@@ -465,6 +477,30 @@ func validateExposureFact(fact ExposureFact) ([]model.EvidenceID, error) {
 		return nil, errors.New("exposure fact requires exactly one credential, resource, runner, or environment assertion")
 	}
 	return evidenceIDs, nil
+}
+
+func validateCredentialExposure(credential model.CredentialExposure, allowRetainedLegacyBasis bool) error {
+	if credential.Basis.Valid() {
+		return credential.Validate()
+	}
+	if !allowRetainedLegacyBasis {
+		return credential.Validate()
+	}
+	// Empty was legal in the retained v1 model. A nonempty value can represent
+	// a basis removed from the current closed vocabulary, but it remains hostile
+	// input and must be a small machine name before being preserved verbatim.
+	if credential.Basis != "" {
+		if err := safeMachineName(string(credential.Basis), 128); err != nil {
+			return fmt.Errorf("retained credential-exposure basis: %w", err)
+		}
+	}
+	preserved := credential.Basis
+	credential.Basis = model.ExposureBasisStaticInferred
+	if err := credential.Validate(); err != nil {
+		return err
+	}
+	credential.Basis = preserved
+	return nil
 }
 
 func validateRunner(runner RunnerContextFact) error {

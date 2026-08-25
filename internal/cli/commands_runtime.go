@@ -27,6 +27,23 @@ type liveCollectionRunner interface {
 	CollectInto(context.Context, livecollect.Request, livecollect.Sink) (livecollect.Result, error)
 }
 
+type commandDependencies struct {
+	newGitHubClient func() (livecollect.API, error)
+}
+
+func productionCommandDependencies() commandDependencies {
+	return commandDependencies{newGitHubClient: func() (livecollect.API, error) {
+		return githubapi.New(githubapi.EnvToken(), githubapi.WithUserAgent(buildinfo.UserAgent()))
+	}}
+}
+
+func (d commandDependencies) githubClient() (livecollect.API, error) {
+	if d.newGitHubClient == nil {
+		return nil, errors.New("GitHub.com client factory is unavailable")
+	}
+	return d.newGitHubClient()
+}
+
 func runReplay(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	options, err := parseReplay(args, stderr)
 	if err != nil {
@@ -48,40 +65,38 @@ func runReplay(ctx context.Context, args []string, stdout, stderr io.Writer) err
 	if options.FixedCollectionTime != nil {
 		analysisTime = *options.FixedCollectionTime
 	}
-	rawDerived, err := analyze.DeriveWithRaw(ctx, snapshot, pack, analysisTime, analyze.ModeReplay, archiveStore, literalmatch.Options{})
-	if err != nil {
-		return errors.Join(fmt.Errorf("derive replay findings: %w", err), archiveStore.Close())
-	}
-	snapshot = rawDerived.Snapshot
-	derived := rawDerived.Analysis
-	if !options.RawLogs {
-		markRawNotMaterialized(&snapshot)
-	}
 	var rawSource casegen.RawSource
 	if options.RawLogs {
 		rawSource = archiveStore
 		fmt.Fprintln(stderr, "warning: retained raw logs may contain sensitive application output that GitHub did not mask")
 	}
-	generateErr := casegen.Generate(ctx, casegen.Options{Output: options.Output, Raw: options.RawLogs, RawSource: rawSource, Snapshot: snapshot, Pack: pack, Case: derived.Case})
+	derived, generateErr := deriveAndGenerateCase(ctx, casePipelineRequest{
+		Snapshot: snapshot, Pack: pack, AnalysisTime: analysisTime, Mode: analyze.ModeReplay,
+		Output: options.Output, Raw: options.RawLogs, LiteralSource: archiveStore, RawSource: rawSource,
+	})
 	closeErr := archiveStore.Close()
 	if generateErr != nil || closeErr != nil {
 		if generateErr != nil {
-			generateErr = fmt.Errorf("generate replay case: %w", generateErr)
+			generateErr = fmt.Errorf("replay case: %w", generateErr)
 		}
 		return errors.Join(generateErr, closeErr)
 	}
-	printCaseSummary(stdout, derived.Case)
+	printCaseSummary(stdout, derived)
 	fmt.Fprintf(stdout, "case: %s\n", sanitizeDiagnostic(options.Output))
 	return nil
 }
 
 func runArchive(ctx context.Context, args []string, stdout, stderr io.Writer) error {
+	return runArchiveWithDependencies(ctx, args, stdout, stderr, productionCommandDependencies())
+}
+
+func runArchiveWithDependencies(ctx context.Context, args []string, stdout, stderr io.Writer, dependencies commandDependencies) error {
 	options, err := parseArchive(args, stderr)
 	if err != nil {
 		return err
 	}
 	if options.ImportFixture == "" {
-		return runNetworkArchive(ctx, options, stdout, stderr)
+		return runNetworkArchive(ctx, options, stdout, stderr, dependencies)
 	}
 	var snapshot archive.Snapshot
 	switch options.ImportFixture {
@@ -113,15 +128,19 @@ func runArchive(ctx context.Context, args []string, stdout, stderr io.Writer) er
 }
 
 func runInvestigate(ctx context.Context, args []string, stdout, stderr io.Writer) error {
+	return runInvestigateWithDependencies(ctx, args, stdout, stderr, productionCommandDependencies())
+}
+
+func runInvestigateWithDependencies(ctx context.Context, args []string, stdout, stderr io.Writer, dependencies commandDependencies) error {
 	options, err := parseInvestigate(args, stderr)
 	if err != nil {
 		return err
 	}
-	return runNetworkInvestigation(ctx, options, stdout, stderr)
+	return runNetworkInvestigation(ctx, options, stdout, stderr, dependencies)
 }
 
-func runNetworkInvestigation(ctx context.Context, options investigateOptions, stdout, stderr io.Writer) error {
-	client, err := githubapi.New(githubapi.EnvToken(), githubapi.WithUserAgent(buildinfo.UserAgent()))
+func runNetworkInvestigation(ctx context.Context, options investigateOptions, stdout, stderr io.Writer, dependencies commandDependencies) error {
+	client, err := dependencies.githubClient()
 	if err != nil {
 		return fmt.Errorf("configure GitHub.com client: %w", err)
 	}
@@ -185,34 +204,75 @@ func runNetworkInvestigationWithRunner(ctx context.Context, options investigateO
 		return errors.Join(collectErr, snapshotErr, archiveStore.Close())
 	}
 	analysisTime := now().UTC().Round(0)
-	rawDerived, err := analyze.DeriveWithRaw(ctx, snapshot, pack, analysisTime, analyze.ModeInvestigate, archiveStore, literalmatch.Options{})
-	if err != nil {
-		return errors.Join(fmt.Errorf("derive investigation findings: %w", err), archiveStore.Close())
-	}
-	snapshot = rawDerived.Snapshot
-	derived := rawDerived.Analysis
-	if !options.RawLogs {
-		markRawNotMaterialized(&snapshot)
-	}
-	generateErr := casegen.Generate(ctx, casegen.Options{Output: options.Output, Raw: options.RawLogs, RawSource: archiveStore, Snapshot: snapshot, Pack: pack, Case: derived.Case})
+	derived, generateErr := deriveAndGenerateCase(ctx, casePipelineRequest{
+		Snapshot: snapshot, Pack: pack, AnalysisTime: analysisTime, Mode: analyze.ModeInvestigate,
+		Output: options.Output, Raw: options.RawLogs, LiteralSource: archiveStore, RawSource: archiveStore,
+	})
 	closeErr := archiveStore.Close()
 	if generateErr != nil || closeErr != nil {
 		if generateErr != nil {
-			generateErr = fmt.Errorf("generate investigation case: %w", generateErr)
+			generateErr = fmt.Errorf("investigation case: %w", generateErr)
 		}
 		return errors.Join(generateErr, closeErr)
 	}
 	if options.Quiet {
-		printCoverageOnly(stdout, derived.Case)
+		printCoverageOnly(stdout, derived)
 	} else {
-		printCaseSummary(stdout, derived.Case)
+		printCaseSummary(stdout, derived)
 		fmt.Fprintf(stdout, "collection gaps: %d\ncase: %s\n", len(result.Gaps), sanitizeDiagnostic(options.Output))
 	}
 	return nil
 }
 
-func runNetworkArchive(ctx context.Context, options archiveOptions, stdout, stderr io.Writer) error {
-	client, err := githubapi.New(githubapi.EnvToken(), githubapi.WithUserAgent(buildinfo.UserAgent()))
+// casePipelineRequest is the in-process boundary shared by replay,
+// investigation, and the credential-free synthetic demo. It deliberately has
+// no transport, authentication, environment, or process-execution capability.
+type casePipelineRequest struct {
+	Snapshot       archive.Snapshot
+	Pack           *incident.ValidatedPack
+	AnalysisTime   time.Time
+	Mode           string
+	Output         string
+	Raw            bool
+	LiteralSource  literalmatch.RawSource
+	RawSource      casegen.RawSource
+	BeforeGenerate func(archive.Snapshot, report.Case) error
+}
+
+func deriveAndGenerateCase(ctx context.Context, request casePipelineRequest) (report.Case, error) {
+	if err := ctx.Err(); err != nil {
+		return report.Case{}, err
+	}
+	rawDerived, err := analyze.DeriveWithRaw(ctx, request.Snapshot, request.Pack, request.AnalysisTime, request.Mode, request.LiteralSource, literalmatch.Options{})
+	if err != nil {
+		return report.Case{}, fmt.Errorf("derive findings: %w", err)
+	}
+	snapshot := rawDerived.Snapshot
+	caseValue := rawDerived.Analysis.Case
+	rawMaterialized := request.Raw
+	caseValue.Metadata.RawMaterialized = &rawMaterialized
+	if !request.Raw {
+		markRawNotMaterialized(&snapshot)
+	}
+	if err := ctx.Err(); err != nil {
+		return report.Case{}, err
+	}
+	if request.BeforeGenerate != nil {
+		if err := request.BeforeGenerate(snapshot, caseValue); err != nil {
+			return report.Case{}, fmt.Errorf("validate derived case: %w", err)
+		}
+	}
+	if err := casegen.Generate(ctx, casegen.Options{
+		Output: request.Output, Raw: request.Raw, RawSource: request.RawSource,
+		Snapshot: snapshot, Pack: request.Pack, Case: caseValue,
+	}); err != nil {
+		return report.Case{}, fmt.Errorf("generate case: %w", err)
+	}
+	return caseValue, nil
+}
+
+func runNetworkArchive(ctx context.Context, options archiveOptions, stdout, stderr io.Writer, dependencies commandDependencies) error {
+	client, err := dependencies.githubClient()
 	if err != nil {
 		return fmt.Errorf("configure GitHub.com client: %w", err)
 	}

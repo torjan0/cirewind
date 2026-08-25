@@ -528,6 +528,19 @@ type Snapshot struct {
 	Facts        []Fact              `json:"facts"`
 	Capabilities []Capability        `json:"capabilities"`
 	Checkpoints  []Checkpoint        `json:"checkpoints"`
+
+	// retainedLegacyCredentialBasis is set only while reading a retained
+	// v1alpha1 archive whose credential basis is empty or no longer recognized.
+	// It is deliberately absent from serialized archive data: the source bytes
+	// remain unchanged and the compatibility decision is local to replay.
+	retainedLegacyCredentialBasis bool
+}
+
+// HasRetainedLegacyCredentialBasis reports whether snapshot came through the
+// narrow retained-v1 credential-basis compatibility reader. Fresh facts and
+// archive appends cannot set this marker.
+func HasRetainedLegacyCredentialBasis(snapshot Snapshot) bool {
+	return snapshot.retainedLegacyCredentialBasis
 }
 
 func defaultMetadata(options Options) (SnapshotMetadata, error) {

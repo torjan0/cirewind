@@ -12,6 +12,10 @@ import (
 )
 
 func runCommand(ctx context.Context, args []string, stdout, stderr io.Writer) error {
+	return runCommandWithDependencies(ctx, args, stdout, stderr, productionCommandDependencies())
+}
+
+func runCommandWithDependencies(ctx context.Context, args []string, stdout, stderr io.Writer, dependencies commandDependencies) error {
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
@@ -24,11 +28,13 @@ func runCommand(ctx context.Context, args []string, stdout, stderr io.Writer) er
 	case "verify":
 		return runVerify(ctx, args[1:], stdout)
 	case "investigate":
-		return runInvestigate(ctx, args[1:], stdout, stderr)
+		return runInvestigateWithDependencies(ctx, args[1:], stdout, stderr, dependencies)
 	case "archive":
-		return runArchive(ctx, args[1:], stdout, stderr)
+		return runArchiveWithDependencies(ctx, args[1:], stdout, stderr, dependencies)
 	case "replay":
 		return runReplay(ctx, args[1:], stdout, stderr)
+	case "demo":
+		return runDemo(ctx, args[1:], stdout, stderr)
 	default:
 		return fmt.Errorf("unknown command %q", args[0])
 	}
@@ -81,10 +87,14 @@ func runVerify(ctx context.Context, args []string, stdout io.Writer) error {
 	if len(args) != 1 {
 		return fmt.Errorf("%w: expected `cirewind verify CASE_DIR`", errUsage)
 	}
-	if err := casefile.VerifyManifest(ctx, args[0]); err != nil {
+	result, err := casefile.VerifyCase(ctx, args[0])
+	if err != nil {
 		return fmt.Errorf("case verification failed: %w", err)
 	}
-	fmt.Fprintln(stdout, "case manifest verified")
+	fmt.Fprintf(stdout, "case manifest verified (%s)\n", result.Contract)
+	for _, extra := range result.LegacyExtras {
+		fmt.Fprintf(stdout, "legacy extra %s: %s\n", sanitizeDiagnostic(extra.Path), extra.Status)
+	}
 	return nil
 }
 
