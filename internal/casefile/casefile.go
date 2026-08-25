@@ -134,14 +134,10 @@ func newBuilder(target string, raw bool, contract CaseContract) (*Builder, error
 		_ = os.Remove(staging)
 		return nil, fmt.Errorf("protect case staging directory: %w", err)
 	}
-	stagingInfo, err := os.Lstat(staging)
+	stagingInfo, err := stableDirectoryInfo(staging)
 	if err != nil {
 		_ = os.Remove(staging)
 		return nil, fmt.Errorf("inspect case staging directory: %w", err)
-	}
-	if !stagingInfo.IsDir() || stagingInfo.Mode()&os.ModeSymlink != 0 {
-		_ = os.Remove(staging)
-		return nil, errors.New("case staging path is not a directory")
 	}
 	if raw {
 		if err := os.Mkdir(filepath.Join(staging, "raw"), 0o700); err != nil {
@@ -317,7 +313,7 @@ func (b *Builder) Abort() error {
 		return nil
 	}
 	b.closed = true
-	info, err := os.Lstat(b.staging)
+	info, err := stableDirectoryInfo(b.staging)
 	if errors.Is(err, os.ErrNotExist) {
 		return nil
 	}
@@ -331,14 +327,42 @@ func (b *Builder) Abort() error {
 }
 
 func (b *Builder) validateStagingIdentity() error {
-	info, err := os.Lstat(b.staging)
+	info, err := stableDirectoryInfo(b.staging)
 	if err != nil {
 		return fmt.Errorf("inspect case staging directory: %w", err)
 	}
-	if b.stagingInfo == nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 || !os.SameFile(b.stagingInfo, info) {
+	if b.stagingInfo == nil || !os.SameFile(b.stagingInfo, info) {
 		return errors.New("case staging directory identity changed")
 	}
 	return nil
+}
+
+// stableDirectoryInfo returns identity information captured from an open
+// directory handle. On Windows, os.Lstat defers loading the file ID until
+// os.SameFile is called; retaining that lazy FileInfo would let a replacement
+// at the same path be mistaken for the original directory. File.Stat binds the
+// identity to the opened handle on every supported platform.
+func stableDirectoryInfo(path string) (os.FileInfo, error) {
+	linkInfo, err := os.Lstat(path)
+	if err != nil {
+		return nil, err
+	}
+	if !linkInfo.IsDir() || linkInfo.Mode()&os.ModeSymlink != 0 {
+		return nil, errors.New("case staging path is not a directory")
+	}
+	directory, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer directory.Close()
+	info, err := directory.Stat()
+	if err != nil {
+		return nil, err
+	}
+	if !info.IsDir() || !os.SameFile(linkInfo, info) {
+		return nil, errors.New("case staging directory identity changed while inspecting it")
+	}
+	return info, nil
 }
 
 // BuildManifest returns sorted GNU-style SHA-256 entries for all regular files

@@ -355,7 +355,14 @@ func TestDemoRejectsSymlinkAndHostileAncestors(t *testing.T) {
 
 func TestDemoSanitizesSuccessfulOutputPath(t *testing.T) {
 	parent := t.TempDir()
-	output := filepath.Join(parent, "case\x1b[2J\nforged\u202e\u2066")
+	component := "case\x1b[2J\nforged\u202e\u2066"
+	if runtime.GOOS == "windows" {
+		// Windows rejects ASCII control characters in path components. Bidi
+		// controls remain a valid hostile terminal label and preserve the
+		// successful-path sanitizer assertion on that platform.
+		component = "case-forged\u202e\u2066"
+	}
+	output := filepath.Join(parent, component)
 	var stdout, stderr bytes.Buffer
 	if code := Run(context.Background(), []string{"demo", "--out", output}, &stdout, &stderr); code != 0 {
 		t.Fatalf("demo exit=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
