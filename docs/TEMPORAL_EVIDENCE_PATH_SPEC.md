@@ -361,6 +361,14 @@ Within a lane:
   ID;
 - sort edges by source column/row, target column/row, edge-type rank, and edge ID;
 - route edges orthogonally through fixed integer gutters and ports;
+- assign every edge a deterministic track below the node grid; no route may
+  intersect a non-endpoint node, and contradiction tracks occupy a separated
+  sub-band. Route validation expands non-endpoint node bounds by eight SVG
+  units so the full rendered stroke, not only its centerline, remains clear;
+- place each edge's explicit type, evidence class, conservative relationship
+  wording, and compact evidence references in a deterministic two-line
+  relationship ledger below the lane's node grid; ledger rows must not overlap
+  nodes or one another;
 - reserve a separate band for contradiction edges;
 - keep temporal correlation visually separate from direct resource attribution;
 - repeat a node visually across lanes if necessary while retaining the same
@@ -410,6 +418,8 @@ fixed root:
      role="img"
      aria-labelledby="tep-title tep-desc"
      data-cirewind-schema="cirewind.temporal-evidence-path/v1alpha1"
+     width="WIDTH"
+     height="HEIGHT"
      viewBox="0 0 WIDTH HEIGHT">
 ```
 
@@ -619,8 +629,14 @@ edge and implies no shared causal path.
   distinguish all evidence classes without color.
 - Body text has a minimum effective size of 16 px at default zoom; ordinary-text
   contrast is at least 4.5:1 and graphical-object contrast is at least 3:1.
-- The `viewBox` scales without a forced bitmap size and remains usable at 200%
-  zoom and narrow viewport widths.
+- Intrinsic numeric `width` and `height` match the `viewBox`. This preserves one
+  CSS pixel per deterministic SVG unit at default zoom instead of fitting the
+  full tall canvas into a viewport and making text unreadable. The output
+  remains vector, zoomable, and pannable; the report contains it in a labeled,
+  keyboard-focusable two-dimensional scroll region at narrow viewport widths.
+- Relationship-ledger rectangles do not overlap nodes or other relationship
+  rows, and every ledger line retains an effective size of at least 16 px at
+  default zoom.
 - DOM/reading order follows lane then column order; it does not follow routed
   line geometry.
 - Relationship wording and evidence references are visible or present in the

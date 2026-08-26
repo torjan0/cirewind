@@ -3,12 +3,14 @@ package analyze
 import (
 	"context"
 	"os"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/torjan0/cirewind/internal/archive"
+	"github.com/torjan0/cirewind/internal/demodata"
 	"github.com/torjan0/cirewind/internal/incident"
 	"github.com/torjan0/cirewind/internal/model"
 	"github.com/torjan0/cirewind/internal/report"
@@ -724,6 +726,69 @@ func TestAggregateCoverageFactsBeatLatestCapabilityCounts(t *testing.T) {
 	}
 	if coverage.RepositoriesRequested != 5 || coverage.RepositoriesAccessible != 4 || coverage.RepositoriesDenied != 1 {
 		t.Fatalf("repository coverage was reduced by latest capability: %+v", coverage)
+	}
+}
+
+func TestBuildMetadataCountsTypedLogCoverageWithoutCapabilityRows(t *testing.T) {
+	t.Parallel()
+	capabilities := completeCoreCapabilities()
+	capabilities = slices.DeleteFunc(capabilities, func(capability archive.Capability) bool {
+		return capability.Name == "job_logs"
+	})
+	one := uint64(1)
+	idx := index{
+		repositories: map[model.RepositoryID]model.RepositorySubject{},
+		runs:         map[string]archive.RunFact{},
+		attempts:     map[string]archive.AttemptFact{},
+		jobs:         map[string]archive.JobFact{},
+		coverage: []archive.Fact{{Coverage: &archive.CoverageFact{
+			Unit:       model.CoverageUnit{ID: model.CoverageUnitID("cov1:" + strings.Repeat("a", 64)), Kind: model.CoverageJobLog},
+			Assessment: model.CoverageAssessment{Status: model.CoverageCollected, ExpectedCount: &one, ObservedCount: 1},
+		}}},
+		gaps: []archive.Fact{
+			{CoverageGap: &archive.CoverageGapFact{
+				Unit:       model.CoverageUnit{ID: model.CoverageUnitID("cov1:" + strings.Repeat("b", 64)), Kind: model.CoverageJobLog},
+				Assessment: model.CoverageAssessment{Status: model.CoverageGap},
+			}},
+			{CoverageGap: &archive.CoverageGapFact{
+				Unit:       model.CoverageUnit{ID: model.CoverageUnitID("cov1:" + strings.Repeat("c", 64)), Kind: model.CoverageParserGrammar},
+				Assessment: model.CoverageAssessment{Status: model.CoverageGap},
+			}},
+		},
+	}
+
+	metadata := buildMetadata(
+		archive.Snapshot{Capabilities: capabilities}, loadPack(t),
+		time.Date(2026, 8, 20, 0, 0, 0, 0, time.UTC), ModeReplay, idx,
+	)
+	// The complete attempt_logs capability contributes its legacy retained-log
+	// lower bound; the capability-less typed job-log fact contributes the other
+	// retrieved count. The unrelated parser gap must not affect LogsMissing.
+	if metadata.Coverage.LogsRetrieved != 2 || metadata.Coverage.LogsMissing != 1 {
+		t.Fatalf("typed log coverage without capability row = %+v", metadata.Coverage)
+	}
+	if !metadata.Coverage.Partial {
+		t.Fatal("typed missing-log coverage did not make coverage partial")
+	}
+}
+
+func TestSyntheticDemoMetadataReportsRetainedAndMissingLogs(t *testing.T) {
+	t.Parallel()
+	bundle, err := demodata.Bundle(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	pack, err := incident.Validate(context.Background(), bundle.PackYAML)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := Derive(bundle.Snapshot, pack, bundle.AnalysisTime, ModeReplay)
+	if err != nil {
+		t.Fatal(err)
+	}
+	coverage := result.Case.Metadata.Coverage
+	if coverage.LogsRetrieved != 2 || coverage.LogsMissing != 1 {
+		t.Fatalf("synthetic demo log coverage = %+v", coverage)
 	}
 }
 

@@ -213,6 +213,302 @@ def page_request_urls(entries: list[dict], report_url: str) -> list[str]:
     return urls
 
 
+def focus_temporal_region_by_keyboard(driver: Driver) -> None:
+    for _ in range(64):
+        active = driver.session_call(
+            "POST",
+            "/execute/sync",
+            {
+                "script": "return document.activeElement?.classList.contains('temporal-path') === true;",
+                "args": [],
+            },
+        )["value"]
+        if active:
+            return
+        driver.session_call(
+            "POST",
+            "/actions",
+            {
+                "actions": [
+                    {
+                        "type": "key",
+                        "id": "graph-focus",
+                        "actions": [
+                            {"type": "keyDown", "value": "\ue004"},
+                            {"type": "keyUp", "value": "\ue004"},
+                        ],
+                    }
+                ]
+            },
+        )
+    raise AuditError("keyboard traversal did not reach the temporal-path region")
+
+
+def responsive_report_checks(driver: Driver) -> list[dict[str, object]]:
+    results: list[dict[str, object]] = []
+    for width, height in ((1440, 900), (1024, 768), (768, 768), (390, 844)):
+        driver.session_call(
+            "POST", "/window/rect", {"x": 0, "y": 0, "width": width, "height": height}
+        )
+        focus_temporal_region_by_keyboard(driver)
+        driver.session_call(
+            "POST",
+            "/execute/sync",
+            {
+                "script": "const r=document.querySelector('.temporal-path');r.scrollTop=0;r.scrollLeft=0;",
+                "args": [],
+            },
+        )
+        before = driver.session_call(
+            "POST",
+            "/execute/sync",
+            {
+                "script": r"""
+const region = document.querySelector('.temporal-path[role="region"]');
+const svg = region?.querySelector('svg');
+const text = svg ? [...svg.querySelectorAll('text')].find(item => item.getAttribute('font-size') === '16') : null;
+if (!region || !svg || !text) return null;
+const matrix = text.getScreenCTM();
+const viewBox = svg.viewBox.baseVal;
+const style = getComputedStyle(text);
+const regionStyle = getComputedStyle(region);
+return {
+  innerWidth: window.innerWidth,
+  documentClientWidth: document.documentElement.clientWidth,
+  documentScrollWidth: document.documentElement.scrollWidth,
+  svgWidthAttribute: Number(svg.getAttribute('width')),
+  svgHeightAttribute: Number(svg.getAttribute('height')),
+  viewBoxWidth: viewBox.width,
+  viewBoxHeight: viewBox.height,
+  renderedSVGWidth: svg.getBoundingClientRect().width,
+  renderedSVGHeight: svg.getBoundingClientRect().height,
+  effectiveFontSize: Number.parseFloat(style.fontSize) * Math.abs(matrix?.a || 0),
+  scaleX: Math.abs(matrix?.a || 0),
+  scaleY: Math.abs(matrix?.d || 0),
+  regionClientWidth: region.clientWidth,
+  regionClientHeight: region.clientHeight,
+  regionScrollWidth: region.scrollWidth,
+  regionScrollHeight: region.scrollHeight,
+  focused: document.activeElement === region,
+  outlineWidth: Number.parseFloat(regionStyle.outlineWidth) || 0,
+  outlineStyle: regionStyle.outlineStyle,
+  boxShadow: regionStyle.boxShadow
+};
+""",
+                "args": [],
+            },
+        )["value"]
+        if before is None:
+            raise AuditError("responsive report lacks its temporal-path region, SVG, or 16px text")
+        driver.session_call(
+            "POST",
+            "/actions",
+            {
+                "actions": [
+                    {
+                        "type": "key",
+                        "id": "graph-scroll",
+                        "actions": [
+                            {"type": "keyDown", "value": "\ue00f"},
+                            {"type": "keyUp", "value": "\ue00f"},
+                            {"type": "keyDown", "value": "\ue014"},
+                            {"type": "keyUp", "value": "\ue014"},
+                        ],
+                    }
+                ]
+            },
+        )
+        time.sleep(0.05)
+        after = driver.session_call(
+            "POST",
+            "/execute/sync",
+            {
+                "script": "const r=document.querySelector('.temporal-path');return {top:r.scrollTop,left:r.scrollLeft};",
+                "args": [],
+            },
+        )["value"]
+        if before["documentScrollWidth"] > before["documentClientWidth"] + 1:
+            raise AuditError(f"report has document-wide horizontal overflow at {width}px")
+        if before["svgWidthAttribute"] != before["viewBoxWidth"] or before["svgHeightAttribute"] != before["viewBoxHeight"]:
+            raise AuditError(f"inline SVG intrinsic dimensions disagree with its viewBox at {width}px")
+        if abs(before["renderedSVGWidth"] - before["viewBoxWidth"]) > 0.5 or abs(before["renderedSVGHeight"] - before["viewBoxHeight"]) > 0.5:
+            raise AuditError(f"inline SVG was scaled away from its intrinsic vector dimensions at {width}px")
+        if before["effectiveFontSize"] < 15.99 or before["scaleX"] < 0.999 or before["scaleY"] < 0.999:
+            raise AuditError(f"inline graph text was scaled below 16px at {width}px")
+        if before["regionScrollWidth"] <= before["regionClientWidth"] or before["regionScrollHeight"] <= before["regionClientHeight"]:
+            raise AuditError(f"temporal-path region is not locally two-dimensionally scrollable at {width}px")
+        visible_focus = (
+            before["outlineStyle"] != "none" and before["outlineWidth"] >= 3
+        ) or before["boxShadow"] != "none"
+        if not before["focused"] or not visible_focus:
+            raise AuditError(
+                f"temporal-path keyboard focus is not visibly indicated at {width}px: "
+                f"focused={before['focused']} style={before['outlineStyle']} "
+                f"width={before['outlineWidth']} shadow={before['boxShadow']}"
+            )
+        if after["top"] <= 0 or after["left"] <= 0:
+            raise AuditError(f"keyboard input did not scroll the temporal-path region at {width}px")
+        before["keyboardScrollTop"] = after["top"]
+        before["keyboardScrollLeft"] = after["left"]
+        results.append(before)
+    return results
+
+
+def accessible_text_skip_check(driver: Driver) -> dict[str, object]:
+    prepared = driver.session_call(
+        "POST",
+        "/execute/sync",
+        {
+            "script": r"""
+const link = document.getElementById('temporal-path-text-link');
+const details = document.getElementById('temporal-path-text');
+const summary = document.getElementById('temporal-path-text-summary');
+if (!link || !details || !summary) return false;
+details.open = false;
+link.focus();
+return document.activeElement === link;
+""",
+            "args": [],
+        },
+    )["value"]
+    if not prepared:
+        raise AuditError("accessible text skip link could not receive keyboard focus")
+    driver.session_call(
+        "POST",
+        "/actions",
+        {
+            "actions": [
+                {
+                    "type": "key",
+                    "id": "text-equivalent-skip",
+                    "actions": [
+                        {"type": "keyDown", "value": "\ue007"},
+                        {"type": "keyUp", "value": "\ue007"},
+                    ],
+                }
+            ]
+        },
+    )
+    state = driver.session_call(
+        "POST",
+        "/execute/sync",
+        {
+            "script": r"""
+const details = document.getElementById('temporal-path-text');
+const summary = document.getElementById('temporal-path-text-summary');
+return {
+  open: details?.open === true,
+  summaryFocused: document.activeElement === summary,
+  hash: window.location.hash
+};
+""",
+            "args": [],
+        },
+    )["value"]
+    if not state["open"] or not state["summaryFocused"] or state["hash"] != "#temporal-path-text-summary":
+        raise AuditError(
+            "accessible text skip link did not open and focus its target: "
+            f"open={state['open']} focused={state['summaryFocused']} hash={state['hash']}"
+        )
+    return state
+
+
+def audit_standalone_svg(graph: Path, driver: Driver) -> dict[str, object]:
+    graph_url = graph.resolve().as_uri()
+    driver.session_call("POST", "/log", {"type": "performance"})
+    driver.session_call("POST", "/log", {"type": "browser"})
+    driver.session_call("POST", "/window/rect", {"x": 0, "y": 0, "width": 1440, "height": 900})
+    driver.session_call("POST", "/url", {"url": graph_url})
+    state = driver.session_call(
+        "POST",
+        "/execute/sync",
+        {
+            "script": r"""
+const svg = document.documentElement;
+const text = [...svg.querySelectorAll('text')].find(item => item.getAttribute('font-size') === '16');
+const matrix = text?.getScreenCTM();
+const edgeGroups = [...svg.querySelectorAll('g[data-edge-id]')];
+let ledgerTextOverflows = 0;
+let maximumLedgerOverflow = 0;
+for (const group of edgeGroups) {
+  const rect = group.querySelector(':scope > rect');
+  const lines = [...group.querySelectorAll(':scope > text')];
+  if (!rect || lines.length !== 2) {
+    ledgerTextOverflows += 1;
+    maximumLedgerOverflow = Number.POSITIVE_INFINITY;
+    continue;
+  }
+  const bounds = {
+    left: Number(rect.getAttribute('x')),
+    top: Number(rect.getAttribute('y')),
+    right: Number(rect.getAttribute('x')) + Number(rect.getAttribute('width')),
+    bottom: Number(rect.getAttribute('y')) + Number(rect.getAttribute('height'))
+  };
+  let rowOverflow = 0;
+  for (const line of lines) {
+    const box = line.getBBox();
+    rowOverflow = Math.max(
+      rowOverflow,
+      bounds.left - box.x,
+      bounds.top - box.y,
+      box.x + box.width - bounds.right,
+      box.y + box.height - bounds.bottom
+    );
+  }
+  if (rowOverflow > 0.01) ledgerTextOverflows += 1;
+  maximumLedgerOverflow = Math.max(maximumLedgerOverflow, rowOverflow);
+}
+return {
+  root: svg.localName,
+  widthAttribute: Number(svg.getAttribute('width')),
+  heightAttribute: Number(svg.getAttribute('height')),
+  viewBoxWidth: svg.viewBox.baseVal.width,
+  viewBoxHeight: svg.viewBox.baseVal.height,
+  renderedWidth: svg.getBoundingClientRect().width,
+  renderedHeight: svg.getBoundingClientRect().height,
+  effectiveFontSize: text ? Number.parseFloat(getComputedStyle(text).fontSize) * Math.abs(matrix?.a || 0) : 0,
+  scaleX: Math.abs(matrix?.a || 0),
+  scaleY: Math.abs(matrix?.d || 0),
+  scrollWidth: document.scrollingElement.scrollWidth,
+  scrollHeight: document.scrollingElement.scrollHeight,
+  clientWidth: document.scrollingElement.clientWidth,
+  clientHeight: document.scrollingElement.clientHeight,
+  relationshipLedgerRows: edgeGroups.length,
+  ledgerTextOverflows,
+  maximumLedgerOverflow
+};
+""",
+            "args": [],
+        },
+    )["value"]
+    performance = driver.session_call("POST", "/log", {"type": "performance"})["value"]
+    console = driver.session_call("POST", "/log", {"type": "browser"})["value"]
+    if state["root"] != "svg" or state["widthAttribute"] != state["viewBoxWidth"] or state["heightAttribute"] != state["viewBoxHeight"]:
+        raise AuditError("standalone SVG intrinsic dimensions disagree with its viewBox")
+    if abs(state["renderedWidth"] - state["viewBoxWidth"]) > 0.5 or abs(state["renderedHeight"] - state["viewBoxHeight"]) > 0.5:
+        raise AuditError("standalone SVG was fit to the viewport instead of retaining intrinsic scale")
+    if state["effectiveFontSize"] < 15.99 or state["scaleX"] < 0.999 or state["scaleY"] < 0.999:
+        raise AuditError("standalone SVG text was scaled below 16px")
+    if state["relationshipLedgerRows"] < 1 or state["ledgerTextOverflows"] != 0:
+        raise AuditError(
+            "standalone SVG relationship-ledger text exceeds its row bounds: "
+            f"rows={state['relationshipLedgerRows']} overflows={state['ledgerTextOverflows']} "
+            f"maximum={state['maximumLedgerOverflow']}"
+        )
+    if state["scrollWidth"] < state["widthAttribute"] or state["scrollHeight"] < state["heightAttribute"]:
+        raise AuditError("standalone SVG right or bottom extent is unreachable")
+    requests = page_request_urls(performance, graph_url)
+    external = sorted({url for url in requests if urlsplit(url).scheme in {"http", "https", "ws", "wss"}})
+    files = sorted({url for url in requests if urlsplit(url).scheme == "file"})
+    severe = [item for item in console if item.get("level") == "SEVERE"]
+    if external or files != [graph_url] or severe:
+        raise AuditError("standalone SVG initiated an unexpected request or console error")
+    state["pageRequests"] = len(requests)
+    state["externalRequests"] = len(external)
+    state["consoleErrors"] = len(severe)
+    return state
+
+
 def audit(report: Path, driver: Driver) -> dict[str, object]:
     report_url = report.resolve().as_uri()
     driver.session_call("POST", "/log", {"type": "performance"})
@@ -281,6 +577,8 @@ return {
             "args": [],
         },
     )["value"]
+    responsive = responsive_report_checks(driver)
+    accessible_text_skip = accessible_text_skip_check(driver)
     performance = driver.session_call("POST", "/log", {"type": "performance"})["value"]
     console = driver.session_call("POST", "/log", {"type": "browser"})["value"]
 
@@ -374,6 +672,8 @@ return {
         "externalRequests": len(external),
         "consoleErrors": len(severe),
         "cspHashesVerified": True,
+        "responsive": responsive,
+        "accessibleTextSkip": accessible_text_skip,
     }
 
 
@@ -412,6 +712,10 @@ def main() -> int:
     try:
         driver = Driver(chromedriver, chrome, work / "profile", work / "chromedriver.log")
         result = audit(report, driver)
+        graph = report.parent / "graph.svg"
+        if not graph.is_file():
+            raise AuditError(f"standalone graph is unavailable: {graph}")
+        result["standaloneGraph"] = audit_standalone_svg(graph, driver)
         print(json.dumps(result, sort_keys=True))
     finally:
         if driver is not None:

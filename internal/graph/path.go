@@ -28,6 +28,27 @@ const (
 	pathNodeWidth   = 330
 	pathNodeHeight  = 88
 	pathRowGap      = 30
+
+	// Every relationship receives a separate horizontal track below the node
+	// grid. Endpoint stubs reach that track through the fixed column gutters,
+	// so a route cannot pass through an unrelated node.
+	pathEdgeRouteTop       = 12
+	pathEdgeRouteRowHeight = 14
+	pathEdgeRouteClassGap  = 12
+	pathEdgeRouteBottom    = 12
+	pathRouteClearance     = 8
+
+	// Relationship labels live in a dedicated ledger below each lane's node
+	// grid. They never share route midpoints with nodes or with another label.
+	pathEdgeLabelRectX      = 52
+	pathEdgeLabelRectWidth  = 1618
+	pathEdgeLabelRectHeight = 46
+	pathEdgeLabelTextX      = 64
+	pathEdgeLabelRowHeight  = 52
+	pathEdgeLabelTop        = 6
+	pathEdgeLabelTextY      = 22
+	pathEdgeLabelLineGap    = 19
+	pathEdgeLabelBottom     = 16
 )
 
 var pathColumnX = [...]int{36, 456, 876, 1296}
@@ -73,8 +94,14 @@ type VisualEdge struct {
 	Edge             EdgeV2
 	LocalID          string
 	Points           []Point
+	LabelRectX       int
+	LabelRectY       int
+	LabelRectWidth   int
+	LabelRectHeight  int
 	LabelX           int
 	LabelY           int
+	LabelLine2Y      int
+	LabelLines       []string
 	RelationshipText string
 	EvidenceRefs     []string
 	AdditionalRefs   int
@@ -306,7 +333,7 @@ func buildTemporalEvidencePath(ctx context.Context, g GraphV2, options PathOptio
 			}
 			laneEdges = append(laneEdges, edge)
 		}
-		visualEdges := layoutEdges(laneEdges, positionByID, refs, finding)
+		visualEdges := layoutEdges(laneEdges, positionByID, refs, finding, currentY, maxRows)
 		for i := range visualEdges {
 			edgeSequence++
 			visualEdges[i].LocalID = fmt.Sprintf("e%04d", edgeSequence)
@@ -321,7 +348,7 @@ func buildTemporalEvidencePath(ctx context.Context, g GraphV2, options PathOptio
 		if finding.State == model.UnknownEvidenceGap {
 			extraRows++
 		}
-		laneHeight := 88 + max(1, maxRows)*(pathNodeHeight+pathRowGap) + extraRows*58
+		laneHeight := 88 + max(1, maxRows)*(pathNodeHeight+pathRowGap) + edgeRouteBandHeight(laneEdges) + edgeLabelBandHeight(len(visualEdges)) + extraRows*58
 		lanes = append(lanes, TemporalEvidenceLane{Finding: finding, Y: currentY, Height: laneHeight, Nodes: visualNodes, Edges: visualEdges, Notices: notices})
 		currentY += laneHeight + pathLaneGap
 	}
@@ -552,7 +579,7 @@ func nodeTypeRank(nodeType NodeType) int {
 	return 1_000
 }
 
-func layoutEdges(edges []EdgeV2, nodes map[string]VisualNode, refs map[string]string, finding FindingIndexEntry) []VisualEdge {
+func layoutEdges(edges []EdgeV2, nodes map[string]VisualNode, refs map[string]string, finding FindingIndexEntry, laneY, maxRows int) []VisualEdge {
 	sort.Slice(edges, func(i, j int) bool {
 		si, sj := nodes[edges[i].Source], nodes[edges[j].Source]
 		ti, tj := nodes[edges[i].Target], nodes[edges[j].Target]
@@ -561,36 +588,128 @@ func layoutEdges(edges []EdgeV2, nodes map[string]VisualNode, refs map[string]st
 		return ki < kj
 	})
 	result := make([]VisualEdge, 0, len(edges))
+	nodeBandEndY := laneY + 88 + max(1, maxRows)*(pathNodeHeight+pathRowGap)
+	labelBandY := nodeBandEndY + edgeRouteBandHeight(edges)
+	ordinaryRouteCount := 0
 	for _, edge := range edges {
+		if edge.EvidenceClass != EvidenceClassContradiction {
+			ordinaryRouteCount++
+		}
+	}
+	ordinaryRouteIndex, contradictionRouteIndex := 0, 0
+	for edgeIndex, edge := range edges {
 		source, target := nodes[edge.Source], nodes[edge.Target]
-		sx, tx := source.X+source.Width, target.X
-		if source.X > target.X {
-			sx, tx = source.X, target.X+target.Width
-		}
-		sy, ty := source.Y+source.Height/2, target.Y+target.Height/2
-		mid := (sx + tx) / 2
-		points := []Point{{sx, sy}, {mid, sy}, {mid, ty}, {tx, ty}}
-		if source.Column == target.Column {
-			gutter := max(source.X+source.Width, target.X+target.Width) + 24
-			points = []Point{{sx, sy}, {gutter, sy}, {gutter, ty}, {tx, ty}}
-		}
+		routeIndex := ordinaryRouteIndex
 		if edge.EvidenceClass == EvidenceClassContradiction {
-			bandY := min(source.Y, target.Y) - 16
-			points = []Point{{sx, sy}, {sx + sign(tx-sx)*20, sy}, {sx + sign(tx-sx)*20, bandY}, {tx - sign(tx-sx)*20, bandY}, {tx - sign(tx-sx)*20, ty}, {tx, ty}}
+			routeIndex = ordinaryRouteCount + contradictionRouteIndex
+			contradictionRouteIndex++
+		} else {
+			ordinaryRouteIndex++
 		}
+		routeTrackY := nodeBandEndY + pathEdgeRouteTop + routeIndex*pathEdgeRouteRowHeight
+		if edge.EvidenceClass == EvidenceClassContradiction && ordinaryRouteCount > 0 {
+			routeTrackY += pathEdgeRouteClassGap
+		}
+		points := routeEdge(source, target, routeTrackY)
 		edgeRefs := make([]string, 0, min(8, len(edge.EvidenceIDs)))
 		for i, id := range edge.EvidenceIDs {
 			if i < 8 {
 				edgeRefs = append(edgeRefs, refs[id])
 			}
 		}
+		relationship := relationshipText(edge, edges, finding)
+		additionalRefs := max(0, len(edge.EvidenceIDs)-len(edgeRefs))
+		labelRectY := labelBandY + pathEdgeLabelTop + edgeIndex*pathEdgeLabelRowHeight
 		result = append(result, VisualEdge{
-			Edge: edge, Points: points, LabelX: mid, LabelY: min(sy, ty) - 10,
-			RelationshipText: relationshipText(edge, edges, finding), EvidenceRefs: edgeRefs,
-			AdditionalRefs: max(0, len(edge.EvidenceIDs)-len(edgeRefs)),
+			Edge: edge, Points: points,
+			LabelRectX: pathEdgeLabelRectX, LabelRectY: labelRectY,
+			LabelRectWidth: pathEdgeLabelRectWidth, LabelRectHeight: pathEdgeLabelRectHeight,
+			LabelX: pathEdgeLabelTextX, LabelY: labelRectY + pathEdgeLabelTextY,
+			LabelLine2Y:      labelRectY + pathEdgeLabelTextY + pathEdgeLabelLineGap,
+			LabelLines:       edgeLabelLines(source, target, edge, relationship, edgeRefs, additionalRefs),
+			RelationshipText: relationship, EvidenceRefs: edgeRefs, AdditionalRefs: additionalRefs,
 		})
 	}
 	return result
+}
+
+func routeEdge(source, target VisualNode, trackY int) []Point {
+	sourcePortX, sourceGutterX := routePort(source, target)
+	targetPortX, targetGutterX := routePort(target, source)
+	points := []Point{
+		{X: sourcePortX, Y: source.Y + source.Height/2},
+		{X: sourceGutterX, Y: source.Y + source.Height/2},
+		{X: sourceGutterX, Y: trackY},
+		{X: targetGutterX, Y: trackY},
+		{X: targetGutterX, Y: target.Y + target.Height/2},
+		{X: targetPortX, Y: target.Y + target.Height/2},
+	}
+	return compactRoute(points)
+}
+
+func routePort(node, peer VisualNode) (portX, gutterX int) {
+	useRight := peer.Column > node.Column || peer.Column == node.Column && node.Column < len(pathColumnX)-1
+	if useRight {
+		portX = node.X + node.Width
+		rightBoundary := pathCanvasWidth
+		if node.Column < len(pathColumnX)-1 {
+			rightBoundary = pathColumnX[node.Column+1]
+		}
+		return portX, portX + (rightBoundary-portX)/2
+	}
+	portX = node.X
+	leftBoundary := 0
+	if node.Column > 0 {
+		leftBoundary = pathColumnX[node.Column-1] + pathNodeWidth
+	}
+	return portX, leftBoundary + (portX-leftBoundary)/2
+}
+
+func compactRoute(points []Point) []Point {
+	result := make([]Point, 0, len(points))
+	for _, point := range points {
+		if len(result) == 0 || result[len(result)-1] != point {
+			result = append(result, point)
+		}
+	}
+	return result
+}
+
+func edgeRouteBandHeight(edges []EdgeV2) int {
+	if len(edges) == 0 {
+		return 0
+	}
+	hasOrdinary, hasContradiction := false, false
+	for _, edge := range edges {
+		if edge.EvidenceClass == EvidenceClassContradiction {
+			hasContradiction = true
+		} else {
+			hasOrdinary = true
+		}
+	}
+	classGap := 0
+	if hasOrdinary && hasContradiction {
+		classGap = pathEdgeRouteClassGap
+	}
+	return pathEdgeRouteTop + len(edges)*pathEdgeRouteRowHeight + classGap + pathEdgeRouteBottom
+}
+
+func edgeLabelBandHeight(edgeCount int) int {
+	if edgeCount == 0 {
+		return 0
+	}
+	return pathEdgeLabelTop + edgeCount*pathEdgeLabelRowHeight + pathEdgeLabelBottom
+}
+
+func edgeLabelLines(source, target VisualNode, edge EdgeV2, relationship string, refs []string, additionalRefs int) []string {
+	first := fmt.Sprintf("%s → %s · %s · %s", source.Node.Type, target.Node.Type, edge.Type, edge.EvidenceClass)
+	second := relationship + " · evidence " + strings.Join(refs, " ")
+	if additionalRefs > 0 {
+		second += fmt.Sprintf(" +%d more", additionalRefs)
+	}
+	first, _ = sanitizeSVGText(first, 512)
+	second, _ = sanitizeSVGText(second, 512)
+	return []string{first, second}
 }
 
 func edgeTypeRank(edgeType EdgeType) int {
@@ -677,13 +796,6 @@ func workflowDeclarationText(finding FindingIndexEntry) string {
 		return "present-day workflow snapshot declared Action"
 	}
 	return "historical workflow declared Action"
-}
-
-func sign(value int) int {
-	if value < 0 {
-		return -1
-	}
-	return 1
 }
 
 func visibleLabelLines(full string) []string {

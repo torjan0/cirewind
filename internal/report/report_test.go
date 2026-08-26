@@ -214,6 +214,8 @@ func TestV1SummaryMarkdownByteContract(t *testing.T) {
 
 type temporalSignature struct {
 	Schema      string
+	Width       string
+	Height      string
 	ViewBox     string
 	FindingIDs  []string
 	Nodes       []string
@@ -252,6 +254,8 @@ func temporalSVGSignature(data []byte) (temporalSignature, error) {
 			}
 			if value.Name.Local == "svg" {
 				result.Schema = attributes["data-cirewind-schema"]
+				result.Width = attributes["width"]
+				result.Height = attributes["height"]
 				result.ViewBox = attributes["viewBox"]
 			}
 			if finding := attributes["data-finding-revision"]; finding != "" {
@@ -395,7 +399,8 @@ func TestV2HTMLRendersEscapedDeterministicTemporalEvidencePath(t *testing.T) {
 	for _, required := range []string{
 		"SYNTHETIC DEMONSTRATION", "Temporal evidence path", "data-cirewind-schema=\"cirewind.temporal-evidence-path/v1alpha1\"",
 		"EXACT_OBSERVATION", "Exact observation — solid", "step execution began", "Accessible text equivalent",
-		"Open the standalone graph.svg", c.Findings[0].EvidenceIDs[0], "img-src &#39;none&#39;",
+		"Open the standalone graph.svg", `role="region" aria-labelledby="temporal-path-heading"`, `id="temporal-path-text-link"`, `id="temporal-path-text-summary"`, "Skip to the accessible text equivalent",
+		"<th>Indicator</th>", "Run-attempt findings", "Complete run-attempt and job finding set", c.Findings[0].EvidenceIDs[0], "img-src &#39;none&#39;",
 		"&lt;/text&gt;&lt;script&gt;alert(1)&lt;/script&gt;&lt;foreignObject",
 	} {
 		if !strings.Contains(html, required) {

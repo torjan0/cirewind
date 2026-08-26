@@ -262,7 +262,7 @@ func TestTemporalPathAndSVGAreDeterministicOrderIndependentAndDoNotMutate(t *tes
 	if len(first) > MaxSVGBytes {
 		t.Fatalf("SVG exceeds hard byte limit: %d", len(first))
 	}
-	wantDigest := "9f9cb1574ab2bf21fd999eb902cdb7774bde341a809624bef72d33c7ee0583b0"
+	wantDigest := "0815cfa40ef69fe71ebf6fc9b6168c5afa4cde17fdc8a4864a61509b79dcb180"
 	if got := fmt.Sprintf("%x", sha256.Sum256(first)); got != wantDigest {
 		t.Fatalf("cross-platform SVG golden digest=%s, want %s", got, wantDigest)
 	}

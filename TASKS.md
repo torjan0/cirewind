@@ -167,6 +167,23 @@ Linux regression passed with `T_demo` p50 0.981367 seconds and maximum 0.991600
 seconds; these Linux numbers do not substitute for the required native macOS
 result.
 
+Corrective automated pre-review checkpoint (2026-08-25): the Batch 1 corrective
+candidate now places every explicit relationship label in a dedicated
+two-line ledger, preserves intrinsic 16 px SVG text inside a keyboard-focusable
+two-dimensional report region, route every relationship through deterministic
+node-free gutters and per-edge tracks, and derive typed job-log coverage when a
+capability aggregate is absent. The exact regenerated synthetic case reports
+logs retrieved/missing as `2 / 1`; its `report.html` and `graph.svg` hashes are
+`961101f2bf77169902d109a5b33831c65da2f2ba7ac286adcd0e89ac6d66c8ae` and
+`7bae218e93adfa6f7d8d42b04fbc0016144300baf67e8ad9eeec3d21b14f0ddc`.
+Normal, race, vet, deterministic double-generation, manifest, Chromium
+offline/CSP/responsive, hostile-label, XML-injection, label-containment, and
+route/non-endpoint-node checks pass. Automated geometry found zero route/node,
+route/ledger, label/node, and label/label intersections across all 73 rendered
+relationship instances. This is automated pre-review only: `ADO-025` remains
+open until an actual human records the required manual review, and these local
+bytes are not yet a frozen release candidate.
+
 - [x] **ADO-001 — Accept the v0.2 scope and proposed ADRs.** Review the six v0.2 specifications and ADRs 0012/0013 without changing canonical evidence semantics. **Done when:** Maksim records acceptance or requested changes; all ten finding states, five provenance identifiers, eight exact invariants, and external human gates are consistent; and the accepted branch/PR sequence is recorded. *(Tests: documentation consistency audit; dependencies: none.)*
 
 - [x] **ADO-010 — Define and embed the versioned synthetic demo bundle.** Add a fresh snapshot factory, embedded declarative pack bytes, fixed analysis time, exact state/exposure oracle, fixture version, and final-file oracle without embedding paths or executable behavior. Add a path-isolated paired-rerun component with exactly one affected B action-commit indicator and one known-good A; move (do not duplicate) run 1001 attempt-1 execution to it, then add its distinct attempt-2/job exact-A observation with closed coverage under one coherent run/workflow fact. Move the pending environment fact from lifecycle-started run 1001 to mutable-window run 1005; make that run, attempt, and sole job share an accepted nonterminal waiting state with empty conclusions, with the job explicitly unstarted and no lifecycle or environment-secret eligibility. Give contents/id-token permissions runtime-observed basis, the secret pass historical-definition-flow basis, and derive OIDC capability from explicit `id-token: write` under a versioned rule; reject empty/unknown basis. Bump immutable synthetic pack `1.0.0` to `2.0.0`, source revision to `fixture-v2`, and bundle/oracle ID to `cirewind.demo/v2`. **Done when:** full per-indicator derivation proves exactly one executed B, one restored-A `NO_MATCH_CONFIRMED`, eleven total findings, and no conflicting duplicate run metadata; cross-fact validation rejects `JobStarted:false` with started/completed job or Action lifecycle, rejects a terminal-success parent or nonempty run/attempt/job conclusion around the sole waiting job, and rejects a pending gate with secret eligibility; the credential-basis/derived-OIDC oracle passes without cloud reachability; embedded/public pack bytes and regenerated original/canonical hashes match; bundle constructions share no mutable state; and any failed no-match predicate records demo NO-GO instead of forcing it. *(Tests: exact 1001/1005 run/attempt/job/component/indicator, parent-child status/conclusion and environment/lifecycle consistency, empty/unknown/misclassified credential basis and OIDC rule, version/hash drift, duplicate-run/count-regression rejection, bundle golden, mutation isolation, no-network; dependencies: `ADO-001`.)*

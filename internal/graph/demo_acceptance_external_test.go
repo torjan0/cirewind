@@ -2,6 +2,7 @@ package graph_test
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -56,13 +57,50 @@ func TestSyntheticDemoTemporalEvidencePathAcceptanceOracle(t *testing.T) {
 			identity.attempt = uint32(*lane.Finding.RunAttempt)
 		}
 		lanes[identity] = lane
+		labelRects := make([]visualRect, 0, len(lane.Edges))
 		for _, edge := range lane.Edges {
 			allEdgeTypes[edge.Edge.Type] = true
 			allClasses[edge.Edge.EvidenceClass] = true
 			if len(edge.Edge.EvidenceIDs) == 0 || len(edge.EvidenceRefs) == 0 {
 				t.Fatalf("edge %s lost evidence traceability", edge.Edge.ID)
 			}
+			if len(edge.LabelLines) != 2 || !strings.Contains(edge.LabelLines[0], string(edge.Edge.Type)) || !strings.Contains(edge.LabelLines[0], string(edge.Edge.EvidenceClass)) || !strings.Contains(edge.LabelLines[1], edge.RelationshipText) {
+				t.Fatalf("edge %s lacks an explicit two-line relationship ledger label: %q", edge.Edge.ID, edge.LabelLines)
+			}
+			for _, reference := range edge.EvidenceRefs {
+				if !strings.Contains(edge.LabelLines[1], reference) {
+					t.Fatalf("edge %s ledger label omits compact evidence reference %s", edge.Edge.ID, reference)
+				}
+			}
+			labelRect := visualRect{edge.LabelRectX, edge.LabelRectY, edge.LabelRectWidth, edge.LabelRectHeight}
+			if labelRect.x < 0 || labelRect.y < lane.Y || labelRect.x+labelRect.width > path.Width || labelRect.y+labelRect.height > lane.Y+lane.Height {
+				t.Fatalf("edge %s ledger label is outside its lane: %+v", edge.Edge.ID, labelRect)
+			}
+			for _, node := range lane.Nodes {
+				if visualRectsOverlap(labelRect, visualRect{node.X, node.Y, node.Width, node.Height}) {
+					t.Fatalf("edge %s ledger label overlaps node %s", edge.Edge.ID, node.Node.ID)
+				}
+			}
+			for _, prior := range labelRects {
+				if visualRectsOverlap(labelRect, prior) {
+					t.Fatalf("edge %s ledger label overlaps another label", edge.Edge.ID)
+				}
+			}
+			labelRects = append(labelRects, labelRect)
+			for _, node := range lane.Nodes {
+				if node.Node.ID == edge.Edge.Source || node.Node.ID == edge.Edge.Target {
+					continue
+				}
+				nodeRect := visualRect{node.X - 8, node.Y - 8, node.Width + 16, node.Height + 16}
+				if visualRouteIntersectsRect(edge.Points, nodeRect) {
+					t.Fatalf("edge %s route intersects non-endpoint node %s", edge.Edge.ID, node.Node.ID)
+				}
+			}
 		}
+	}
+	rootDimensions := fmt.Sprintf(`width="%d" height="%d" viewBox="0 0 %d %d"`, path.Width, path.Height, path.Width, path.Height)
+	if !strings.Contains(string(svg), rootDimensions) {
+		t.Fatalf("standalone SVG lacks intrinsic dimensions matching its viewBox: %s", rootDimensions)
 	}
 
 	for _, class := range []graph.EvidenceClass{
@@ -167,6 +205,32 @@ func TestSyntheticDemoTemporalEvidencePathAcceptanceOracle(t *testing.T) {
 			t.Errorf("demo SVG contains prohibited claim %q", prohibited)
 		}
 	}
+}
+
+func visualRouteIntersectsRect(points []graph.Point, rect visualRect) bool {
+	for index := 1; index < len(points); index++ {
+		from, to := points[index-1], points[index]
+		if from.Y == to.Y {
+			left, right := min(from.X, to.X), max(from.X, to.X)
+			if from.Y >= rect.y && from.Y <= rect.y+rect.height && right >= rect.x && left <= rect.x+rect.width {
+				return true
+			}
+		}
+		if from.X == to.X {
+			top, bottom := min(from.Y, to.Y), max(from.Y, to.Y)
+			if from.X >= rect.x && from.X <= rect.x+rect.width && bottom >= rect.y && top <= rect.y+rect.height {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+type visualRect struct{ x, y, width, height int }
+
+func visualRectsOverlap(left, right visualRect) bool {
+	return left.x < right.x+right.width && right.x < left.x+left.width &&
+		left.y < right.y+right.height && right.y < left.y+left.height
 }
 
 func requireLane(t *testing.T, lanes map[demoLaneIdentity]graph.TemporalEvidenceLane, key demoLaneIdentity) graph.TemporalEvidenceLane {

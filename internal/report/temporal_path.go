@@ -22,7 +22,8 @@ const (
 )
 
 const temporalPathTemplate = `{{define "temporalPath"}}
-<div class="temporal-path"><svg xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="report-tep-title report-tep-desc" data-cirewind-schema="{{.Path.SchemaVersion}}" viewBox="0 0 {{.Path.Width}} {{.Path.Height}}">
+<p id="temporal-path-help"><a id="temporal-path-text-link" href="#temporal-path-text-summary">Skip to the accessible text equivalent</a> · <a href="graph.svg">Open the standalone graph.svg</a>. The graph is a fixed-scale, two-dimensional scroll region; use arrow or Page keys while it is focused. Both views use the same deterministic presentation model.</p>
+<div class="temporal-path" tabindex="0" role="region" aria-labelledby="temporal-path-heading" aria-describedby="temporal-path-help"><svg xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="report-tep-title report-tep-desc" data-cirewind-schema="{{.Path.SchemaVersion}}" width="{{.Path.Width}}" height="{{.Path.Height}}" viewBox="0 0 {{.Path.Width}} {{.Path.Height}}">
 <title id="report-tep-title">Temporal evidence path</title><desc id="report-tep-desc">{{.Description}}</desc>
 <rect x="0" y="0" width="{{.Path.Width}}" height="{{.Path.Height}}" fill="` + pathColorBackground + `"></rect>
 <g aria-label="Legend"><title>Evidence relationship legend</title><text x="36" y="32" fill="` + pathColorText + `" font-family="ui-monospace, monospace" font-size="20" font-weight="bold" text-anchor="start">Temporal evidence path</text>
@@ -34,15 +35,14 @@ const temporalPathTemplate = `{{define "temporalPath"}}
 <rect x="36" y="158" width="1668" height="52" rx="8" fill="` + pathColorBackground + `" stroke="` + pathColorBorder + `" stroke-width="2"></rect><text x="56" y="190" fill="` + pathColorText + `" font-family="ui-monospace, monospace" font-size="16">{{.OmissionText}}</text>
 {{range .Lanes}}<g data-graph-item="true" data-visual-lane="true" data-revision="{{.FindingID}}" data-findings="{{.Focus}}" data-finding-revision="{{.FindingID}}" aria-label="Finding lane {{.FindingState}}"><title>{{.Header}}</title><desc>{{.Description}}</desc>
 <rect x="24" y="{{.Y}}" width="1692" height="{{.Height}}" rx="12" fill="` + pathColorBackground + `" stroke="` + pathColorBorder + `" stroke-width="2"></rect><text x="42" y="{{.FindingY}}" fill="` + pathColorText + `" font-family="ui-monospace, monospace" font-size="18" font-weight="bold">{{.Header}}</text><text x="42" y="{{.ScopeY}}" fill="` + pathColorText + `" font-family="ui-monospace, monospace" font-size="16">{{.Scope}}</text>
-{{range .Edges}}<g id="{{.Edge.LocalID}}" data-edge-id="{{.Edge.Edge.ID}}" data-edge-type="{{.Edge.Edge.Type}}" data-evidence-class="{{.Edge.Edge.EvidenceClass}}" data-evidence-refs="{{range .Edge.EvidenceRefs}}{{.}} {{end}}"><title>{{.Title}}</title><desc>{{.Description}}</desc>{{if .Contradiction}}<polyline points="{{.PointsMinus}}" fill="none" stroke="{{.Color}}" stroke-width="{{.Width}}"></polyline><polyline points="{{.PointsPlus}}" fill="none" stroke="{{.Color}}" stroke-width="{{.Width}}"></polyline><polygon points="{{.Arrow}}" fill="{{.Color}}" stroke="{{.Color}}" stroke-width="1"></polygon><polygon points="{{.ReverseArrow}}" fill="{{.Color}}" stroke="{{.Color}}" stroke-width="1"></polygon>{{else}}<polyline points="{{.Points}}" fill="none" stroke="{{.Color}}" stroke-width="{{.Width}}"{{if .Dash}} stroke-dasharray="{{.Dash}}"{{end}}></polyline><polygon points="{{.Arrow}}" fill="{{.Color}}" stroke="{{.Color}}" stroke-width="1"></polygon>{{end}}<rect x="{{.LabelRectX}}" y="{{.LabelRectY}}" width="360" height="25" fill="` + pathColorBackground + `" stroke="{{.Color}}" stroke-width="1"></rect><text x="{{.Edge.LabelX}}" y="{{.Edge.LabelY}}" fill="` + pathColorText + `" font-family="ui-monospace, monospace" font-size="16" font-weight="bold" text-anchor="middle">{{.Label}}</text></g>{{end}}
+{{range .Edges}}<g id="{{.Edge.LocalID}}" data-edge-id="{{.Edge.Edge.ID}}" data-edge-type="{{.Edge.Edge.Type}}" data-evidence-class="{{.Edge.Edge.EvidenceClass}}" data-evidence-refs="{{range .Edge.EvidenceRefs}}{{.}} {{end}}"><title>{{.Title}}</title><desc>{{.Description}}</desc>{{if .Contradiction}}<polyline points="{{.PointsMinus}}" fill="none" stroke="{{.Color}}" stroke-width="{{.Width}}"></polyline><polyline points="{{.PointsPlus}}" fill="none" stroke="{{.Color}}" stroke-width="{{.Width}}"></polyline><polygon points="{{.Arrow}}" fill="{{.Color}}" stroke="{{.Color}}" stroke-width="1"></polygon><polygon points="{{.ReverseArrow}}" fill="{{.Color}}" stroke="{{.Color}}" stroke-width="1"></polygon>{{else}}<polyline points="{{.Points}}" fill="none" stroke="{{.Color}}" stroke-width="{{.Width}}"{{if .Dash}} stroke-dasharray="{{.Dash}}"{{end}}></polyline><polygon points="{{.Arrow}}" fill="{{.Color}}" stroke="{{.Color}}" stroke-width="1"></polygon>{{end}}<rect x="{{.LabelRectX}}" y="{{.LabelRectY}}" width="{{.LabelRectWidth}}" height="{{.LabelRectHeight}}" rx="5" fill="` + pathColorBackground + `" stroke="{{.Color}}" stroke-width="2"></rect><text x="{{.Edge.LabelX}}" y="{{.Edge.LabelY}}" fill="` + pathColorText + `" font-family="ui-monospace, monospace" font-size="16" font-weight="bold" text-anchor="start">{{.LabelLine1}}</text><text x="{{.Edge.LabelX}}" y="{{.LabelLine2Y}}" fill="` + pathColorText + `" font-family="ui-monospace, monospace" font-size="16" text-anchor="start">{{.LabelLine2}}</text></g>{{end}}
 {{range .Nodes}}{{$node := .}}<g id="{{.Node.LocalID}}" data-node-id="{{.Node.Node.ID}}" data-node-type="{{.Type}}" data-finding-revisions="{{.Focus}}"><title>{{.Title}}</title><desc>{{.Description}}</desc><rect x="{{.Node.X}}" y="{{.Node.Y}}" width="{{.Node.Width}}" height="{{.Node.Height}}" rx="8" fill="` + pathColorBackground + `" stroke="` + pathColorBorder + `" stroke-width="2"></rect><text x="{{.TextX}}" y="{{.TypeY}}" fill="` + pathColorText + `" font-family="ui-monospace, monospace" font-size="16" font-weight="bold">{{.Type}}</text><text x="{{.TextX}}" y="{{.LabelY}}" fill="` + pathColorText + `" font-family="ui-monospace, monospace" font-size="16">{{range $index, $line := .Node.LabelLines}}<tspan x="{{$node.TextX}}" dy="{{if $index}}19{{else}}0{{end}}">{{$line}}</tspan>{{end}}</text></g>{{end}}
 {{with .Gap}}<line x1="{{.X}}" y1="{{.Y}}" x2="{{.X2}}" y2="{{.Y}}" stroke="` + pathColorGap + `" stroke-width="3" stroke-dasharray="12 8"></line><circle cx="{{.Circle}}" cy="{{.Y}}" r="13" fill="` + pathColorBackground + `" stroke="` + pathColorGap + `" stroke-width="3"></circle><text x="{{.Circle}}" y="{{.TextY}}" fill="` + pathColorText + `" font-family="ui-monospace, monospace" font-size="18" font-weight="bold" text-anchor="middle">?</text><text x="{{.TextX}}" y="{{.TextY}}" fill="` + pathColorText + `" font-family="ui-monospace, monospace" font-size="16" font-weight="bold">UNKNOWN_EVIDENCE_GAP — {{.Reason}}</text>{{end}}
 {{range .Notices}}<rect x="52" y="{{.RectY}}" width="1618" height="42" rx="6" fill="` + pathColorBackground + `" stroke="` + pathColorGap + `" stroke-width="2" stroke-dasharray="8 6"></rect><circle cx="76" cy="{{.CircleY}}" r="12" fill="` + pathColorBackground + `" stroke="` + pathColorGap + `" stroke-width="2"></circle><text x="76" y="{{.TextY}}" fill="` + pathColorText + `" font-family="ui-monospace, monospace" font-size="16" font-weight="bold" text-anchor="middle">i</text><text x="100" y="{{.TextY}}" fill="` + pathColorText + `" font-family="ui-monospace, monospace" font-size="16">{{.Text}}</text>{{end}}</g>{{end}}
 <g aria-label="Evidence reference key"><title>Evidence reference key</title><text x="36" y="{{.EvidenceKeyY}}" fill="` + pathColorText + `" font-family="ui-monospace, monospace" font-size="20" font-weight="bold">Evidence references</text>{{range .EvidenceKey}}<text x="36" y="{{.Y}}" fill="` + pathColorText + `" font-family="ui-monospace, monospace" font-size="16">{{.CompactID}} · {{.EvidenceID}}</text>{{end}}</g></svg></div>
-<p><a href="graph.svg">Open the standalone graph.svg</a>. The inline and standalone views use the same deterministic presentation model.</p>
 <p><span id="visual-shown">{{.SelectedFindings}}</span> matching findings shown in the visual; <span id="visual-omitted">{{.OmittedFindings}}</span> matching findings omitted from the visual; see the findings table.</p>
-<details class="path-fallback"><summary>Accessible text equivalent and complete selected-edge evidence</summary><p>{{.OmissionText}}</p><div class="path-legend" aria-label="Evidence relationship legend"><span><strong>EXACT_OBSERVATION</strong> — solid; exact relationship only</span><span><strong>INFERENCE</strong> — dashed; derivation rule shown</span><span><strong>TEMPORAL_CORRELATION</strong> — dotted; observed after, causation not established</span><span><strong>CONTRADICTION</strong> — double/opposing; contradictory evidence</span><span><strong>UNKNOWN_EVIDENCE_GAP</strong> — interrupted with ? marker; missing evidence is not a negative result</span></div>
-{{range .Lanes}}<section data-graph-item="true" data-visual-lane="true" data-revision="{{.FindingID}}" data-findings="{{.Focus}}"><h4>{{.Header}}</h4><p>{{.Scope}} · indicator <code>{{.IndicatorID}}</code> · finding revision <code>{{.FindingID}}</code></p>{{with .Gap}}<p class="warning">UNKNOWN_EVIDENCE_GAP — {{.Reason}}</p>{{end}}{{range .Notices}}<p class="classification-unknown">{{.Text}}</p>{{end}}<h5>Selected nodes</h5><ul>{{range .Nodes}}<li><code>{{.Type}}:{{.Node.Node.ID}}</code> — {{.Node.FullLabel}}{{if .Node.Node.EvidenceIDs}}; evidence: {{range .Node.Node.EvidenceIDs}}<code>{{.}}</code> {{end}}{{end}}</li>{{else}}<li>No presentable node selected for this finding lane.</li>{{end}}</ul><h5>Selected material relationships</h5><table class="path-table"><thead><tr><th>Relationship</th><th>Endpoints</th><th>Evidence basis</th><th>Evidence IDs</th></tr></thead><tbody>{{range .Edges}}<tr><td><code>{{.Edge.Edge.Type}}</code><br>{{.Title}}</td><td><code>{{.Edge.Edge.Source}}</code> → <code>{{.Edge.Edge.Target}}</code></td><td>{{.Edge.Edge.EvidenceClass}}{{if .Edge.Edge.DerivationRule}}<br>Rule: <code>{{.Edge.Edge.DerivationRule}}</code>{{end}}{{if .Edge.Edge.EventTime}}<br>Event time: <code>{{.Edge.Edge.EventTime}}</code>{{end}}</td><td>{{range .EvidenceIDs}}<code>{{.}}</code><br>{{end}}</td></tr>{{else}}<tr><td colspan="4">No material relationship selected for this finding lane; an evidence gap is not represented by an invented edge.</td></tr>{{end}}</tbody></table></section>{{end}}
+<details id="temporal-path-text" class="path-fallback"><summary id="temporal-path-text-summary">Accessible text equivalent and complete selected-edge evidence</summary><p>{{.OmissionText}}</p><div class="path-legend" aria-label="Evidence relationship legend"><span><strong>EXACT_OBSERVATION</strong> — solid; exact relationship only</span><span><strong>INFERENCE</strong> — dashed; derivation rule shown</span><span><strong>TEMPORAL_CORRELATION</strong> — dotted; observed after, causation not established</span><span><strong>CONTRADICTION</strong> — double/opposing; contradictory evidence</span><span><strong>UNKNOWN_EVIDENCE_GAP</strong> — interrupted with ? marker; missing evidence is not a negative result</span></div>
+{{range .Lanes}}<section data-graph-item="true" data-visual-lane="true" data-revision="{{.FindingID}}" data-findings="{{.Focus}}"><h4>{{.Header}}</h4><p>{{.Scope}} · indicator <code>{{.IndicatorID}}</code> · finding revision <code>{{.FindingID}}</code></p>{{with .Gap}}<p class="warning">UNKNOWN_EVIDENCE_GAP — {{.Reason}}</p>{{end}}{{range .Notices}}<p class="classification-unknown">{{.Text}}</p>{{end}}<h5>Selected nodes</h5><ul>{{range .Nodes}}<li><code>{{.Type}}:{{.Node.Node.ID}}</code> — {{.Node.FullLabel}}{{if .Node.Node.EvidenceIDs}}; evidence: {{range .Node.Node.EvidenceIDs}}<code>{{.}}</code> {{end}}{{end}}</li>{{else}}<li>No presentable node selected for this finding lane.</li>{{end}}</ul><h5>Selected material relationships</h5><table class="path-table"><caption>Selected relationships for {{.Header}}</caption><thead><tr><th>Relationship</th><th>Endpoints</th><th>Evidence basis</th><th>Evidence IDs</th></tr></thead><tbody>{{range .Edges}}<tr><td><code>{{.Edge.Edge.Type}}</code><br>{{.Title}}</td><td><code>{{.Edge.Edge.Source}}</code> → <code>{{.Edge.Edge.Target}}</code></td><td>{{.Edge.Edge.EvidenceClass}}{{if .Edge.Edge.DerivationRule}}<br>Rule: <code>{{.Edge.Edge.DerivationRule}}</code>{{end}}{{if .Edge.Edge.EventTime}}<br>Event time: <code>{{.Edge.Edge.EventTime}}</code>{{end}}</td><td>{{range .EvidenceIDs}}<code>{{.}}</code><br>{{end}}</td></tr>{{else}}<tr><td colspan="4">No material relationship selected for this finding lane; an evidence gap is not represented by an invented edge.</td></tr>{{end}}</tbody></table></section>{{end}}
 <h4>Evidence reference key</h4><dl>{{range .EvidenceKey}}<dt><code>{{.CompactID}}</code></dt><dd><code>{{.EvidenceID}}</code></dd>{{else}}<dt>None</dt><dd>No selected edge evidence references.</dd>{{end}}</dl></details>{{end}}`
 
 type temporalPathView struct {
@@ -88,23 +88,27 @@ type temporalNodeView struct {
 }
 
 type temporalEdgeView struct {
-	Edge          graph.VisualEdge
-	Focus         string
-	Title         string
-	Description   string
-	Color         string
-	Dash          string
-	Width         int
-	Points        string
-	PointsMinus   string
-	PointsPlus    string
-	Arrow         string
-	ReverseArrow  string
-	Contradiction bool
-	Label         string
-	LabelRectX    int
-	LabelRectY    int
-	EvidenceIDs   []string
+	Edge            graph.VisualEdge
+	Focus           string
+	Title           string
+	Description     string
+	Color           string
+	Dash            string
+	Width           int
+	Points          string
+	PointsMinus     string
+	PointsPlus      string
+	Arrow           string
+	ReverseArrow    string
+	Contradiction   bool
+	LabelRectX      int
+	LabelRectY      int
+	LabelRectWidth  int
+	LabelRectHeight int
+	LabelLine1      string
+	LabelLine2      string
+	LabelLine2Y     int
+	EvidenceIDs     []string
 }
 
 type temporalGapView struct {
@@ -214,15 +218,13 @@ func buildTemporalEdgeView(edge graph.VisualEdge, focus string) temporalEdgeView
 	if edge.Edge.DerivationRule != "" {
 		description += " Derivation rule " + edge.Edge.DerivationRule + "."
 	}
-	label := edge.RelationshipText + " [" + strings.Join(edge.EvidenceRefs, " ") + "]"
-	if edge.AdditionalRefs > 0 {
-		label += fmt.Sprintf(" +%d more", edge.AdditionalRefs)
-	}
 	result := temporalEdgeView{
 		Edge: edge, Focus: focus, Title: edge.RelationshipText, Description: description,
 		Color: color, Dash: dash, Width: width, Points: temporalPointText(edge.Points, 0),
 		Contradiction: edge.Edge.EvidenceClass == graph.EvidenceClassContradiction,
-		Label:         label, LabelRectX: edge.LabelX - 180, LabelRectY: edge.LabelY - 18,
+		LabelRectX:    edge.LabelRectX, LabelRectY: edge.LabelRectY,
+		LabelRectWidth: edge.LabelRectWidth, LabelRectHeight: edge.LabelRectHeight,
+		LabelLine1: edge.LabelLines[0], LabelLine2: edge.LabelLines[1], LabelLine2Y: edge.LabelLine2Y,
 		EvidenceIDs: append([]string(nil), edge.Edge.EvidenceIDs...),
 	}
 	if len(edge.Points) >= 2 {

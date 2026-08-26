@@ -49,6 +49,7 @@ func RenderSVG(ctx context.Context, path TemporalEvidencePath) ([]byte, error) {
 		"xmlns", "http://www.w3.org/2000/svg",
 		"role", "img", "aria-labelledby", "tep-title tep-desc",
 		"data-cirewind-schema", TemporalPathSchemaVersion,
+		"width", strconv.Itoa(path.Width), "height", strconv.Itoa(path.Height),
 		"viewBox", fmt.Sprintf("0 0 %d %d", path.Width, path.Height),
 	)}
 	if err := encoder.EncodeToken(root); err != nil {
@@ -236,11 +237,13 @@ func validateTemporalPath(path TemporalEvidencePath) error {
 		if lane.Finding.State == model.UnknownEvidenceGap {
 			extraRows++
 		}
-		wantHeight := 88 + max(1, maxRows)*(pathNodeHeight+pathRowGap) + extraRows*58
+		laneEdgeValues := edgeValues(lane.Edges)
+		wantHeight := 88 + max(1, maxRows)*(pathNodeHeight+pathRowGap) + edgeRouteBandHeight(laneEdgeValues) + edgeLabelBandHeight(len(lane.Edges)) + extraRows*58
 		if lane.Height != wantHeight {
 			return fmt.Errorf("noncanonical height for finding lane %q", lane.Finding.FindingRevisionID)
 		}
-		for _, edge := range lane.Edges {
+		labelRects := make([]integerRect, 0, len(lane.Edges))
+		for edgeIndex, edge := range lane.Edges {
 			if edge.LocalID == "" || !edge.Edge.EvidenceClass.valid() || len(edge.Edge.EvidenceIDs) == 0 {
 				return errors.New("invalid temporal path edge")
 			}
@@ -290,8 +293,49 @@ func validateTemporalPath(path TemporalEvidencePath) error {
 			if edge.RelationshipText != relationshipText(edge.Edge, edgeValues(lane.Edges), lane.Finding) {
 				return fmt.Errorf("edge %q has noncanonical relationship wording", edge.Edge.ID)
 			}
+			expectedRectY := lane.Y + 88 + max(1, maxRows)*(pathNodeHeight+pathRowGap) + edgeRouteBandHeight(laneEdgeValues) + pathEdgeLabelTop + edgeIndex*pathEdgeLabelRowHeight
+			if edge.LabelRectX != pathEdgeLabelRectX || edge.LabelRectY != expectedRectY ||
+				edge.LabelRectWidth != pathEdgeLabelRectWidth || edge.LabelRectHeight != pathEdgeLabelRectHeight ||
+				edge.LabelX != pathEdgeLabelTextX || edge.LabelY != expectedRectY+pathEdgeLabelTextY ||
+				edge.LabelLine2Y != expectedRectY+pathEdgeLabelTextY+pathEdgeLabelLineGap || len(edge.LabelLines) != 2 {
+				return fmt.Errorf("edge %q has invalid relationship-ledger geometry", edge.Edge.ID)
+			}
+			labelRect := integerRect{X: edge.LabelRectX, Y: edge.LabelRectY, Width: edge.LabelRectWidth, Height: edge.LabelRectHeight}
+			if labelRect.X < 0 || labelRect.Y < lane.Y || labelRect.X+labelRect.Width > path.Width || labelRect.Y+labelRect.Height > lane.Y+lane.Height {
+				return fmt.Errorf("edge %q relationship label is outside its lane", edge.Edge.ID)
+			}
+			for _, node := range lane.Nodes {
+				if rectanglesOverlap(labelRect, integerRect{X: node.X, Y: node.Y, Width: node.Width, Height: node.Height}) {
+					return fmt.Errorf("edge %q relationship label intersects node %q", edge.Edge.ID, node.Node.ID)
+				}
+			}
+			for _, prior := range labelRects {
+				if rectanglesOverlap(labelRect, prior) {
+					return fmt.Errorf("edge %q relationship label intersects another relationship label", edge.Edge.ID)
+				}
+			}
+			labelRects = append(labelRects, labelRect)
 			if len(edge.Points) < 2 {
 				return fmt.Errorf("edge %q lacks routed points", edge.Edge.ID)
+			}
+			for pointIndex, point := range edge.Points {
+				if point.X < 0 || point.X > path.Width || point.Y < lane.Y || point.Y > lane.Y+lane.Height {
+					return fmt.Errorf("edge %q route leaves its lane", edge.Edge.ID)
+				}
+				if pointIndex > 0 {
+					prior := edge.Points[pointIndex-1]
+					if prior.X != point.X && prior.Y != point.Y {
+						return fmt.Errorf("edge %q route is not orthogonal", edge.Edge.ID)
+					}
+				}
+			}
+			for _, node := range lane.Nodes {
+				if node.Node.ID == edge.Edge.Source || node.Node.ID == edge.Edge.Target {
+					continue
+				}
+				if routeIntersectsRect(edge.Points, integerRect{X: node.X - pathRouteClearance, Y: node.Y - pathRouteClearance, Width: node.Width + 2*pathRouteClearance, Height: node.Height + 2*pathRouteClearance}) {
+					return fmt.Errorf("edge %q route intersects non-endpoint node %q", edge.Edge.ID, node.Node.ID)
+				}
 			}
 			for _, id := range edge.Edge.EvidenceIDs {
 				if refByEvidence[id] == "" {
@@ -317,13 +361,15 @@ func validateTemporalPath(path TemporalEvidencePath) error {
 		for index := range lane.Edges {
 			canonicalEdgeInput[index] = lane.Edges[index].Edge
 		}
-		canonicalEdges := layoutEdges(canonicalEdgeInput, laneNodes, refByEvidence, lane.Finding)
+		canonicalEdges := layoutEdges(canonicalEdgeInput, laneNodes, refByEvidence, lane.Finding, lane.Y, maxRows)
 		if len(canonicalEdges) != len(lane.Edges) {
 			return fmt.Errorf("noncanonical edge layout in finding lane %q", lane.Finding.FindingRevisionID)
 		}
 		for index := range canonicalEdges {
 			got, want := lane.Edges[index], canonicalEdges[index]
-			if got.Edge.ID != want.Edge.ID || !slices.Equal(got.Points, want.Points) || got.LabelX != want.LabelX || got.LabelY != want.LabelY ||
+			if got.Edge.ID != want.Edge.ID || !slices.Equal(got.Points, want.Points) ||
+				got.LabelRectX != want.LabelRectX || got.LabelRectY != want.LabelRectY || got.LabelRectWidth != want.LabelRectWidth || got.LabelRectHeight != want.LabelRectHeight ||
+				got.LabelX != want.LabelX || got.LabelY != want.LabelY || got.LabelLine2Y != want.LabelLine2Y || !slices.Equal(got.LabelLines, want.LabelLines) ||
 				got.RelationshipText != want.RelationshipText || !slices.Equal(got.EvidenceRefs, want.EvidenceRefs) || got.AdditionalRefs != want.AdditionalRefs {
 				return fmt.Errorf("noncanonical edge order or layout in finding lane %q", lane.Finding.FindingRevisionID)
 			}
@@ -639,18 +685,44 @@ func renderEdge(encoder *xml.Encoder, edge VisualEdge) error {
 			return err
 		}
 	}
-	label := edge.RelationshipText + " [" + refs + "]"
-	if edge.AdditionalRefs > 0 {
-		label += fmt.Sprintf(" +%d more", edge.AdditionalRefs)
-	}
-	label, _ = sanitizeSVGText(label, 512)
-	if err := emptyElement(encoder, "rect", attrs("x", strconv.Itoa(edge.LabelX-180), "y", strconv.Itoa(edge.LabelY-18), "width", "360", "height", "25", "fill", colorBackground, "stroke", color, "stroke-width", "1")); err != nil {
+	if err := emptyElement(encoder, "rect", attrs("x", strconv.Itoa(edge.LabelRectX), "y", strconv.Itoa(edge.LabelRectY), "width", strconv.Itoa(edge.LabelRectWidth), "height", strconv.Itoa(edge.LabelRectHeight), "rx", "5", "fill", colorBackground, "stroke", color, "stroke-width", "2")); err != nil {
 		return err
 	}
-	if err := textElement(encoder, "text", textAttrs(edge.LabelX, edge.LabelY, 16, "bold", "middle"), label); err != nil {
+	if err := textElement(encoder, "text", textAttrs(edge.LabelX, edge.LabelY, 16, "bold", "start"), edge.LabelLines[0]); err != nil {
+		return err
+	}
+	if err := textElement(encoder, "text", textAttrs(edge.LabelX, edge.LabelLine2Y, 16, "normal", "start"), edge.LabelLines[1]); err != nil {
 		return err
 	}
 	return encoder.EncodeToken(group.End())
+}
+
+type integerRect struct {
+	X, Y, Width, Height int
+}
+
+func rectanglesOverlap(left, right integerRect) bool {
+	return left.X < right.X+right.Width && right.X < left.X+left.Width &&
+		left.Y < right.Y+right.Height && right.Y < left.Y+left.Height
+}
+
+func routeIntersectsRect(points []Point, rect integerRect) bool {
+	for index := 1; index < len(points); index++ {
+		from, to := points[index-1], points[index]
+		switch {
+		case from.Y == to.Y:
+			left, right := min(from.X, to.X), max(from.X, to.X)
+			if from.Y >= rect.Y && from.Y <= rect.Y+rect.Height && right >= rect.X && left <= rect.X+rect.Width {
+				return true
+			}
+		case from.X == to.X:
+			top, bottom := min(from.Y, to.Y), max(from.Y, to.Y)
+			if from.X >= rect.X && from.X <= rect.X+rect.Width && bottom >= rect.Y && top <= rect.Y+rect.Height {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func edgeAppearance(class EvidenceClass) (color, dash string, width int) {

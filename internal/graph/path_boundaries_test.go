@@ -243,6 +243,12 @@ func TestTemporalPathValidatorRejectsForgedCountsGeometryEdgesAndEvidence(t *tes
 		},
 		"dangling edge": func(path *TemporalEvidencePath) { path.Lanes[0].Edges[0].Edge.Target = "absent" },
 		"edge route":    func(path *TemporalEvidencePath) { path.Lanes[0].Edges[0].Points[0].X++ },
+		"edge label geometry": func(path *TemporalEvidencePath) {
+			path.Lanes[0].Edges[0].LabelRectY = path.Lanes[0].Nodes[0].Y
+		},
+		"edge label text": func(path *TemporalEvidencePath) {
+			path.Lanes[0].Edges[0].LabelLines[0] = "forged relationship"
+		},
 		"extra evidence key": func(path *TemporalEvidencePath) {
 			path.EvidenceKey = append(path.EvidenceKey, EvidenceReference{CompactID: fmt.Sprintf("E%03d", len(path.EvidenceKey)+1), EvidenceID: indexedEvidenceID(9999)})
 			path.Counts.SelectedEvidenceIDs++
@@ -257,6 +263,86 @@ func TestTemporalPathValidatorRejectsForgedCountsGeometryEdgesAndEvidence(t *tes
 				t.Fatal("forged presentation model accepted")
 			}
 		})
+	}
+}
+
+func TestGeneratedRoutesAvoidEveryNonEndpointNode(t *testing.T) {
+	t.Parallel()
+	path, err := BuildTemporalEvidencePath(context.Background(), testGraphV2(t), PathOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, lane := range path.Lanes {
+		for _, edge := range lane.Edges {
+			for _, node := range lane.Nodes {
+				if node.Node.ID == edge.Edge.Source || node.Node.ID == edge.Edge.Target {
+					continue
+				}
+				rect := integerRect{X: node.X - pathRouteClearance, Y: node.Y - pathRouteClearance, Width: node.Width + 2*pathRouteClearance, Height: node.Height + 2*pathRouteClearance}
+				if routeIntersectsRect(edge.Points, rect) {
+					t.Fatalf("edge %s route intersects non-endpoint node %s", edge.Edge.ID, node.Node.ID)
+				}
+			}
+		}
+	}
+}
+
+func TestRouteEdgeAvoidsFullNodeGridForEveryColumnPair(t *testing.T) {
+	t.Parallel()
+	const laneY = 200
+	nodes := make([]VisualNode, 0, len(pathColumnX)*3)
+	for column := range pathColumnX {
+		for row := 0; row < 3; row++ {
+			nodes = append(nodes, VisualNode{
+				Node:   NodeV2{ID: fmt.Sprintf("column-%d-row-%d", column, row)},
+				Column: column,
+				Row:    row,
+				X:      pathColumnX[column],
+				Y:      laneY + 78 + row*(pathNodeHeight+pathRowGap),
+				Width:  pathNodeWidth,
+				Height: pathNodeHeight,
+			})
+		}
+	}
+	for sourceColumn := range pathColumnX {
+		for targetColumn := range pathColumnX {
+			source := nodes[sourceColumn*3]
+			target := nodes[targetColumn*3+2]
+			points := routeEdge(source, target, laneY+600)
+			for index := 1; index < len(points); index++ {
+				if points[index] == points[index-1] {
+					t.Fatalf("columns %d to %d contain consecutive duplicate route points", sourceColumn, targetColumn)
+				}
+				if points[index].X != points[index-1].X && points[index].Y != points[index-1].Y {
+					t.Fatalf("columns %d to %d contain a diagonal route", sourceColumn, targetColumn)
+				}
+			}
+			for _, node := range nodes {
+				if node.Node.ID == source.Node.ID || node.Node.ID == target.Node.ID {
+					continue
+				}
+				rect := integerRect{X: node.X - pathRouteClearance, Y: node.Y - pathRouteClearance, Width: node.Width + 2*pathRouteClearance, Height: node.Height + 2*pathRouteClearance}
+				if routeIntersectsRect(points, rect) {
+					t.Fatalf("columns %d to %d route intersects blocker %s", sourceColumn, targetColumn, node.Node.ID)
+				}
+			}
+		}
+	}
+}
+
+func TestRouteIntersectionUsesStrokeClearance(t *testing.T) {
+	t.Parallel()
+	rect := integerRect{X: 10, Y: 10, Width: 20, Height: 20}
+	for name, points := range map[string][]Point{
+		"horizontal": {{X: 0, Y: 10}, {X: 40, Y: 10}},
+		"vertical":   {{X: 30, Y: 0}, {X: 30, Y: 40}},
+	} {
+		if !routeIntersectsRect(points, rect) {
+			t.Fatalf("%s boundary contact was not treated as an intersection", name)
+		}
+	}
+	if routeIntersectsRect([]Point{{X: 0, Y: 9}, {X: 40, Y: 9}}, rect) {
+		t.Fatal("separated route was treated as an intersection")
 	}
 }
 
@@ -530,6 +616,7 @@ func cloneTemporalPath(source TemporalEvidencePath) TemporalEvidencePath {
 		for edgeIndex := range result.Lanes[laneIndex].Edges {
 			edge := &result.Lanes[laneIndex].Edges[edgeIndex]
 			edge.Points = append([]Point(nil), edge.Points...)
+			edge.LabelLines = append([]string(nil), edge.LabelLines...)
 			edge.EvidenceRefs = append([]string(nil), edge.EvidenceRefs...)
 			edge.Edge.EvidenceIDs = append([]string(nil), edge.Edge.EvidenceIDs...)
 			edge.Edge.FocusFindingIDs = append([]string(nil), edge.Edge.FocusFindingIDs...)

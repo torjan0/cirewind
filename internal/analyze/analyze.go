@@ -1154,6 +1154,18 @@ func buildMetadata(snapshot archive.Snapshot, pack *incident.ValidatedPack, anal
 			optionalDenied[capability.Name] = struct{}{}
 		}
 	}
+	// Typed coverage facts are the append-only source of truth even when an
+	// older or partial archive has no matching latest-status capability row.
+	// Account for those retained facts here without double-counting kinds that
+	// applyLogCapability already reconciled above.
+	for _, name := range []string{"attempt_logs", "job_logs"} {
+		if _, present := seenCapabilities[name]; present {
+			continue
+		}
+		collected, missing := logCoverageCounts(idx, name)
+		addCoverageCount(&coverage.LogsRetrieved, collected, name+" typed collected coverage", incomplete)
+		addCoverageCount(&coverage.LogsMissing, missing, name+" typed gap coverage", incomplete)
+	}
 	for _, name := range coreCapabilities() {
 		if _, ok := seenCapabilities[name]; !ok {
 			incomplete[fmt.Sprintf("Core capability %s has no collection record.", name)] = struct{}{}
