@@ -472,6 +472,7 @@ type RunnerContextFact struct {
 	Classification string   `json:"classification"`
 	RunnerID       *int64   `json:"runner_id,omitempty"`
 	RunnerName     string   `json:"runner_name,omitempty"`
+	RunnerGroupID  *int64   `json:"runner_group_id,omitempty"`
 	RunnerGroup    string   `json:"runner_group,omitempty"`
 	Labels         []string `json:"labels"`
 }
@@ -481,6 +482,26 @@ type EnvironmentEligibilityFact struct {
 	GateState       string             `json:"gate_state"`
 	JobStarted      bool               `json:"job_started"`
 	SecretNames     []model.SecretName `json:"secret_names"`
+}
+
+// GateRequirementSatisfiedAt reports only the closed retained states that,
+// with JobStarted, can support environment-secret eligibility. A not-required
+// assertion is accepted only when the fact has a retained event time; otherwise
+// the absence of a gate is not safely attributable to the historical job.
+// Bypass and not-required are deliberately not relabeled as approval or
+// crossing.
+func (fact EnvironmentEligibilityFact) GateRequirementSatisfiedAt(event model.EventInterval) bool {
+	if !fact.JobStarted {
+		return false
+	}
+	switch fact.GateState {
+	case "approved", "bypassed", "crossed":
+		return true
+	case "not-required":
+		return event.Start != nil && event.Basis != model.TimeBasisUnknown
+	default:
+		return false
+	}
 }
 
 type ExposureFact struct {

@@ -141,11 +141,11 @@ preserve their individual semantics.
 | Category | Relationships |
 |---|---|
 | Execution containment | `RUN_IN_REPOSITORY`, `ATTEMPT_OF_RUN`, `JOB_EXECUTED_IN_ATTEMPT`, `STEP_IN_JOB`, `RUN_INSTANTIATED_WORKFLOW` |
-| Historical declaration/call | `WORKFLOW_DECLARED_ACTION`, `WORKFLOW_CALLED_WORKFLOW`, `ACTION_CONTAINS_ACTION`, `LOCAL_ACTION_RESOLVED_TO` |
+| Definition declaration/call | `WORKFLOW_DECLARED_ACTION`, `WORKFLOW_CALLED_WORKFLOW`, `ACTION_CONTAINS_ACTION`, `LOCAL_ACTION_RESOLVED_TO` |
 | Exact resolution/package | `REF_RESOLVED_TO`, `PACKAGE_SOURCE_COMMIT` |
 | Preparation and execution | `JOB_PREPARED_ACTION`, `STEP_DOWNLOADED_ACTION`, `STEP_EXECUTED_ACTION` |
 | Runner context | `EXECUTED_ON_RUNNER`, `RUNNER_IN_GROUP` |
-| Credential and environment | `HAD_TOKEN_PERMISSION`, `REFERENCED_SECRET`, `PASSED_SECRET_TO`, `INHERITED_SECRET`, `TARGETED_ENVIRONMENT`, `CROSSED_ENVIRONMENT_GATE`, `ENVIRONMENT_SECRET_ELIGIBLE`, `COULD_MINT_OIDC` |
+| Credential and environment | `HAD_TOKEN_PERMISSION`, `REFERENCED_SECRET`, `PASSED_SECRET_TO`, `INHERITED_SECRET`, `TARGETED_ENVIRONMENT`, `CROSSED_ENVIRONMENT_GATE`, `ENVIRONMENT_GATE_SATISFIED`, `ENVIRONMENT_SECRET_ELIGIBLE`, `COULD_MINT_OIDC` |
 | Direct resource attribution | `PRODUCED_ARTIFACT`, `PUBLISHED_PACKAGE`, `CREATED_RELEASE`, `CREATED_DEPLOYMENT`, `REPOSITORY_WRITE`, `PULL_REQUEST_CHANGE` |
 | Temporal-only resource context | `OBSERVED_AFTER` |
 | Finding provenance | `FINDING_ABOUT`, `SUPPORTED_BY_EVIDENCE` |
@@ -215,7 +215,9 @@ The projector has a reviewed relationship/basis table, including at least:
 | static-inferred or historical-definition-flow permission/secret mapping | `INFERENCE` with rule |
 | `COULD_MINT_OIDC` derived from an observed or inferred permission | `INFERENCE` with the capability rule; never cloud reachability |
 | directly observed environment target or approval/bypass gate transition | `EXACT_OBSERVATION` limited to that event |
+| environment target reconstructed by joining a historical workflow declaration to API job identity/state | `INFERENCE` with `environment-target/historical-definition-job/v1` or the narrower pending-unstarted rule; never silently exact |
 | gate “crossed” reconstructed from job start without indispensable approval/bypass evidence | `INFERENCE` with rule, or no crossed edge when the canonical predicate is not satisfied; never silently exact |
+| environment gate requirement satisfied, bypassed, crossed, or contemporaneously not required plus job start | `INFERENCE` for `ENVIRONMENT_GATE_SATISFIED`; encode one of the four closed retained states in the derivation rule and therefore edge identity and wording, reject unknown-time `not-required` as satisfaction, and never relabel bypass/no-rule as approval |
 | environment-secret eligibility derived from gate/job/metadata facts | `INFERENCE` with rule |
 | exact Action download or lifecycle start | `EXACT_OBSERVATION` for download or start respectively |
 | `JOB_EXECUTED_IN_ATTEMPT` API/model membership without lifecycle start | `EXACT_OBSERVATION` only of containment; visible label is “job recorded in attempt,” never “job executed” |
@@ -232,6 +234,17 @@ the cited evidence object(s); it does not promote the associated finding to
 `L4_CERTAIN`, imply runtime execution, or override the finding state. A static
 historical declaration can therefore be an exact observation of declaration
 while still not being execution.
+
+Exact workflow declaration, reusable-workflow call, and local-Action resolution
+edges carry one closed source-basis marker in `derivationRule`:
+`definition-basis/historical-at-run/v1`,
+`definition-basis/current-snapshot/v1`, or
+`definition-basis/runtime-attempt-metadata/v1`. For these exact edges the field
+is a typed presentation basis rather than an inference upgrade. A frozen v1
+edge that aggregated more than one basis is split into evidence-preserving v2
+edges. Visible present-day, historical, and GitHub run-attempt wording is chosen
+only from this marker—never from a finding state or hostile node label. An
+absent or unrecognized marker receives temporally neutral wording.
 
 The v2 presentation projector may attach a directly evidenced
 `TARGETED_ENVIRONMENT` relationship to a selected non-executed finding lane even
@@ -260,6 +273,9 @@ The remaining accepted light-background colors are text `#111827`, neutral
 border `#334155`, and background `#FFFFFF`. These values are versioned renderer
 constants, not theme input. The SVG and report include an explicit visible
 legend and an explicit relationship label for every material edge.
+The report explicitly fixes `color-scheme` to light and sets both root and body
+foreground/background colors; an operating-system dark preference must not
+substitute unreviewed colors for this palette.
 
 `UNCLASSIFIABLE_LEGACY_BASIS` uses a separate, narrow projection-partial notice:
 a thin dashed gray notice box with an `i` badge and the exact lead “visual
@@ -288,8 +304,12 @@ animation, glow, or pulse is permitted.
   never “read,” “used,” “leaked,” or “exfiltrated.”
 - `COULD_MINT_OIDC`: “could mint OIDC token”; never “cloud access,” “role
   assumed,” or `CLOUD_IDENTITY_REACHABLE`.
-- `TARGETED_ENVIRONMENT` without `CROSSED_ENVIRONMENT_GATE`: “targeted; gate not
-  shown crossed.” No environment-secret eligibility edge may be inferred.
+- `TARGETED_ENVIRONMENT` without `CROSSED_ENVIRONMENT_GATE` or
+  `ENVIRONMENT_GATE_SATISFIED`: “targeted; gate not shown satisfied.” No
+  environment-secret eligibility edge may be inferred. The v0.2-only
+  `ENVIRONMENT_GATE_SATISFIED` relationship covers a retained approval, bypass,
+  aggregate crossed state, or contemporaneous no-gate-required state together
+  with job start; it never turns bypass or absence of a gate into approval.
 - `OBSERVED_AFTER`: “observed after — causation not established.”
 - `EXECUTED_ON_RUNNER`: classify only from the recorded basis; never infer
   persistence, compromise, internal access, or lateral movement.
@@ -315,12 +335,17 @@ stable:
    identity, and mechanically closed coverage. No other state is an anchor.
    This admits the synthetic restored-A attempt without pairing unrelated
    components or flooding the visual with organization-wide negatives. It
-   remains a no-match lane, never an affected-run count.
+   remains a no-match lane, never an affected-run count. Its visible lane header
+   includes the plain-English words `comparison context`, and its description
+   states that it is not an affected run and is only a scope-closed negative.
 3. Partition the graph by sorted `FocusFindingIDs`.
 4. Give every represented canonical state one lane before adding a second lane
    for a state, when the lane budget allows.
 5. Within a state, sort by repository, workflow, run ID, run attempt, job ID,
    step identity, indicator ID, and finding revision ID.
+   The visible lane scope starts with the indicator ID so separate propositions
+   with otherwise identical execution scope remain distinguishable even when a
+   bounded label truncates later fields.
 6. Fill remaining lanes in this review-attention order, which is not a risk
    score: `CONTRADICTORY_EVIDENCE`, `UNKNOWN_EVIDENCE_GAP`,
    `CONFIRMED_EXECUTED`, `CONFIRMED_DOWNLOADED`,
@@ -360,11 +385,26 @@ Within a lane:
 - sort nodes by a closed node-type rank, sanitized display label, and stable node
   ID;
 - sort edges by source column/row, target column/row, edge-type rank, and edge ID;
-- route edges orthogonally through fixed integer gutters and ports;
+- route edges orthogonally through deterministic integer endpoint ports and
+  per-lane physical rail banks. A rail identity is unique within one column
+  side, rather than being reused by every node in that column;
 - assign every edge a deterministic track below the node grid; no route may
   intersect a non-endpoint node, and contradiction tracks occupy a separated
   sub-band. Route validation expands non-endpoint node bounds by eight SVG
   units so the full rendered stroke, not only its centerline, remains clear;
+- keep port centers and route rails at least 16 SVG units apart. A node side has
+  at most six visible endpoint ports and a physical column-side bank has at
+  most twelve rails. If either bound would be exceeded, omit that complete
+  finding lane and include it in the exact visual omission counts; never render
+  a partial lane or collapse distinct material relationships onto one rail;
+- paint one fixed background-colored, `aria-hidden` route underlay immediately
+  before each foreground route. Its round joins and butt caps make
+  right-angle crossings visibly non-junctions without extending into endpoint
+  arrowheads. Preserve the fixed accessible SVG palette under forced-colors
+  emulation so the underlay cannot be recolored into the foreground route;
+  explicit relationship labels and the text ledger remain the non-color
+  semantic equivalents. Underlays are renderer geometry, not graph edges or
+  evidence;
 - place each edge's explicit type, evidence class, conservative relationship
   wording, and compact evidence references in a deterministic two-line
   relationship ledger below the lane's node grid; ledger rows must not overlap
@@ -428,11 +468,12 @@ Required deterministic child order:
 1. `<title id="tep-title">Temporal evidence path</title>`;
 2. `<desc id="tep-desc">` naming the exact `synthetic`, `collected`, `mixed`, or
    `unknown` case classification, selected totals, and any omissions;
-3. fixed local definitions if arrow markers are used;
-4. background and legend;
-5. explicit limit/omission notice;
-6. finding lanes in selected order;
-7. evidence-reference key.
+3. the single fixed `svg{forced-color-adjust:none}` stylesheet;
+4. fixed local definitions if arrow markers are used;
+5. background and legend;
+6. explicit limit/omission notice;
+7. finding lanes in selected order;
+8. evidence-reference key.
 
 Renderer-local element IDs are sequential (`n0001`, `e0001`) and never derived
 from hostile content. Node groups expose escaped closed attributes:
@@ -474,9 +515,10 @@ data-attribute values. They never become element names, raw attributes, IDs,
 classes, styles, CSS, fragment names, geometry, file paths, URLs, or references.
 
 The allowed standalone element vocabulary is limited to inert SVG primitives
-needed by the renderer, such as `svg`, `title`, `desc`, `defs`, `marker`, `g`,
-`rect`, `line`, `polyline`, `path`, `polygon`, `circle`, `text`, and `tspan`.
-The exact allowlist is tested. The following are prohibited:
+needed by the renderer, such as `svg`, `title`, `desc`, one constant `style`,
+`defs`, `marker`, `g`, `rect`, `line`, `polyline`, `path`, `polygon`, `circle`,
+`text`, and `tspan`. The exact allowlist and exact fixed stylesheet bytes are
+tested. No hostile input enters CSS. The following are prohibited:
 
 - `script`, `foreignObject`, `image`, `a`, `iframe`, audio/video, and animation;
 - any `on*` event attribute;
@@ -488,8 +530,8 @@ The exact allowlist is tested. The following are prohibited:
 - untrusted fragment references. Fixed renderer-owned same-document arrow marker
   references are permitted and allowlisted.
 
-Prefer presentation attributes over a generated stylesheet. The file must be
-valid XML and no larger than its fixed budget.
+Prefer presentation attributes except for the one fixed forced-colors policy.
+The file must be valid XML and no larger than its fixed budget.
 
 ## Report integration
 
@@ -586,6 +628,31 @@ strict parsing with those schema artifacts, including `EvidenceClass`,
 describe structure and safety constraints; they do not make a graph or case
 factually true.
 
+`GraphV2.NormalizeAndValidate` is an internal projector-normalization boundary,
+not a parser for untrusted `graph.json`. Trusted in-process projectors may supply
+nil slices, an omitted schema default, unsorted or repeated evidence references,
+repeated projection notices, or hostile display controls; normalization
+materializes required arrays and the exact schema version, sorts and
+deduplicates references, aggregates notices within the fixed bounds, and
+sanitizes bounded display labels before serialization. Only that normalized
+form is eligible to become `graph.json`. The serialized artifact must then:
+
+- validate against `schema/graph-v1alpha2.json`;
+- decode with unknown fields rejected;
+- pass the Go semantic validator without any further mutation; and
+- serialize byte-identically through the deterministic JSON writer.
+
+This is intentionally a one-way output contract. Collection, replay, report,
+and rendering code must never deserialize `graph.json` as an authority; they
+project from typed relational facts. Any future feature that accepts a graph
+document as input must first add a separately reviewed, size-bounded decoder
+that applies the public schema and strict unknown-field handling before semantic
+validation. Calling `json.Unmarshal` followed only by
+`NormalizeAndValidate` is prohibited at an external-input boundary. Exhaustive
+drift tests compare the Go and schema vocabularies and every
+relationship/`EvidenceClass` combination, in addition to validating and
+byte-round-tripping a generated case artifact.
+
 CIRewind v0.2 does not regenerate an old case in place or synthesize
 `graph.svg` into a v0.1 bundle. Every newly generated v0.2 case uses relational
 facts and the explicit `EvidenceClass` contract above. Replaying a v1 archive in
@@ -605,16 +672,21 @@ The visual limits are intentionally much lower:
 | Logical nodes | 96 | 256 |
 | Material edges | 144 | 512 |
 | Unique evidence IDs | 256 | 512 |
+| Endpoint ports per node side and finding lane | 6 | 6 |
+| Route rails per physical column side and finding lane | 12 | 12 |
 | Visible label | 192 bytes / 3 lines | same |
 | Full sanitized label | existing graph maximum, 4,096 bytes | same |
 | SVG bytes | target below 2 MiB | 8 MiB |
+| SVG height | below 1,000,000 units | 1,000,000 units |
 
 Hard limits are compile-time/versioned policy in v0.2, not incident-pack
 settings. Exceeding a default produces a deterministic “showing X of Y” notice.
-Exceeding a hard bound omits complete deterministic finding slices until within
-budget and records exact omission counts. Never emit a dangling edge, silently
-truncate evidence IDs, synthesize a grouped relationship, or change the case
-finding count.
+Exceeding a hard bound, the SVG byte/height ceiling, or either routing-capacity
+bound omits complete deterministic finding slices until within budget and
+records exact omission counts. A routing-capacity omission is therefore visible
+as a finding-lane omission even when the total material-edge limit has not been
+reached. Never emit a dangling edge, silently truncate evidence IDs, synthesize
+a grouped relationship, or change the case finding count.
 
 Aggregation is text-only. If shown, a count names its selected population and
 member finding revision IDs or a deterministic digest; it is not a graph node or
@@ -627,6 +699,10 @@ edge and implies no shared causal path.
 - The root uses `role="img"`, `<title>`, `<desc>`, and `aria-labelledby`.
 - Visible relationship labels, line patterns, node shapes/badges, and the legend
   distinguish all evidence classes without color.
+- Forced-colors mode preserves the fixed, contrast-qualified SVG palette so
+  crossover underlays remain visually distinct; browser qualification verifies
+  underlay and foreground strokes remain different. The text ledger remains
+  authoritative if a display or assistive technology ignores SVG paint.
 - Body text has a minimum effective size of 16 px at default zoom; ordinary-text
   contrast is at least 4.5:1 and graphical-object contrast is at least 3:1.
 - Intrinsic numeric `width` and `height` match the `viewBox`. This preserves one
@@ -683,7 +759,10 @@ may contain an execution edge.
    control/bidi/terminal sequences, CR/LF, invalid UTF-8, XML-invalid runes,
    noncharacters, huge Unicode strings, formula prefixes, and URL-shaped labels.
 5. Browser audit confirms inline rendering, exact CSP hashes, zero remote
-   requests, no severe console errors, and synchronized report filters.
+   requests, no severe console errors, synchronized report filters, fixed light
+   colors even under an emulated dark preference, distinct route foreground and
+   underlay strokes while forced-colors mode is active, and no document-wide
+   overflow at 320, 390, 768, 1024, and 1440 CSS pixels.
 6. Golden synthetic SVG contains all five visual treatments and the exact
    required non-causal/capability language.
 7. Semantic regression asserts no execution edge for skipped/downloaded-only,

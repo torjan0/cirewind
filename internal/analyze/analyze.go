@@ -334,7 +334,7 @@ func deriveIndicator(idx index, pack *incident.ValidatedPack, component incident
 		if err != nil {
 			continue
 		}
-		finding, err := makeFinding(idx, pack, indicator, fact.Subject, obs.Step, obs.EventTime, candidate, decision, analysisTime)
+		finding, err := makeFinding(idx, pack, indicator, fact.Subject, "", obs.Step, obs.EventTime, candidate, decision, analysisTime)
 		if err != nil {
 			return nil, err
 		}
@@ -350,6 +350,11 @@ func deriveIndicator(idx index, pack *incident.ValidatedPack, component incident
 			continue
 		}
 		candidate := match.Candidate{EvidenceIDs: append([]model.EvidenceID(nil), fact.EvidenceIDs...), CoverageIDs: coverageFor(idx, fact.Subject)}
+		if dep.Basis == archive.DefinitionCurrentSnapshot {
+			// A present-day snapshot has no historical execution scope. Do not
+			// attach repository-sibling run/job coverage to this static finding.
+			candidate.CoverageIDs = nil
+		}
 		contradictions, contradictionEvidence := dependencyRuntimeContradictions(idx, fact)
 		candidate.MaterialContradiction = len(contradictions) != 0
 		if candidate.MaterialContradiction {
@@ -405,7 +410,16 @@ func deriveIndicator(idx index, pack *incident.ValidatedPack, component incident
 		if err != nil {
 			continue
 		}
-		finding, err := makeFinding(idx, pack, indicator, fact.Subject, nil, dep.EventTime, candidate, decision, analysisTime)
+		workflowHint := ""
+		switch dep.Relation {
+		case archive.DependencyWorkflowDeclaredAction, archive.DependencyWorkflowCalledWorkflow, archive.DependencyLocalActionResolvedTo:
+			workflowHint = dep.CallerPath
+		case archive.DependencyRefResolvedTo:
+			if dep.CallerWorkflowObjectID != nil {
+				workflowHint = dep.CallerPath
+			}
+		}
+		finding, err := makeFinding(idx, pack, indicator, fact.Subject, workflowHint, nil, dep.EventTime, candidate, decision, analysisTime)
 		if err != nil {
 			return nil, err
 		}
@@ -422,7 +436,7 @@ func deriveIndicator(idx index, pack *incident.ValidatedPack, component incident
 			subject := archive.FactSubject{RepositoryID: repository.ID}
 			candidate := match.Candidate{MaterialEvidenceGap: true}
 			decision, _ := match.Derive(candidate)
-			finding, err := makeFinding(idx, pack, indicator, subject, nil, unknownTime(), candidate, decision, analysisTime)
+			finding, err := makeFinding(idx, pack, indicator, subject, "", nil, unknownTime(), candidate, decision, analysisTime)
 			if err != nil {
 				return nil, err
 			}
@@ -482,7 +496,7 @@ func deriveIndicator(idx index, pack *incident.ValidatedPack, component incident
 				CoverageIDs:         model.SortCoverageAssessmentIDs(aggregate.coverageIDs),
 			}
 			decision, _ := match.Derive(candidate)
-			finding, err := makeFinding(idx, pack, indicator, aggregate.subject, nil, aggregate.event, candidate, decision, analysisTime)
+			finding, err := makeFinding(idx, pack, indicator, aggregate.subject, "", nil, aggregate.event, candidate, decision, analysisTime)
 			if err != nil {
 				return nil, err
 			}
@@ -661,7 +675,7 @@ func provenanceRank(level model.ProvenanceLevel) int {
 	}
 }
 
-func makeFinding(idx index, pack *incident.ValidatedPack, indicator incident.Indicator, subject archive.FactSubject, step *model.StepIdentity, event model.EventInterval, candidate match.Candidate, decision match.Decision, analysisTime time.Time) (report.Finding, error) {
+func makeFinding(idx index, pack *incident.ValidatedPack, indicator incident.Indicator, subject archive.FactSubject, workflowHint string, step *model.StepIdentity, event model.EventInterval, candidate match.Candidate, decision match.Decision, analysisTime time.Time) (report.Finding, error) {
 	repository, ok := idx.repositories[subject.RepositoryID]
 	if !ok {
 		return report.Finding{}, fmt.Errorf("subject repository %d is absent", subject.RepositoryID)
@@ -674,6 +688,14 @@ func makeFinding(idx index, pack *incident.ValidatedPack, indicator incident.Ind
 			workflow = model.WorkflowSubject{Path: &pathCopy}
 			workflowText = string(pathCopy)
 		}
+	}
+	if workflowText == "" && workflowHint != "" {
+		path, err := model.NewWorkflowPath(workflowHint)
+		if err != nil {
+			return report.Finding{}, fmt.Errorf("finding workflow hint: %w", err)
+		}
+		workflow = model.WorkflowSubject{Path: &path}
+		workflowText = string(path)
 	}
 	modelSubject := model.FindingSubject{Repository: repository, Workflow: workflow, RunID: subject.RunID, RunAttempt: subject.RunAttempt, JobID: subject.JobID, Step: step}
 	proposition, err := PropositionForIndicatorKind(indicator.Kind)
@@ -1094,15 +1116,46 @@ func exposuresFor(idx index, subject archive.FactSubject, state model.FindingSta
 		if exposure.Environment != nil {
 			environment := exposure.Environment
 			conclusion := "The affected job's exact historical definition targeted this environment; retained job state did not establish that its protection gates were crossed. No environment secret names, values, reads, or use were inferred."
-			if environment.JobStarted && environment.GateState == "crossed" {
-				conclusion = "The affected job targeted this environment and demonstrably started, which establishes only that applicable environment gates were crossed. Human approval, bypass, environment secret names or values, reads, and use were not established."
-			} else if environment.GateState == "pending" {
+			if environment.GateRequirementSatisfiedAt(exposure.EventTime) {
+				conclusion = environmentEligibilityConclusion(*environment)
+				if len(environment.SecretNames) == 0 {
+					conclusion += " No environment secret names were retained; values, reads, use, passage to the affected step, and malicious action were not established."
+				} else {
+					conclusion += fmt.Sprintf(" %d environment secret name(s) were retained as eligible; values, reads, use, passage to the affected step, and malicious action were not established.", len(environment.SecretNames))
+				}
+			} else if environment.GateState == "pending" && !environment.JobStarted {
 				conclusion = "The affected job targeted this environment but remained pending and did not demonstrably start. Environment-secret eligibility, values, reads, and use were not established."
 			}
 			resources = append(resources, report.Exposure{Kind: "ENVIRONMENT_GATE_CONTEXT", Name: environment.EnvironmentName, Capability: environment.GateState, Basis: "historical-definition-and-job-state", Conclusion: conclusion, EvidenceIDs: idsToStrings(fact.EvidenceIDs)})
+			if environment.GateRequirementSatisfiedAt(exposure.EventTime) {
+				for _, secretName := range environment.SecretNames {
+					credentials = append(credentials, report.Exposure{
+						Kind:        string(model.ExposureEnvironmentSecretEligible),
+						Name:        string(secretName),
+						Basis:       string(model.ExposureBasisHistoricalDefinitionFlow),
+						Conclusion:  "The named environment secret was eligible to the started job under retained gate state " + environment.GateState + "; its value, read, use, or passage to the affected step was not demonstrated.",
+						EvidenceIDs: idsToStrings(fact.EvidenceIDs),
+					})
+				}
+			}
 		}
 	}
 	return credentials, resources
+}
+
+func environmentEligibilityConclusion(environment archive.EnvironmentEligibilityFact) string {
+	switch environment.GateState {
+	case "approved":
+		return "The affected job targeted this environment, demonstrably started, and retained state records approval. This establishes environment-secret eligibility under that recorded state only."
+	case "bypassed":
+		return "The affected job targeted this environment, demonstrably started, and retained state records a gate bypass. This establishes environment-secret eligibility under that recorded state only; human approval is not inferred."
+	case "crossed":
+		return "The affected job targeted this environment, demonstrably started, and retained state records the gate as crossed. This establishes environment-secret eligibility under that recorded state only."
+	case "not-required":
+		return "The affected job targeted this environment, demonstrably started, and retained state records that no gate was required. This establishes environment-secret eligibility under that recorded state only; approval is not inferred."
+	default:
+		return "The affected job targeted this environment, but retained state does not establish environment-secret eligibility."
+	}
 }
 
 func runtimeObservedOIDCPermission(credential model.CredentialExposure) bool {
@@ -1168,6 +1221,13 @@ func buildMetadata(snapshot archive.Snapshot, pack *incident.ValidatedPack, anal
 	}
 	for _, name := range coreCapabilities() {
 		if _, ok := seenCapabilities[name]; !ok {
+			if name == "attempt_logs" || name == "job_logs" {
+				collected, missing := logCoverageCounts(idx, name)
+				if collected+missing > 0 {
+					incomplete[fmt.Sprintf("Retained typed %s coverage records report %d retrieved and %d missing; the aggregate %s capability summary is absent.", name, collected, missing, name)] = struct{}{}
+					continue
+				}
+			}
 			incomplete[fmt.Sprintf("Core capability %s has no collection record.", name)] = struct{}{}
 		}
 	}

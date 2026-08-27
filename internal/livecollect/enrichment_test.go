@@ -226,18 +226,23 @@ func TestRunEnvironmentMetadataNeverBecomesJobEligibilityWithoutExactJoin(t *tes
 }
 
 func TestRunnerFactRequiresAuthoritativeHostedEvidence(t *testing.T) {
+	zero, seventeen, twentyThree := int64(0), int64(17), int64(23)
 	tests := []struct {
-		name           string
-		job            githubapi.WorkflowJob
-		classification string
+		name            string
+		job             githubapi.WorkflowJob
+		classification  string
+		groupIDPresent  bool
+		expectedGroupID int64
 	}{
 		{name: "self hosted", job: githubapi.WorkflowJob{RunnerID: 42, RunnerName: "local", RunnerGroupName: "restricted", Labels: []string{"linux", "self-hosted"}}, classification: "self-hosted"},
 		{name: "github hosted explicit", job: githubapi.WorkflowJob{Labels: []string{"ubuntu-24.04", "github-hosted"}}, classification: "github-hosted"},
-		{name: "github hosted API tuple", job: githubapi.WorkflowJob{RunnerID: 1000001120, RunnerName: "GitHub Actions 1000001120", RunnerGroupID: 0, RunnerGroupName: "GitHub Actions", Labels: []string{"ubuntu-24.04"}}, classification: "github-hosted"},
+		{name: "github hosted API tuple", job: githubapi.WorkflowJob{RunnerID: 1000001120, RunnerName: "GitHub Actions 1000001120", RunnerGroupID: &zero, RunnerGroupName: "GitHub Actions", Labels: []string{"ubuntu-24.04"}}, classification: "github-hosted", groupIDPresent: true},
+		{name: "hosted-looking tuple without group ID", job: githubapi.WorkflowJob{RunnerID: 1000001120, RunnerName: "GitHub Actions 1000001120", RunnerGroupName: "GitHub Actions", Labels: []string{"ubuntu-24.04"}}, classification: "unknown"},
 		{name: "ambiguous hosted label", job: githubapi.WorkflowJob{Labels: []string{"ubuntu-24.04"}}, classification: "unknown"},
-		{name: "spoofable names without sentinel group ID", job: githubapi.WorkflowJob{RunnerID: 42, RunnerName: "GitHub Actions 42", RunnerGroupID: 17, RunnerGroupName: "GitHub Actions", Labels: []string{"ubuntu-24.04"}}, classification: "unknown"},
-		{name: "sentinel group without exact runner name", job: githubapi.WorkflowJob{RunnerID: 42, RunnerName: "custom", RunnerGroupID: 0, RunnerGroupName: "GitHub Actions", Labels: []string{"ubuntu-24.04"}}, classification: "unknown"},
-		{name: "self hosted label overrides hosted-looking tuple", job: githubapi.WorkflowJob{RunnerID: 42, RunnerName: "GitHub Actions 42", RunnerGroupID: 0, RunnerGroupName: "GitHub Actions", Labels: []string{"self-hosted"}}, classification: "self-hosted"},
+		{name: "spoofable names without sentinel group ID", job: githubapi.WorkflowJob{RunnerID: 42, RunnerName: "GitHub Actions 42", RunnerGroupID: &seventeen, RunnerGroupName: "GitHub Actions", Labels: []string{"ubuntu-24.04"}}, classification: "unknown", groupIDPresent: true, expectedGroupID: 17},
+		{name: "sentinel group without exact runner name", job: githubapi.WorkflowJob{RunnerID: 42, RunnerName: "custom", RunnerGroupID: &zero, RunnerGroupName: "GitHub Actions", Labels: []string{"ubuntu-24.04"}}, classification: "unknown", groupIDPresent: true},
+		{name: "self hosted label overrides hosted-looking tuple", job: githubapi.WorkflowJob{RunnerID: 42, RunnerName: "GitHub Actions 42", RunnerGroupID: &zero, RunnerGroupName: "GitHub Actions", Labels: []string{"self-hosted"}}, classification: "self-hosted", groupIDPresent: true},
+		{name: "numeric group without name", job: githubapi.WorkflowJob{RunnerGroupID: &twentyThree, Labels: []string{}}, classification: "unknown", groupIDPresent: true, expectedGroupID: 23},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -247,6 +252,12 @@ func TestRunnerFactRequiresAuthoritativeHostedEvidence(t *testing.T) {
 			}
 			if test.job.RunnerID > 0 && (fact.RunnerID == nil || *fact.RunnerID != test.job.RunnerID || fact.RunnerGroup != test.job.RunnerGroupName) {
 				t.Fatalf("runner identity/group lost: %#v", fact)
+			}
+			if (fact.RunnerGroupID != nil) != test.groupIDPresent {
+				t.Fatalf("runner group ID presence=%t, want %t: %#v", fact.RunnerGroupID != nil, test.groupIDPresent, fact)
+			}
+			if fact.RunnerGroupID != nil && *fact.RunnerGroupID != test.expectedGroupID {
+				t.Fatalf("runner group ID=%d, want %d", *fact.RunnerGroupID, test.expectedGroupID)
 			}
 			if _, err := archive.NormalizeFact(archive.Fact{
 				Kind: archive.FactExposure, EvidenceIDs: []model.EvidenceID{testEvidenceID('a')},

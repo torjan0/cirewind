@@ -16,6 +16,82 @@ import (
 // distinct edge identity namespace from the frozen v1 compatibility graph.
 const SchemaVersionV2 = "cirewind.graph/v1alpha2"
 
+const (
+	// EdgeEnvironmentGateSatisfied is intentionally v0.2-only. The frozen v0.1
+	// validator must not accept this relationship.
+	EdgeEnvironmentGateSatisfied EdgeType = "ENVIRONMENT_GATE_SATISFIED"
+	// DefinitionBasisHistoricalAtRunRule and its companions are closed source-
+	// basis markers for exact dependency relationships. They keep current,
+	// historical, and GitHub-recorded attempt metadata distinct even when a
+	// finding state such as CONTRADICTORY_EVIDENCE masks the source basis.
+	DefinitionBasisHistoricalAtRunRule        = "definition-basis/historical-at-run/v1"
+	DefinitionBasisCurrentSnapshotRule        = "definition-basis/current-snapshot/v1"
+	DefinitionBasisRuntimeAttemptMetadataRule = "definition-basis/runtime-attempt-metadata/v1"
+	// EnvironmentGateSatisfied*Rule are the closed, identity-bearing joins
+	// between a retained eligible gate state and job start. Keeping the state in
+	// the derivation rule prevents distinct retained outcomes from collapsing.
+	// Bypass, crossing, and absence of a required gate do not imply approval.
+	EnvironmentGateSatisfiedApprovedRule    = "environment-gate-satisfied/approved/v1"
+	EnvironmentGateSatisfiedBypassedRule    = "environment-gate-satisfied/bypassed/v1"
+	EnvironmentGateSatisfiedCrossedRule     = "environment-gate-satisfied/crossed/v1"
+	EnvironmentGateSatisfiedNotRequiredRule = "environment-gate-satisfied/not-required/v1"
+	// EnvironmentSecretEligibilityRule derives named eligibility only after the
+	// matching target and gate-satisfied relationships are present.
+	EnvironmentSecretEligibilityRule = "environment-secret-eligibility/v1"
+	// EnvironmentTargetHistoricalRule identifies the bounded join between an
+	// exact historical workflow declaration and the corresponding API job.
+	// The relationship is inferred because neither source alone proves the
+	// joined job target.
+	EnvironmentTargetHistoricalRule = "environment-target/historical-definition-and-job-state/v1"
+	// EnvironmentTargetPendingRule is the narrower presentation-only join for a
+	// waiting, pending, or otherwise unstarted non-executed job. It supports only
+	// TARGETED_ENVIRONMENT and never gate crossing or secret eligibility.
+	EnvironmentTargetPendingRule = "environment-target/pending-unstarted/v1"
+)
+
+// EnvironmentGateSatisfiedRuleForState returns the closed derivation rule for
+// one retained gate outcome. The caller must separately prove job start and,
+// for not-required, contemporaneous event time.
+func EnvironmentGateSatisfiedRuleForState(state string) (string, bool) {
+	switch state {
+	case "approved":
+		return EnvironmentGateSatisfiedApprovedRule, true
+	case "bypassed":
+		return EnvironmentGateSatisfiedBypassedRule, true
+	case "crossed":
+		return EnvironmentGateSatisfiedCrossedRule, true
+	case "not-required":
+		return EnvironmentGateSatisfiedNotRequiredRule, true
+	default:
+		return "", false
+	}
+}
+
+// EnvironmentGateSatisfiedStateForRule recovers the retained outcome used by
+// deterministic presentation. It never infers a state from labels.
+func EnvironmentGateSatisfiedStateForRule(rule string) (string, bool) {
+	switch rule {
+	case EnvironmentGateSatisfiedApprovedRule:
+		return "approved", true
+	case EnvironmentGateSatisfiedBypassedRule:
+		return "bypassed", true
+	case EnvironmentGateSatisfiedCrossedRule:
+		return "crossed", true
+	case EnvironmentGateSatisfiedNotRequiredRule:
+		return "not-required", true
+	default:
+		return "", false
+	}
+}
+
+func retainedGateStateHasKnownEventTime(rule, eventTime string) bool {
+	if rule != EnvironmentGateSatisfiedNotRequiredRule {
+		return true
+	}
+	eventTime = strings.TrimSpace(eventTime)
+	return eventTime != "" && !strings.EqualFold(eventTime, "unknown")
+}
+
 // TemporalPathSchemaVersion versions layout and SVG serialization, not the
 // underlying forensic graph.
 const TemporalPathSchemaVersion = "cirewind.temporal-evidence-path/v1alpha1"
@@ -84,6 +160,8 @@ func (kind ExactIdentityKind) valid() bool {
 type NodeV2 = Node
 
 // EdgeV2 requires an explicit evidence basis. Inferred is intentionally absent.
+// DerivationRule is mandatory for inference and may also carry one of the
+// closed definition-basis markers on an exact dependency relationship.
 type EdgeV2 struct {
 	ID              string        `json:"id"`
 	Type            EdgeType      `json:"type"`
@@ -128,6 +206,113 @@ type ProjectionNotice struct {
 	EvidenceIDs       []string             `json:"evidenceIds"`
 }
 
+type evidenceClassSet uint8
+
+const (
+	evidenceClassSetExact evidenceClassSet = 1 << iota
+	evidenceClassSetInference
+	evidenceClassSetTemporal
+	evidenceClassSetContradiction
+)
+
+// evidenceClassesByRelationship is the fail-closed v1alpha2 relationship
+// contract. A finding's provenance never supplies or upgrades an edge class.
+// Relationships with both exact and inferred forms retain both propositions as
+// distinct edges because EvidenceClass participates in the v2 edge identity.
+var evidenceClassesByRelationship = map[EdgeType]evidenceClassSet{
+	EdgeRunInRepository:           evidenceClassSetExact,
+	EdgeAttemptOfRun:              evidenceClassSetExact,
+	EdgeJobExecutedInAttempt:      evidenceClassSetExact,
+	EdgeStepInJob:                 evidenceClassSetExact | evidenceClassSetInference,
+	EdgeRunInstantiatedWorkflow:   evidenceClassSetExact,
+	EdgeWorkflowDeclaredAction:    evidenceClassSetExact | evidenceClassSetInference,
+	EdgeWorkflowCalledWorkflow:    evidenceClassSetExact,
+	EdgeActionContainsAction:      evidenceClassSetExact,
+	EdgeLocalActionResolvedTo:     evidenceClassSetExact,
+	EdgeRefResolvedTo:             evidenceClassSetExact,
+	EdgePackageSourceCommit:       evidenceClassSetExact,
+	EdgeJobPreparedAction:         evidenceClassSetExact,
+	EdgeStepDownloadedAction:      evidenceClassSetExact,
+	EdgeStepExecutedAction:        evidenceClassSetExact,
+	EdgeExecutedOnRunner:          evidenceClassSetExact,
+	EdgeRunnerInGroup:             evidenceClassSetExact,
+	EdgeHadTokenPermission:        evidenceClassSetExact | evidenceClassSetInference,
+	EdgeReferencedSecret:          evidenceClassSetExact | evidenceClassSetInference,
+	EdgePassedSecretTo:            evidenceClassSetExact | evidenceClassSetInference,
+	EdgeInheritedSecret:           evidenceClassSetExact | evidenceClassSetInference,
+	EdgeTargetedEnvironment:       evidenceClassSetExact | evidenceClassSetInference,
+	EdgeCrossedEnvironmentGate:    evidenceClassSetExact | evidenceClassSetInference,
+	EdgeEnvironmentGateSatisfied:  evidenceClassSetInference,
+	EdgeEnvironmentSecretEligible: evidenceClassSetInference,
+	EdgeCouldMintOIDC:             evidenceClassSetInference,
+	EdgeProducedArtifact:          evidenceClassSetExact,
+	EdgePublishedPackage:          evidenceClassSetExact,
+	EdgeCreatedRelease:            evidenceClassSetExact,
+	EdgeCreatedDeployment:         evidenceClassSetExact,
+	EdgeRepositoryWrite:           evidenceClassSetExact,
+	EdgePullRequestChange:         evidenceClassSetExact,
+	EdgeObservedAfter:             evidenceClassSetTemporal,
+	EdgeFindingAbout:              evidenceClassSetInference,
+	EdgeSupportedByEvidence:       evidenceClassSetExact,
+	EdgeContradicts:               evidenceClassSetContradiction,
+}
+
+// v2EndpointRules extends the frozen v0.1 graph vocabulary without making the
+// v0.1 validator accept v0.2-only relationships.
+var v2EndpointRules = func() map[EdgeType]endpointRule {
+	rules := make(map[EdgeType]endpointRule, len(endpointRules)+1)
+	for edgeType, rule := range endpointRules {
+		rules[edgeType] = rule
+	}
+	rules[EdgeEnvironmentGateSatisfied] = endpointRule{
+		sources: endpoint(NodeJob),
+		targets: endpoint(NodeEnvironment),
+	}
+	return rules
+}()
+
+var legacyBasisNoticeRelationships = map[EdgeType]struct{}{
+	EdgeHadTokenPermission: {},
+	EdgeReferencedSecret:   {},
+	EdgePassedSecretTo:     {},
+	EdgeInheritedSecret:    {},
+	EdgeCouldMintOIDC:      {},
+}
+
+var nonExecutedContextNodeTypes = map[NodeType]struct{}{
+	NodeRunner:             {},
+	NodeRunnerGroup:        {},
+	NodeTokenCapability:    {},
+	NodeSecretMetadata:     {},
+	NodeOIDCProvider:       {},
+	NodeArtifact:           {},
+	NodePackage:            {},
+	NodeRelease:            {},
+	NodeDeployment:         {},
+	NodeRepositoryResource: {},
+	NodePullRequestChange:  {},
+}
+
+var nonExecutedContextEdgeTypes = map[EdgeType]struct{}{
+	EdgeExecutedOnRunner:          {},
+	EdgeRunnerInGroup:             {},
+	EdgeHadTokenPermission:        {},
+	EdgeReferencedSecret:          {},
+	EdgePassedSecretTo:            {},
+	EdgeInheritedSecret:           {},
+	EdgeCrossedEnvironmentGate:    {},
+	EdgeEnvironmentGateSatisfied:  {},
+	EdgeEnvironmentSecretEligible: {},
+	EdgeCouldMintOIDC:             {},
+	EdgeProducedArtifact:          {},
+	EdgePublishedPackage:          {},
+	EdgeCreatedRelease:            {},
+	EdgeCreatedDeployment:         {},
+	EdgeRepositoryWrite:           {},
+	EdgePullRequestChange:         {},
+	EdgeObservedAfter:             {},
+}
+
 // GraphV2 is a complete machine-readable derived projection. SVG selection is
 // bounded separately and never mutates this graph.
 type GraphV2 struct {
@@ -143,7 +328,7 @@ type GraphV2 struct {
 // focus membership do not define the material relationship and therefore are
 // not identity inputs.
 func StableEdgeIDV2(edgeType EdgeType, source, target, eventTime string, class EvidenceClass, derivationRule string) (string, error) {
-	if _, ok := endpointRules[edgeType]; !ok {
+	if _, ok := v2EndpointRules[edgeType]; !ok {
 		return "", fmt.Errorf("unknown edge type %q", edgeType)
 	}
 	if source == "" || target == "" || source == target {
@@ -186,8 +371,11 @@ func NewEdgeV2(edgeType EdgeType, source, target string, evidenceIDs []string, e
 	}, nil
 }
 
-// NormalizeAndValidate canonicalizes slice ordering and rejects semantic
-// defaults. Callers that must preserve input should operate on CloneGraphV2.
+// NormalizeAndValidate canonicalizes a trusted, in-process projector result and
+// rejects invalid graph semantics. It is not a decoder or validator for
+// attacker-supplied graph.json bytes: the public JSON schema is the serialized
+// output contract, and graph.json is never consumed as an input authority.
+// Callers that must preserve input should operate on CloneGraphV2.
 func (g *GraphV2) NormalizeAndValidate() error {
 	if g.Nodes == nil {
 		g.Nodes = []NodeV2{}
@@ -228,6 +416,7 @@ func (g *GraphV2) NormalizeAndValidate() error {
 
 	nodes := make(map[string]NodeType, len(g.Nodes))
 	nodeFocus := make(map[string]map[string]struct{}, len(g.Nodes))
+	nonExecutedEnvironments := make(map[string]map[string]struct{})
 	for i := range g.Nodes {
 		node := &g.Nodes[i]
 		safeID, truncatedID := sanitizeSVGText(node.ID, maxIDBytes)
@@ -252,21 +441,38 @@ func (g *GraphV2) NormalizeAndValidate() error {
 		}
 		nodeFocus[node.ID] = make(map[string]struct{}, len(node.FocusFindingIDs))
 		for _, findingID := range node.FocusFindingIDs {
-			if _, ok := findings[findingID]; !ok {
+			finding, ok := findings[findingID]
+			if !ok {
 				return fmt.Errorf("graph node %q references absent finding %q", node.ID, findingID)
+			}
+			if finding.State != model.ConfirmedExecuted {
+				if _, prohibited := nonExecutedContextNodeTypes[node.Type]; prohibited {
+					return fmt.Errorf("graph node %q adds %s context to non-executed finding %q", node.ID, node.Type, findingID)
+				}
+				if node.Type == NodeEnvironment {
+					if nonExecutedEnvironments[findingID] == nil {
+						nonExecutedEnvironments[findingID] = make(map[string]struct{})
+					}
+					nonExecutedEnvironments[findingID][node.ID] = struct{}{}
+				}
 			}
 			nodeFocus[node.ID][findingID] = struct{}{}
 		}
 	}
 
 	edges := make(map[string]struct{}, len(g.Edges))
+	qualifiedPendingEnvironment := make(map[string]map[string]struct{})
+	type environmentPair struct{ job, environment string }
+	targetedEnvironments := make(map[string]map[environmentPair]struct{})
+	satisfiedEnvironments := make(map[string]map[environmentPair]struct{})
+	eligibleEnvironments := make(map[string]map[string]struct{})
 	for i := range g.Edges {
 		edge := &g.Edges[i]
 		edge.EventTime = strings.TrimSpace(edge.EventTime)
 		edge.DerivationRule = strings.TrimSpace(edge.DerivationRule)
 		sourceType, sourceOK := nodes[edge.Source]
 		targetType, targetOK := nodes[edge.Target]
-		rule, knownType := endpointRules[edge.Type]
+		rule, knownType := v2EndpointRules[edge.Type]
 		_, sourceAllowed := rule.sources[sourceType]
 		_, targetAllowed := rule.targets[targetType]
 		if !knownType || !sourceOK || !targetOK || edge.Source == edge.Target || !sourceAllowed || !targetAllowed {
@@ -274,6 +480,9 @@ func (g *GraphV2) NormalizeAndValidate() error {
 		}
 		if !edge.EvidenceClass.valid() {
 			return fmt.Errorf("graph edge %q has invalid evidence class %q", edge.ID, edge.EvidenceClass)
+		}
+		if !relationshipAllowsEvidenceClass(edge.Type, edge.EvidenceClass) {
+			return fmt.Errorf("graph edge %q relationship %s cannot use evidence class %s", edge.ID, edge.Type, edge.EvidenceClass)
 		}
 		if edge.Type == EdgeObservedAfter && edge.EvidenceClass != EvidenceClassTemporalCorrelation {
 			return fmt.Errorf("OBSERVED_AFTER edge %q is not temporal correlation", edge.ID)
@@ -289,6 +498,17 @@ func (g *GraphV2) NormalizeAndValidate() error {
 		}
 		if edge.EvidenceClass == EvidenceClassInference && edge.DerivationRule == "" {
 			return fmt.Errorf("inferred graph edge %q lacks a derivation rule", edge.ID)
+		}
+		if edge.Type == EdgeEnvironmentGateSatisfied {
+			if _, ok := EnvironmentGateSatisfiedStateForRule(edge.DerivationRule); !ok {
+				return fmt.Errorf("inferred ENVIRONMENT_GATE_SATISFIED edge %q has an unsupported derivation rule", edge.ID)
+			}
+			if !retainedGateStateHasKnownEventTime(edge.DerivationRule, edge.EventTime) {
+				return fmt.Errorf("inferred ENVIRONMENT_GATE_SATISFIED edge %q has unknown event time for not-required state", edge.ID)
+			}
+		}
+		if edge.Type == EdgeEnvironmentSecretEligible && edge.DerivationRule != EnvironmentSecretEligibilityRule {
+			return fmt.Errorf("ENVIRONMENT_SECRET_ELIGIBLE edge %q has an unsupported derivation rule", edge.ID)
 		}
 		if err := boundedText(edge.EventTime, maxEventBytes, true); err != nil {
 			return fmt.Errorf("graph edge %q has invalid event time", edge.ID)
@@ -317,8 +537,35 @@ func (g *GraphV2) NormalizeAndValidate() error {
 			return fmt.Errorf("graph edge %q lacks finding focus membership", edge.ID)
 		}
 		for _, findingID := range edge.FocusFindingIDs {
-			if _, ok := findings[findingID]; !ok {
+			finding, ok := findings[findingID]
+			if !ok {
 				return fmt.Errorf("graph edge %q references absent finding %q", edge.ID, findingID)
+			}
+			if err := validateEdgeFindingContext(*edge, finding); err != nil {
+				return fmt.Errorf("graph edge %q: %w", edge.ID, err)
+			}
+			if finding.State != model.ConfirmedExecuted && edge.Type == EdgeTargetedEnvironment {
+				if qualifiedPendingEnvironment[findingID] == nil {
+					qualifiedPendingEnvironment[findingID] = make(map[string]struct{})
+				}
+				qualifiedPendingEnvironment[findingID][edge.Target] = struct{}{}
+			}
+			switch edge.Type {
+			case EdgeTargetedEnvironment:
+				if targetedEnvironments[findingID] == nil {
+					targetedEnvironments[findingID] = make(map[environmentPair]struct{})
+				}
+				targetedEnvironments[findingID][environmentPair{job: edge.Source, environment: edge.Target}] = struct{}{}
+			case EdgeEnvironmentGateSatisfied:
+				if satisfiedEnvironments[findingID] == nil {
+					satisfiedEnvironments[findingID] = make(map[environmentPair]struct{})
+				}
+				satisfiedEnvironments[findingID][environmentPair{job: edge.Source, environment: edge.Target}] = struct{}{}
+			case EdgeEnvironmentSecretEligible:
+				if eligibleEnvironments[findingID] == nil {
+					eligibleEnvironments[findingID] = make(map[string]struct{})
+				}
+				eligibleEnvironments[findingID][edge.Source] = struct{}{}
 			}
 			if _, ok := nodeFocus[edge.Source][findingID]; !ok {
 				return fmt.Errorf("graph edge %q focus %q is absent from source", edge.ID, findingID)
@@ -328,22 +575,87 @@ func (g *GraphV2) NormalizeAndValidate() error {
 			}
 		}
 	}
+	for findingID, pairs := range satisfiedEnvironments {
+		for pair := range pairs {
+			if _, ok := targetedEnvironments[findingID][pair]; !ok {
+				return fmt.Errorf("ENVIRONMENT_GATE_SATISFIED for environment %q lacks the same-focus TARGETED_ENVIRONMENT relationship in finding %q", pair.environment, findingID)
+			}
+		}
+	}
+	for findingID, environmentIDs := range eligibleEnvironments {
+		for environmentID := range environmentIDs {
+			qualified := false
+			for pair := range satisfiedEnvironments[findingID] {
+				if pair.environment == environmentID {
+					qualified = true
+					break
+				}
+			}
+			if !qualified {
+				return fmt.Errorf("ENVIRONMENT_SECRET_ELIGIBLE for environment %q lacks the same-focus target and gate-requirement relationship in finding %q", environmentID, findingID)
+			}
+		}
+	}
+	for findingID, environmentIDs := range nonExecutedEnvironments {
+		for environmentID := range environmentIDs {
+			if _, ok := qualifiedPendingEnvironment[findingID][environmentID]; !ok {
+				return fmt.Errorf("environment node %q lacks a narrow pending target relationship for non-executed finding %q", environmentID, findingID)
+			}
+		}
+	}
 
+	type projectionNoticeKey struct {
+		findingRevisionID string
+		relationship      EdgeType
+		code              ProjectionNoticeCode
+	}
+	type projectionNoticeAggregate struct {
+		notice      ProjectionNotice
+		evidenceIDs map[string]struct{}
+	}
+	noticeByKey := make(map[projectionNoticeKey]*projectionNoticeAggregate, len(g.ProjectionNotices))
 	for i := range g.ProjectionNotices {
-		notice := &g.ProjectionNotices[i]
+		notice := g.ProjectionNotices[i]
 		if notice.Code != ProjectionNoticeUnclassifiableLegacyBasis {
 			return fmt.Errorf("projection notice %d has invalid code %q", i, notice.Code)
 		}
 		if _, ok := findings[notice.FindingRevisionID]; !ok {
 			return fmt.Errorf("projection notice references absent finding %q", notice.FindingRevisionID)
 		}
-		if _, ok := endpointRules[notice.Relationship]; !ok {
+		if _, ok := legacyBasisNoticeRelationships[notice.Relationship]; !ok {
 			return fmt.Errorf("projection notice has invalid relationship %q", notice.Relationship)
 		}
 		var err error
 		if notice.EvidenceIDs, err = normalizeEvidenceIDs(notice.EvidenceIDs); err != nil || len(notice.EvidenceIDs) == 0 {
 			return fmt.Errorf("projection notice %d requires valid evidence IDs", i)
 		}
+		key := projectionNoticeKey{findingRevisionID: notice.FindingRevisionID, relationship: notice.Relationship, code: notice.Code}
+		aggregate := noticeByKey[key]
+		if aggregate == nil {
+			aggregate = &projectionNoticeAggregate{
+				notice: notice, evidenceIDs: make(map[string]struct{}, len(notice.EvidenceIDs)),
+			}
+			aggregate.notice.EvidenceIDs = nil
+			noticeByKey[key] = aggregate
+		}
+		for _, evidenceID := range notice.EvidenceIDs {
+			if _, exists := aggregate.evidenceIDs[evidenceID]; exists {
+				continue
+			}
+			if len(aggregate.evidenceIDs) == maxEvidenceIDs {
+				return fmt.Errorf("projection notice %d has too many combined evidence IDs", i)
+			}
+			aggregate.evidenceIDs[evidenceID] = struct{}{}
+		}
+	}
+	g.ProjectionNotices = make([]ProjectionNotice, 0, len(noticeByKey))
+	for _, aggregate := range noticeByKey {
+		aggregate.notice.EvidenceIDs = make([]string, 0, len(aggregate.evidenceIDs))
+		for evidenceID := range aggregate.evidenceIDs {
+			aggregate.notice.EvidenceIDs = append(aggregate.notice.EvidenceIDs, evidenceID)
+		}
+		sort.Strings(aggregate.notice.EvidenceIDs)
+		g.ProjectionNotices = append(g.ProjectionNotices, aggregate.notice)
 	}
 
 	sort.Slice(g.Nodes, func(i, j int) bool { return g.Nodes[i].ID < g.Nodes[j].ID })
@@ -353,6 +665,49 @@ func (g *GraphV2) NormalizeAndValidate() error {
 		a, b := g.ProjectionNotices[i], g.ProjectionNotices[j]
 		return a.FindingRevisionID+"\x00"+string(a.Relationship)+"\x00"+string(a.Code) < b.FindingRevisionID+"\x00"+string(b.Relationship)+"\x00"+string(b.Code)
 	})
+	return nil
+}
+
+func relationshipAllowsEvidenceClass(edgeType EdgeType, class EvidenceClass) bool {
+	allowed, ok := evidenceClassesByRelationship[edgeType]
+	if !ok {
+		return false
+	}
+	var candidate evidenceClassSet
+	switch class {
+	case EvidenceClassExactObservation:
+		candidate = evidenceClassSetExact
+	case EvidenceClassInference:
+		candidate = evidenceClassSetInference
+	case EvidenceClassTemporalCorrelation:
+		candidate = evidenceClassSetTemporal
+	case EvidenceClassContradiction:
+		candidate = evidenceClassSetContradiction
+	default:
+		return false
+	}
+	return allowed&candidate != 0
+}
+
+func validateEdgeFindingContext(edge EdgeV2, finding FindingIndexEntry) error {
+	if finding.State == model.ConfirmedExecuted {
+		return nil
+	}
+	if _, prohibited := nonExecutedContextEdgeTypes[edge.Type]; prohibited {
+		return fmt.Errorf("relationship %s adds credential, runner, gate-crossing, or resource context to non-executed finding %q", edge.Type, finding.FindingRevisionID)
+	}
+	if edge.Type == EdgeTargetedEnvironment &&
+		(edge.EvidenceClass != EvidenceClassInference || edge.DerivationRule != EnvironmentTargetPendingRule) {
+		return fmt.Errorf("TARGETED_ENVIRONMENT on non-executed finding %q requires the narrow pending-unstarted inference rule", finding.FindingRevisionID)
+	}
+	// CONFIRMED_DOWNLOADED is specifically the proposition that download or
+	// preparation was demonstrated without a corresponding lifecycle start. An
+	// exact lifecycle edge can legitimately appear in other states—for example,
+	// a known-good execution with incomplete negative coverage remains an
+	// UNKNOWN_EVIDENCE_GAP—without proving that the incident identity executed.
+	if edge.Type == EdgeStepExecutedAction && finding.State == model.ConfirmedDownloaded {
+		return errors.New("STEP_EXECUTED_ACTION is incompatible with CONFIRMED_DOWNLOADED")
+	}
 	return nil
 }
 
@@ -404,7 +759,9 @@ func validateFindingIndexEntry(entry FindingIndexEntry) error {
 	if err := boundedText(entry.StepIdentity, 4_096, true); err != nil {
 		return errors.New("invalid step identity")
 	}
-	if err := boundedText(entry.EvidenceGapReason, 4_096, true); err != nil {
+	// The reason is retained machine evidence and can originate in a hostile API
+	// error. Preserve bounded valid UTF-8 here; all display sinks sanitize it.
+	if err := boundedRetainedText(entry.EvidenceGapReason, 4_096, true); err != nil {
 		return errors.New("invalid evidence gap reason")
 	}
 	if entry.State == model.UnknownEvidenceGap && entry.EvidenceGapReason == "" {

@@ -16,9 +16,20 @@ import (
 )
 
 func runDemo(ctx context.Context, args []string, stdout, stderr io.Writer) error {
+	return runDemoWithPipeline(ctx, args, stdout, stderr, deriveAndGenerateCase)
+}
+
+type demoCasePipeline func(context.Context, casePipelineRequest) (report.Case, error)
+
+// runDemoWithPipeline is a per-call test seam for deterministic cancellation
+// at the application boundary. Production always supplies deriveAndGenerateCase.
+func runDemoWithPipeline(ctx context.Context, args []string, stdout, stderr io.Writer, pipeline demoCasePipeline) error {
 	options, err := parseDemo(args, stderr)
 	if err != nil {
 		return err
+	}
+	if pipeline == nil {
+		return fmt.Errorf("demo case pipeline is unavailable")
 	}
 	if err := ctx.Err(); err != nil {
 		return err
@@ -31,7 +42,7 @@ func runDemo(ctx context.Context, args []string, stdout, stderr io.Writer) error
 	if err != nil {
 		return fmt.Errorf("validate embedded demo incident pack: %w", err)
 	}
-	caseValue, err := deriveAndGenerateCase(ctx, casePipelineRequest{
+	caseValue, err := pipeline(ctx, casePipelineRequest{
 		Snapshot: bundle.Snapshot, Pack: pack, AnalysisTime: bundle.AnalysisTime,
 		Mode: analyze.ModeReplay, Output: options.Output,
 		BeforeGenerate: func(snapshot archive.Snapshot, caseValue report.Case) error {
@@ -64,6 +75,6 @@ func printDemoSummary(writer io.Writer, caseValue report.Case, output string) {
 	clean := filepath.Clean(output)
 	fmt.Fprintln(writer, "manifest: verified")
 	fmt.Fprintln(writer, "network requests: 0")
-	fmt.Fprintf(writer, "case: %s\n", sanitizeDiagnostic(clean))
-	fmt.Fprintf(writer, "report: %s\n", sanitizeDiagnostic(filepath.Join(clean, "report.html")))
+	fmt.Fprintf(writer, "case: %s\n", sanitizeTerminalValue(clean))
+	fmt.Fprintf(writer, "report: %s\n", sanitizeTerminalValue(filepath.Join(clean, "report.html")))
 }

@@ -121,11 +121,54 @@ func TestAbortStagedCasePreservesCauseWithoutExposingRandomPath(t *testing.T) {
 	if !errors.Is(err, sentinel) {
 		t.Fatalf("cleanup error does not preserve its cause: %v", err)
 	}
+	if !errors.Is(err, ErrStagedCaseCleanup) {
+		t.Fatalf("cleanup error does not expose its stable classification: %v", err)
+	}
 	if strings.Contains(err.Error(), ".cirewind-case-") || strings.Contains(err.Error(), "/private/cases") {
 		t.Fatalf("cleanup error exposed the randomized staging path: %q", err)
 	}
 	if err := abortStagedCase(fakeCaseAborter{}); err != nil {
 		t.Fatalf("successful cleanup returned an error: %v", err)
+	}
+}
+
+func TestGenerateCancellationPreservesActualCleanupFailureClassification(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	parent := t.TempDir()
+	output := filepath.Join(parent, "case")
+	options := generationFixture(t, ctx, output)
+	var staging string
+
+	err := generate(ctx, options, generationHooks{beforeFinalize: func(_ context.Context, builder *casefile.Builder) error {
+		staging = builder.StagingPath()
+		moved := staging + ".moved"
+		if err := os.Rename(staging, moved); err != nil {
+			return fmt.Errorf("move staging fixture: %w", err)
+		}
+		if err := os.Mkdir(staging, 0o700); err != nil {
+			return fmt.Errorf("replace staging fixture: %w", err)
+		}
+		cancel()
+		return ctx.Err()
+	}})
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("Generate error = %v, want context cancellation", err)
+	}
+	if !errors.Is(err, ErrStagedCaseCleanup) {
+		t.Fatalf("Generate error = %v, want staged-cleanup classification", err)
+	}
+	if staging == "" {
+		t.Fatal("cleanup-failure fixture did not observe private staging")
+	}
+	diagnostic := err.Error()
+	if strings.Contains(diagnostic, filepath.Base(staging)) || strings.Contains(diagnostic, staging) || strings.Contains(diagnostic, parent) {
+		t.Fatalf("cancellation/cleanup diagnostic exposed private staging: %q", diagnostic)
+	}
+	if !strings.Contains(diagnostic, "context canceled") || !strings.Contains(diagnostic, "staging directory removal failed") {
+		t.Fatalf("cancellation/cleanup diagnostic lost its safe error categories: %q", diagnostic)
+	}
+	if _, statErr := os.Lstat(output); !errors.Is(statErr, os.ErrNotExist) {
+		t.Fatalf("cancellation with cleanup failure published output: %v", statErr)
 	}
 }
 
@@ -172,6 +215,26 @@ func TestGenerateHonorsCancellationImmediatelyBeforeFinalize(t *testing.T) {
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("Generate error = %v, want context cancellation", err)
 	}
+	assertGenerationLeftNoCase(t, parent, output)
+}
+
+func TestGenerateCleansPrivateStagingWhenHookPanics(t *testing.T) {
+	ctx := context.Background()
+	parent := t.TempDir()
+	output := filepath.Join(parent, "case")
+	options := generationFixture(t, ctx, output)
+	panicValue := &struct{}{}
+
+	func() {
+		defer func() {
+			if recovered := recover(); recovered != panicValue {
+				t.Fatalf("recovered panic = %#v, want injected sentinel", recovered)
+			}
+		}()
+		_ = generate(ctx, options, generationHooks{beforeFinalize: func(context.Context, *casefile.Builder) error {
+			panic(panicValue)
+		}})
+	}()
 	assertGenerationLeftNoCase(t, parent, output)
 }
 

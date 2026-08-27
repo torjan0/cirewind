@@ -12,7 +12,6 @@ import (
 	"strings"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/torjan0/cirewind/internal/casefile"
 	"github.com/torjan0/cirewind/internal/demodata"
@@ -410,38 +409,26 @@ func TestDemoConcurrentSameDestinationPublishesExactlyOneCase(t *testing.T) {
 	assertNoCaseStaging(t, parent)
 }
 
-func TestDemoMidGenerationCancellationRemovesPrivateStaging(t *testing.T) {
+func TestDemoMidGenerationCancellationBeforePublicationIsDeterministic(t *testing.T) {
 	parent := t.TempDir()
 	output := filepath.Join(parent, "case")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	entered := make(chan struct{})
 	result := make(chan int, 1)
 	go func() {
-		result <- Run(ctx, []string{"demo", "--out", output}, &bytes.Buffer{}, &bytes.Buffer{})
-	}()
-
-	deadline := time.Now().Add(10 * time.Second)
-	observedStaging := false
-	for !observedStaging && time.Now().Before(deadline) {
-		entries, err := os.ReadDir(parent)
-		if err != nil {
-			t.Fatal(err)
-		}
-		for _, entry := range entries {
-			if strings.HasPrefix(entry.Name(), ".cirewind-case-") {
-				observedStaging = true
-				break
+		var stderr bytes.Buffer
+		err := runDemoWithPipeline(ctx, []string{"--out", output}, &bytes.Buffer{}, &stderr, func(ctx context.Context, request casePipelineRequest) (report.Case, error) {
+			close(entered)
+			if request.Output != output {
+				return report.Case{}, errors.New("demo pipeline received the wrong output")
 			}
-		}
-		if !observedStaging {
-			runtime.Gosched()
-		}
-	}
-	if !observedStaging {
-		cancel()
-		code := <-result
-		t.Fatalf("demo published before its private staging could be observed (exit=%d); mid-generation cancellation was not exercised", code)
-	}
+			<-ctx.Done()
+			return report.Case{}, ctx.Err()
+		})
+		result <- writeCLIError(&stderr, err)
+	}()
+	<-entered
 	cancel()
 	if code := <-result; code != 130 {
 		t.Fatalf("mid-generation canceled demo exit=%d, want 130", code)
@@ -566,7 +553,7 @@ func assertPendingEnvironmentGraph(t *testing.T, projected graph.GraphV2) {
 	if pendingRevision == "" {
 		t.Fatal("pending environment finding is absent from graph index")
 	}
-	targeted, crossed, eligible := false, false, false
+	targeted, satisfied, eligible := false, false, false
 	for _, edge := range projected.Edges {
 		focus := false
 		for _, revision := range edge.FocusFindingIDs {
@@ -578,14 +565,14 @@ func assertPendingEnvironmentGraph(t *testing.T, projected graph.GraphV2) {
 		switch edge.Type {
 		case graph.EdgeTargetedEnvironment:
 			targeted = true
-		case graph.EdgeCrossedEnvironmentGate:
-			crossed = true
+		case graph.EdgeEnvironmentGateSatisfied:
+			satisfied = true
 		case graph.EdgeEnvironmentSecretEligible:
 			eligible = true
 		}
 	}
-	if !targeted || crossed || eligible {
-		t.Fatalf("pending environment graph targeted/crossed/eligible=%v/%v/%v", targeted, crossed, eligible)
+	if !targeted || satisfied || eligible {
+		t.Fatalf("pending environment graph targeted/satisfied/eligible=%v/%v/%v", targeted, satisfied, eligible)
 	}
 }
 

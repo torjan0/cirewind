@@ -472,6 +472,21 @@ func TestSnapshotRejectsCrossFactContradictions(t *testing.T) {
 			want: "want one job-log and one parser-grammar",
 		},
 		{
+			name: "workflow dependency has no parent run",
+			mutate: func(t *testing.T, snapshot *archive.Snapshot) {
+				for index := range snapshot.Facts {
+					fact := &snapshot.Facts[index]
+					if fact.Dependency != nil && fact.Dependency.Relation == archive.DependencyWorkflowDeclaredAction && fact.Dependency.Execution != nil && fact.Dependency.Execution.RunID == 1005 {
+						fact.Dependency.Execution.RunID = 9999
+						fact.ID = ""
+						return
+					}
+				}
+				t.Fatal("run 1005 workflow dependency fact not found")
+			},
+			want: "has no run workflow path",
+		},
+		{
 			name: "duplicate conflicting run",
 			mutate: func(t *testing.T, snapshot *archive.Snapshot) {
 				original := *findRunFact(t, snapshot, 1001)

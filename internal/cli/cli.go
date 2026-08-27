@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/torjan0/cirewind/internal/buildinfo"
+	"github.com/torjan0/cirewind/internal/casegen"
 	"github.com/torjan0/cirewind/internal/sanitize"
 )
 
@@ -97,6 +98,10 @@ func writeCLIError(stderr io.Writer, err error) int {
 		return 2
 	}
 	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		if errors.Is(err, casegen.ErrStagedCaseCleanup) {
+			fmt.Fprintln(stderr, "cirewind: operation canceled; staged case cleanup also failed")
+			return 130
+		}
 		fmt.Fprintln(stderr, "cirewind: operation canceled")
 		return 130
 	}
@@ -111,5 +116,9 @@ func sanitizeDiagnostic(value string) string {
 		// publishing private path or temporary-parent details to the terminal.
 		value = "case operation failed in private staging; private path withheld"
 	}
+	return sanitize.Terminal(value, maxCLIDiagnosticBytes)
+}
+
+func sanitizeTerminalValue(value string) string {
 	return sanitize.Terminal(value, maxCLIDiagnosticBytes)
 }

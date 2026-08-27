@@ -63,24 +63,24 @@ func Snapshot(ctx context.Context) (archive.Snapshot, error) {
 		run, job int64
 		attempt  uint32
 		event    string
+		workflow string
 		name     string
 		status   string
 		result   string
 	}{
-		{1001, 2001, 1, "push", "A-direct-executed", "completed", "success"},
-		{1002, 2002, 1, "push", "D-downloaded-skipped", "completed", "success"},
-		{1003, 2003, 2, "workflow_call", "F-rerun-called-workflow", "completed", "success"},
-		{1004, 2004, 1, "workflow_call", "C-transitive-composite", "completed", "success"},
-		{1005, 2005, 1, "push", "E-mutable-window", "waiting", ""},
-		{1006, 2006, 1, "push", "current-reference-only", "completed", "success"},
-		{1007, 2007, 1, "push", "N-missing-logs", "completed", "success"},
-		{1008, 2008, 1, "push", "P-contradiction", "completed", "success"},
-		{1009, 2009, 1, "pull_request_target", "L-pull-request-target", "completed", "success"},
-		{1010, 2010, 1, "push", "O-historical-definition", "completed", "success"},
-		{1011, 2011, 1, "push", "M-matrix-linux", "completed", "success"},
+		{1001, 2001, 1, "push", ".github/workflows/a-direct-executed.yml", "A-direct-executed", "completed", "success"},
+		{1002, 2002, 1, "push", ".github/workflows/d-downloaded-skipped.yml", "D-downloaded-skipped", "completed", "success"},
+		{1003, 2003, 2, "workflow_call", ".github/workflows/reusable-caller.yml", "F-rerun-called-workflow", "completed", "success"},
+		{1004, 2004, 1, "workflow_call", ".github/workflows/c-transitive-composite.yml", "C-transitive-composite", "completed", "success"},
+		{1005, 2005, 1, "push", ".github/workflows/mutable.yml", "E-mutable-window", "waiting", ""},
+		{1007, 2007, 1, "push", ".github/workflows/n-missing-logs.yml", "N-missing-logs", "completed", "success"},
+		{1008, 2008, 1, "push", ".github/workflows/contradiction.yml", "P-contradiction", "completed", "success"},
+		{1009, 2009, 1, "pull_request_target", ".github/workflows/local.yml", "L-pull-request-target", "completed", "success"},
+		{1010, 2010, 1, "push", ".github/workflows/historical.yml", "O-historical-definition", "completed", "success"},
+		{1011, 2011, 1, "push", ".github/workflows/m-matrix-linux.yml", "M-matrix-linux", "completed", "success"},
 	}
 	for _, scenario := range scenarios {
-		if err := b.addExecution(ctx, scenario.run, scenario.attempt, scenario.job, scenario.event, scenario.name, scenario.status, scenario.result); err != nil {
+		if err := b.addExecution(ctx, scenario.run, scenario.attempt, scenario.job, scenario.event, scenario.workflow, scenario.name, scenario.status, scenario.result); err != nil {
 			return archive.Snapshot{}, err
 		}
 	}
@@ -133,7 +133,7 @@ func Snapshot(ctx context.Context) (archive.Snapshot, error) {
 	if err := b.addDependency(ctx, archive.DependencyFact{Relation: archive.DependencyWorkflowDeclaredAction, TargetKind: archive.DependencyTargetAction, Basis: archive.DefinitionHistoricalAtRun, CallerRepositoryID: consumerRepositoryID, CallerRepository: repositorySlug, CallerPath: ".github/workflows/mutable.yml", CallerWorkflowObjectID: &callerOID, TargetRepository: mustRepository(affectedAction), DeclaredRef: "v1", Execution: ptr(execution(1005, 1, 2005)), ContradictsFactIDs: []string{}, EventTime: instantEvent(when)}); err != nil {
 		return archive.Snapshot{}, err
 	}
-	if err := b.addDependency(ctx, archive.DependencyFact{Relation: archive.DependencyWorkflowDeclaredAction, TargetKind: archive.DependencyTargetAction, Basis: archive.DefinitionCurrentSnapshot, CallerRepositoryID: consumerRepositoryID, CallerRepository: repositorySlug, CallerPath: ".github/workflows/current.yml", TargetRepository: mustRepository(affectedAction), DeclaredRef: strings.Repeat("1", 40), TargetActionObjectID: &affectedOID, Execution: ptr(execution(1006, 1, 2006)), ContradictsFactIDs: []string{}, EventTime: instantEvent(when)}); err != nil {
+	if err := b.addDependency(ctx, archive.DependencyFact{Relation: archive.DependencyWorkflowDeclaredAction, TargetKind: archive.DependencyTargetAction, Basis: archive.DefinitionCurrentSnapshot, CallerRepositoryID: consumerRepositoryID, CallerRepository: repositorySlug, CallerPath: ".github/workflows/current.yml", TargetRepository: mustRepository(affectedAction), DeclaredRef: strings.Repeat("1", 40), TargetActionObjectID: &affectedOID, ContradictsFactIDs: []string{}, EventTime: unknownEvent()}); err != nil {
 		return archive.Snapshot{}, err
 	}
 	if err := b.addDependency(ctx, archive.DependencyFact{Relation: archive.DependencyWorkflowDeclaredAction, TargetKind: archive.DependencyTargetAction, Basis: archive.DefinitionHistoricalAtRun, CallerRepositoryID: consumerRepositoryID, CallerRepository: repositorySlug, CallerPath: ".github/workflows/historical.yml", CallerWorkflowObjectID: &callerOID, TargetRepository: mustRepository(affectedAction), DeclaredRef: strings.Repeat("1", 40), TargetActionObjectID: &affectedOID, Execution: ptr(execution(1010, 1, 2010)), ContradictsFactIDs: []string{}, EventTime: instantEvent(when)}); err != nil {
@@ -181,9 +181,9 @@ func Snapshot(ctx context.Context) (archive.Snapshot, error) {
 	return normalized, nil
 }
 
-func (b *builder) addExecution(ctx context.Context, run int64, attempt uint32, job int64, eventType, name, status, conclusion string) error {
+func (b *builder) addExecution(ctx context.Context, run int64, attempt uint32, job int64, eventType, workflow, name, status, conclusion string) error {
 	runID, attemptID, jobID := model.WorkflowRunID(run), model.RunAttempt(attempt), model.JobID(job)
-	workflowPath := mustWorkflowPath(".github/workflows/" + strings.ToLower(strings.ReplaceAll(name, "_", "-")) + ".yml")
+	workflowPath := mustWorkflowPath(workflow)
 	scope := model.CoverageScope{RepositoryID: ptr(consumerRepositoryID), RunID: &runID, RunAttempt: &attemptID, JobID: &jobID}
 	evidenceID, err := b.source(ctx, fmt.Sprintf("run-%d-attempt-%d-job-%d", run, attempt, job), scope, fmt.Sprintf(`{"run":%d,"attempt":%d,"job":%d}`, run, attempt, job))
 	if err != nil {
@@ -407,6 +407,10 @@ func execution(run int64, attempt uint32, job int64) model.JobExecutionIdentity 
 
 func instantEvent(instant model.Instant) model.EventInterval {
 	return model.EventInterval{Start: &instant, Precision: model.PrecisionSecond, Approximation: model.ApproximationExact, Basis: model.TimeBasisLogTimestamp}
+}
+
+func unknownEvent() model.EventInterval {
+	return model.EventInterval{Precision: model.PrecisionUnknown, Approximation: model.ApproximationUnknown, Basis: model.TimeBasisUnknown}
 }
 
 func mustRepository(value string) model.RepositorySlug {

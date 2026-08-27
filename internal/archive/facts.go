@@ -388,6 +388,15 @@ func validateDependencyFact(fact DependencyFact) error {
 			return errors.New("attempt-level reusable-workflow metadata cannot carry a step identity")
 		}
 	}
+	if fact.Basis == DefinitionCurrentSnapshot {
+		if fact.Execution != nil || fact.AttemptExecution != nil || fact.StepKey != "" {
+			return errors.New("current snapshot cannot carry historical run-attempt, job, or step identity")
+		}
+		if fact.EventTime.Start != nil || fact.EventTime.End != nil || fact.EventTime.Bounds != nil ||
+			fact.EventTime.Precision != model.PrecisionUnknown || fact.EventTime.Approximation != model.ApproximationUnknown || fact.EventTime.Basis != model.TimeBasisUnknown {
+			return errors.New("current snapshot cannot carry a historical event time")
+		}
+	}
 	if fact.TargetKind == DependencyTargetReusableWorkflow && fact.TargetPath == "" {
 		return errors.New("reusable-workflow target requires a path")
 	}
@@ -469,7 +478,7 @@ func validateExposureFact(fact ExposureFact, allowRetainedLegacyBasis bool) ([]m
 	}
 	if fact.Environment != nil {
 		kinds++
-		if err := validateEnvironment(*fact.Environment); err != nil {
+		if err := validateEnvironment(*fact.Environment, fact.EventTime); err != nil {
 			return nil, err
 		}
 	}
@@ -512,6 +521,9 @@ func validateRunner(runner RunnerContextFact) error {
 	if runner.RunnerID != nil && *runner.RunnerID <= 0 {
 		return errors.New("runner ID must be positive")
 	}
+	if runner.RunnerGroupID != nil && *runner.RunnerGroupID < 0 {
+		return errors.New("runner group ID must be nonnegative")
+	}
 	for _, value := range []string{runner.RunnerName, runner.RunnerGroup} {
 		if err := safeText(value, 1024, true); err != nil {
 			return err
@@ -531,7 +543,7 @@ func validateRunner(runner RunnerContextFact) error {
 	return nil
 }
 
-func validateEnvironment(environment EnvironmentEligibilityFact) error {
+func validateEnvironment(environment EnvironmentEligibilityFact, event model.EventInterval) error {
 	if err := safeText(environment.EnvironmentName, 1024, false); err != nil {
 		return err
 	}
@@ -539,6 +551,9 @@ func validateEnvironment(environment EnvironmentEligibilityFact) error {
 	case "approved", "bypassed", "crossed", "pending", "rejected", "not-required", "unknown":
 	default:
 		return errors.New("environment gate state is invalid")
+	}
+	if environment.JobStarted && (environment.GateState == "pending" || environment.GateState == "rejected") {
+		return errors.New("a pending or rejected environment job cannot be recorded as started")
 	}
 	if environment.SecretNames == nil || len(environment.SecretNames) > 10_000 {
 		return errors.New("environment secret names must be an explicit bounded array")
@@ -551,8 +566,8 @@ func validateEnvironment(environment EnvironmentEligibilityFact) error {
 			return errors.New("environment secret names must be sorted and unique")
 		}
 	}
-	if len(environment.SecretNames) > 0 && (!environment.JobStarted || (environment.GateState != "approved" && environment.GateState != "bypassed" && environment.GateState != "crossed" && environment.GateState != "not-required")) {
-		return errors.New("environment secrets cannot be eligible before the job starts and crosses its gate")
+	if len(environment.SecretNames) > 0 && !environment.GateRequirementSatisfiedAt(event) {
+		return errors.New("environment secrets cannot be eligible before the job starts and the retained gate requirement is satisfied, bypassed, or not required")
 	}
 	return nil
 }

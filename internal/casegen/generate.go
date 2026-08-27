@@ -93,11 +93,19 @@ func generate(ctx context.Context, options Options, hooks generationHooks) (err 
 		return err
 	}
 	defer func() {
+		// Abort is deliberately unconditional. It is a no-op after a successful
+		// publication, and it removes private staged material when an error or
+		// panic unwinds this function.
+		cleanupErr := abortStagedCase(builder)
 		if err != nil {
-			if cleanupErr := abortStagedCase(builder); cleanupErr != nil {
+			if cleanupErr != nil {
 				err = errors.Join(err, cleanupErr)
 			}
 			err = protectPrivateStagingDiagnostic(err)
+			return
+		}
+		if cleanupErr != nil {
+			err = protectPrivateStagingDiagnostic(cleanupErr)
 		}
 	}()
 	if err = writeRawEvidence(ctx, builder, options); err != nil {
@@ -317,12 +325,21 @@ type stagedCaseCleanupError struct {
 	cause error
 }
 
+// ErrStagedCaseCleanup permits the CLI boundary to preserve a safe cleanup
+// warning even when the primary operation was canceled. It carries no path or
+// underlying operating-system diagnostic.
+var ErrStagedCaseCleanup = errors.New("staged case cleanup failed")
+
 func (e *stagedCaseCleanupError) Error() string {
 	return "clean up staged case: staging directory removal failed"
 }
 
 func (e *stagedCaseCleanupError) Unwrap() error {
 	return e.cause
+}
+
+func (e *stagedCaseCleanupError) Is(target error) bool {
+	return target == ErrStagedCaseCleanup
 }
 
 type stagedCaseOperationError struct {

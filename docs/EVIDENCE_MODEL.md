@@ -510,6 +510,17 @@ For each call edge, store the caller definition SHA, called definition SHA, call
 - approval, bypass, wait timer, branch/tag rule, and custom protection evidence are separate observations; and
 - environment configuration collected later is not assumed to match event-time configuration.
 
+The v0.2 derived graph uses `ENVIRONMENT_GATE_SATISFIED` for the conservative
+join of a started exact job with a retained `approved`, `bypassed`, `crossed`,
+or contemporaneous `not-required` state. This relationship is a prerequisite
+for named `ENVIRONMENT_SECRET_ELIGIBLE`. Four closed state-specific derivation
+rules preserve the retained outcome in edge identity and conservative wording;
+the graph does not relabel bypass or absence of a required gate as human
+approval. A `not-required` assertion with unknown event time cannot satisfy
+this prerequisite. A `pending` or `rejected` observation is necessarily
+unstarted in one fact. A later start is a separate event-timed observation,
+never a mutation of the earlier pending/rejected fact.
+
 ### OIDC
 
 CIRewind uses two distinct proposition kinds:

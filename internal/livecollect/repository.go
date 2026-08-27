@@ -444,7 +444,7 @@ func runnerFact(job githubapi.WorkflowJob) *archive.RunnerContextFact {
 	// ID even though the job label list need not include "github-hosted". Require
 	// the complete tuple so a familiar ubuntu-* label or attacker-chosen name is
 	// never sufficient on its own. Explicit self-hosted labels always win.
-	if classification == "unknown" && job.RunnerID > 0 && job.RunnerGroupID == 0 &&
+	if classification == "unknown" && job.RunnerID > 0 && job.RunnerGroupID != nil && *job.RunnerGroupID == 0 &&
 		job.RunnerGroupName == "GitHub Actions" && job.RunnerName == fmt.Sprintf("GitHub Actions %d", job.RunnerID) {
 		classification = "github-hosted"
 	}
@@ -452,6 +452,13 @@ func runnerFact(job githubapi.WorkflowJob) *archive.RunnerContextFact {
 	if job.RunnerID > 0 {
 		id := job.RunnerID
 		result.RunnerID = &id
+	}
+	// GitHub uses zero as a meaningful hosted-runner-group sentinel. Preserve
+	// it only when the JSON field itself was present; a nil pointer means the
+	// numeric identity was absent, not that its value was zero.
+	if job.RunnerGroupID != nil {
+		id := *job.RunnerGroupID
+		result.RunnerGroupID = &id
 	}
 	return result
 }

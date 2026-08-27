@@ -120,6 +120,13 @@ func TestGeneratedV02CaseConformsToPublicSchemasAndStrictCodeContracts(t *testin
 	if err := typedGraph.NormalizeAndValidate(); err != nil {
 		t.Fatalf("code contract rejects schema-valid graph: %v", err)
 	}
+	var graphRoundTrip bytes.Buffer
+	if err := report.WriteGraphV2JSON(&graphRoundTrip, typedGraph); err != nil {
+		t.Fatalf("rewrite generated graph through code contract: %v", err)
+	}
+	if !bytes.Equal(graphBytes, graphRoundTrip.Bytes()) {
+		t.Fatal("generated graph.json was not canonical before strict code/schema round trip")
+	}
 }
 
 func TestV02PublicSchemasRejectUnknownFieldsAndClosedEnumDrift(t *testing.T) {
@@ -172,6 +179,21 @@ func TestV02PublicSchemasRejectUnknownFieldsAndClosedEnumDrift(t *testing.T) {
 			edge := firstObjectNotWhere(value, "edges", "type", "OBSERVED_AFTER")
 			edge["evidenceClass"] = "TEMPORAL_CORRELATION"
 		}},
+		{"exact OIDC capability", func(value map[string]any) {
+			edge := firstObjectWhere(value, "edges", "type", "COULD_MINT_OIDC")
+			edge["evidenceClass"] = "EXACT_OBSERVATION"
+			delete(edge, "derivationRule")
+		}},
+		{"inferred lifecycle execution", func(value map[string]any) {
+			edge := firstObjectWhere(value, "edges", "type", "STEP_EXECUTED_ACTION")
+			edge["evidenceClass"] = "INFERENCE"
+			edge["derivationRule"] = "invalid-lifecycle-inference/v1"
+		}},
+		{"temporal environment target", func(value map[string]any) {
+			edge := firstObjectWhere(value, "edges", "type", "TARGETED_ENVIRONMENT")
+			edge["evidenceClass"] = "TEMPORAL_CORRELATION"
+			delete(edge, "derivationRule")
+		}},
 		{"unknown finding state", func(value map[string]any) { firstObject(value, "findingIndex")["state"] = "LIKELY_COMPROMISED" }},
 		{"unknown provenance", func(value map[string]any) { firstObject(value, "findingIndex")["provenanceLevel"] = "L5_ABSOLUTE" }},
 		{"evidence gap without reason", func(value map[string]any) {
@@ -181,6 +203,14 @@ func TestV02PublicSchemasRejectUnknownFieldsAndClosedEnumDrift(t *testing.T) {
 		{"attempt without run identity", func(value map[string]any) {
 			finding := firstObjectWithField(value, "findingIndex", "runAttempt")
 			delete(finding, "runId")
+		}},
+		{"legacy-basis notice on noncredential relationship", func(value map[string]any) {
+			finding := firstObject(value, "findingIndex")
+			edge := firstObject(value, "edges")
+			value["projectionNotices"] = []any{map[string]any{
+				"code": "UNCLASSIFIABLE_LEGACY_BASIS", "findingRevisionId": finding["findingRevisionId"],
+				"relationship": "STEP_EXECUTED_ACTION", "evidenceIds": edge["evidenceIds"],
+			}}
 		}},
 	} {
 		t.Run("graph/"+test.name, func(t *testing.T) {

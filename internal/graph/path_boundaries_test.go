@@ -99,9 +99,9 @@ func TestTemporalPathDefaultAndHardSelectionBoundaries(t *testing.T) {
 		for _, test := range []struct {
 			count, limit, want int
 		}{
-			{DefaultPathEdges, 0, 1},
-			{DefaultPathEdges + 1, 0, 0},
-			{HardPathEdges, HardPathEdges, 1},
+			{pathNodePortCapacity, 0, 1},
+			{pathNodePortCapacity, pathNodePortCapacity - 1, 0},
+			{pathNodePortCapacity + 1, HardPathEdges, 0},
 		} {
 			path, err := BuildTemporalEvidencePath(context.Background(), manyEdgeGraph(t, test.count), PathOptions{
 				MaxNodes: HardPathNodes, MaxEdges: test.limit, MaxEvidenceIDs: HardPathEvidenceIDs,
@@ -182,49 +182,91 @@ func TestRenderGraphSVGDegradesByCompleteLanesAtEightMiBHardBound(t *testing.T) 
 	assertNoDanglingVisualEdges(t, path)
 }
 
-func TestWorkflowDeclarationWordingUsesTypedFindingState(t *testing.T) {
+func TestDefinitionWordingUsesTypedEdgeBasisNotFindingStateOrLabels(t *testing.T) {
 	t.Parallel()
-	const historicalLookingLabel = "historical workflow at deadbeef — hostile display text"
-	const currentLookingLabel = "current default branch snapshot — hostile display text"
-
-	build := func(t *testing.T, state model.FindingState, workflowLabel string) TemporalEvidencePath {
-		t.Helper()
-		focus := indexedFindingID(int(state[0]))
-		evidence := indexedEvidenceID(int(state[0]))
-		edge, err := NewEdgeV2(
-			EdgeWorkflowDeclaredAction, "workflow", "ref", []string{evidence}, "",
-			EvidenceClassInference, "workflow-definition-reference/v1", []string{focus},
-		)
-		if err != nil {
-			t.Fatal(err)
-		}
-		finding := testFinding(focus, state)
-		g := GraphV2{
-			SchemaVersion: SchemaVersionV2, CaseKind: CaseKindSynthetic,
-			FindingIndex: []FindingIndexEntry{finding},
-			Nodes: []NodeV2{
-				{ID: "workflow", Type: NodeWorkflowDefinition, Label: workflowLabel, FocusFindingIDs: []string{focus}},
-				{ID: "ref", Type: NodeActionRef, Label: "fixture/action@v1", FocusFindingIDs: []string{focus}},
-			},
-			Edges: []EdgeV2{edge},
-		}
-		path, err := BuildTemporalEvidencePath(context.Background(), g, PathOptions{})
-		if err != nil {
-			t.Fatal(err)
-		}
-		if len(path.Lanes) != 1 || len(path.Lanes[0].Edges) != 1 {
-			t.Fatalf("unexpected temporal path shape: %+v", path.Counts)
-		}
-		return path
+	for index, test := range []struct {
+		name       string
+		edgeType   EdgeType
+		sourceType NodeType
+		targetType NodeType
+		rule       string
+		want       string
+	}{
+		{name: "current declaration despite contradiction finding", edgeType: EdgeWorkflowDeclaredAction, sourceType: NodeWorkflowDefinition, targetType: NodeActionRef, rule: DefinitionBasisCurrentSnapshotRule, want: "present-day workflow snapshot declared Action"},
+		{name: "historical declaration despite current-only finding", edgeType: EdgeWorkflowDeclaredAction, sourceType: NodeWorkflowDefinition, targetType: NodeActionRef, rule: DefinitionBasisHistoricalAtRunRule, want: "historical workflow declared Action"},
+		{name: "current reusable call", edgeType: EdgeWorkflowCalledWorkflow, sourceType: NodeWorkflowDefinition, targetType: NodeReusableWorkflowDefinition, rule: DefinitionBasisCurrentSnapshotRule, want: "present-day workflow snapshot called reusable workflow"},
+		{name: "runtime reusable call", edgeType: EdgeWorkflowCalledWorkflow, sourceType: NodeRunAttempt, targetType: NodeReusableWorkflowDefinition, rule: DefinitionBasisRuntimeAttemptMetadataRule, want: "GitHub run-attempt metadata recorded reusable-workflow call"},
+		{name: "historical local action", edgeType: EdgeLocalActionResolvedTo, sourceType: NodeWorkflowDefinition, targetType: NodeActionDefinition, rule: DefinitionBasisHistoricalAtRunRule, want: "local Action resolved at historical commit"},
+		{name: "current local action", edgeType: EdgeLocalActionResolvedTo, sourceType: NodeWorkflowDefinition, targetType: NodeActionDefinition, rule: DefinitionBasisCurrentSnapshotRule, want: "local Action resolved in present-day snapshot"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			focus := indexedFindingID(200 + index)
+			evidence := indexedEvidenceID(200 + index)
+			edge, err := NewEdgeV2(test.edgeType, "workflow", "target", []string{evidence}, "", EvidenceClassExactObservation, test.rule, []string{focus})
+			if err != nil {
+				t.Fatal(err)
+			}
+			state := model.ContradictoryEvidence
+			if index == 1 {
+				state = model.CurrentReferenceOnly
+			}
+			g := GraphV2{
+				SchemaVersion: SchemaVersionV2, CaseKind: CaseKindSynthetic,
+				FindingIndex: []FindingIndexEntry{testFinding(focus, state)},
+				Nodes: []NodeV2{
+					{ID: "workflow", Type: test.sourceType, Label: "hostile opposite temporal-looking label", FocusFindingIDs: []string{focus}},
+					{ID: "target", Type: test.targetType, Label: "target", FocusFindingIDs: []string{focus}},
+				},
+				Edges: []EdgeV2{edge},
+			}
+			path, err := BuildTemporalEvidencePath(context.Background(), g, PathOptions{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := path.Lanes[0].Edges[0].RelationshipText; got != test.want {
+				t.Fatalf("relationship=%q, want %q", got, test.want)
+			}
+		})
 	}
+}
 
-	current := build(t, model.CurrentReferenceOnly, historicalLookingLabel)
-	if got := current.Lanes[0].Edges[0].RelationshipText; got != "present-day workflow snapshot declared Action — inferred" {
-		t.Fatalf("current snapshot relationship=%q", got)
-	}
-	historical := build(t, model.DeclaredAtRunSHA, currentLookingLabel)
-	if got := historical.Lanes[0].Edges[0].RelationshipText; got != "historical workflow declared Action — inferred" {
-		t.Fatalf("historical relationship=%q", got)
+func TestDualClassRelationshipWordingDoesNotCallInferenceObserved(t *testing.T) {
+	t.Parallel()
+	finding := testFinding(indexedFindingID(300), model.ConfirmedExecuted)
+	for _, test := range []struct {
+		edgeType EdgeType
+		rule     string
+		exact    string
+		inferred string
+	}{
+		{EdgeStepInJob, "step-membership/v1", "step recorded in job", "step associated with job by derivation"},
+		{EdgeWorkflowDeclaredAction, DefinitionBasisHistoricalAtRunRule, "historical workflow declared Action", "historical workflow declared Action by derivation"},
+		{EdgeHadTokenPermission, "credential/static/v1", "token permission capability observed", "token permission capability inferred"},
+		{EdgeReferencedSecret, "credential/static/v1", "secret name referenced", "secret name reference inferred"},
+		{EdgePassedSecretTo, "credential/static/v1", "secret mapped or passed", "secret mapping or passage inferred"},
+		{EdgeInheritedSecret, "credential/static/v1", "secret relationship inherited", "secret inheritance relationship inferred"},
+		{EdgeTargetedEnvironment, EnvironmentTargetHistoricalRule, "environment target observed", "environment target inferred"},
+		{EdgeCrossedEnvironmentGate, "environment-gate/v1", "environment gate crossing observed", "environment gate crossing inferred"},
+	} {
+		t.Run(string(test.edgeType), func(t *testing.T) {
+			exact := EdgeV2{Type: test.edgeType, Source: "source", Target: "target", EvidenceClass: EvidenceClassExactObservation, DerivationRule: test.rule}
+			inferred := exact
+			inferred.EvidenceClass = EvidenceClassInference
+			laneEdges := []EdgeV2{exact}
+			if test.edgeType == EdgeTargetedEnvironment {
+				laneEdges = append(laneEdges, EdgeV2{Type: EdgeEnvironmentGateSatisfied, Source: exact.Source, Target: exact.Target})
+			}
+			if got := relationshipText(exact, laneEdges, finding); got != test.exact {
+				t.Fatalf("exact wording=%q, want %q", got, test.exact)
+			}
+			laneEdges[0] = inferred
+			if got := relationshipText(inferred, laneEdges, finding); got != test.inferred {
+				t.Fatalf("inferred wording=%q, want %q", got, test.inferred)
+			}
+			if strings.Contains(test.inferred, "observed") {
+				t.Fatalf("inferred wording calls the relationship observed: %q", test.inferred)
+			}
+		})
 	}
 }
 
@@ -264,6 +306,154 @@ func TestTemporalPathValidatorRejectsForgedCountsGeometryEdgesAndEvidence(t *tes
 			}
 		})
 	}
+}
+
+func TestTemporalPathValidatorReappliesClosedForensicSemantics(t *testing.T) {
+	t.Parallel()
+	makeEdge := func(t *testing.T, edgeType EdgeType, source, target string, class EvidenceClass, rule, focus string) EdgeV2 {
+		t.Helper()
+		edge, err := NewEdgeV2(edgeType, source, target, []string{evidenceID("9")}, "unknown", class, rule, []string{focus})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return edge
+	}
+
+	t.Run("relationship evidence class", func(t *testing.T) {
+		focus := findingID("8")
+		g := GraphV2{
+			SchemaVersion: SchemaVersionV2, CaseKind: CaseKindSynthetic,
+			FindingIndex: []FindingIndexEntry{testFinding(focus, model.ConfirmedExecuted)},
+			Nodes: []NodeV2{
+				{ID: "step", Type: NodeStep, Label: "step", FocusFindingIDs: []string{focus}},
+				{ID: "commit", Type: NodeActionCommit, Label: "commit", FocusFindingIDs: []string{focus}},
+			},
+			Edges: []EdgeV2{makeEdge(t, EdgeStepExecutedAction, "step", "commit", EvidenceClassExactObservation, "", focus)},
+		}
+		path, err := BuildTemporalEvidencePath(context.Background(), g, PathOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		edge := path.Lanes[0].Edges[0].Edge
+		edge.EvidenceClass = EvidenceClassInference
+		edge.DerivationRule = "forged-lifecycle-inference/v1"
+		edge.ID, err = StableEdgeIDV2(edge.Type, edge.Source, edge.Target, edge.EventTime, edge.EvidenceClass, edge.DerivationRule)
+		if err != nil {
+			t.Fatal(err)
+		}
+		nodes := map[string]VisualNode{}
+		maxRows := 0
+		for _, node := range path.Lanes[0].Nodes {
+			nodes[node.Node.ID] = node
+			maxRows = max(maxRows, node.Row+1)
+		}
+		refs := map[string]string{}
+		for _, reference := range path.EvidenceKey {
+			refs[reference.EvidenceID] = reference.CompactID
+		}
+		rebuilt := layoutEdges([]EdgeV2{edge}, nodes, refs, path.Lanes[0].Finding, path.Lanes[0].Y, maxRows)
+		rebuilt[0].LocalID = path.Lanes[0].Edges[0].LocalID
+		path.Lanes[0].Edges = rebuilt
+		if err := ValidateTemporalEvidencePath(path); err == nil || !strings.Contains(err.Error(), "cannot use evidence class") {
+			t.Fatalf("forged lifecycle inference was not rejected by the standalone path contract: %v", err)
+		}
+	})
+
+	t.Run("non-executed runner context", func(t *testing.T) {
+		focus := findingID("7")
+		g := GraphV2{
+			SchemaVersion: SchemaVersionV2, CaseKind: CaseKindSynthetic,
+			FindingIndex: []FindingIndexEntry{testFinding(focus, model.ConfirmedExecuted)},
+			Nodes: []NodeV2{
+				{ID: "job", Type: NodeJob, Label: "job", FocusFindingIDs: []string{focus}},
+				{ID: "runner", Type: NodeRunner, Label: "runner", FocusFindingIDs: []string{focus}},
+			},
+			Edges: []EdgeV2{makeEdge(t, EdgeExecutedOnRunner, "job", "runner", EvidenceClassExactObservation, "", focus)},
+		}
+		path, err := BuildTemporalEvidencePath(context.Background(), g, PathOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		path.Lanes[0].Finding.State = model.ConfirmedDownloaded
+		if err := ValidateTemporalEvidencePath(path); err == nil || !strings.Contains(err.Error(), "non-executed") {
+			t.Fatalf("runner context was accepted on a non-executed standalone lane: %v", err)
+		}
+	})
+
+	t.Run("narrow pending environment remains valid", func(t *testing.T) {
+		focus := findingID("6")
+		g := GraphV2{
+			SchemaVersion: SchemaVersionV2, CaseKind: CaseKindSynthetic,
+			FindingIndex: []FindingIndexEntry{testFinding(focus, model.ConfirmedDownloaded)},
+			Nodes: []NodeV2{
+				{ID: "job", Type: NodeJob, Label: "pending job", FocusFindingIDs: []string{focus}},
+				{ID: "environment", Type: NodeEnvironment, Label: "production", FocusFindingIDs: []string{focus}},
+			},
+			Edges: []EdgeV2{makeEdge(t, EdgeTargetedEnvironment, "job", "environment", EvidenceClassInference, EnvironmentTargetPendingRule, focus)},
+		}
+		path, err := BuildTemporalEvidencePath(context.Background(), g, PathOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := ValidateTemporalEvidencePath(path); err != nil {
+			t.Fatalf("narrow pending environment path was rejected: %v", err)
+		}
+	})
+
+	t.Run("environment eligibility requires gate satisfaction in standalone path", func(t *testing.T) {
+		focus := findingID("5")
+		evidence := evidenceID("5")
+		g := GraphV2{
+			SchemaVersion: SchemaVersionV2, CaseKind: CaseKindSynthetic,
+			FindingIndex: []FindingIndexEntry{testFinding(focus, model.ConfirmedExecuted)},
+			Nodes: []NodeV2{
+				{ID: "job", Type: NodeJob, Label: "job", FocusFindingIDs: []string{focus}},
+				{ID: "environment", Type: NodeEnvironment, Label: "production", FocusFindingIDs: []string{focus}},
+				{ID: "secret", Type: NodeSecretMetadata, Label: "DEPLOY_KEY", FocusFindingIDs: []string{focus}},
+			},
+			Edges: []EdgeV2{
+				makeEdge(t, EdgeTargetedEnvironment, "job", "environment", EvidenceClassInference, EnvironmentTargetHistoricalRule, focus),
+				makeEdge(t, EdgeEnvironmentGateSatisfied, "job", "environment", EvidenceClassInference, EnvironmentGateSatisfiedApprovedRule, focus),
+				makeEdge(t, EdgeEnvironmentSecretEligible, "environment", "secret", EvidenceClassInference, EnvironmentSecretEligibilityRule, focus),
+			},
+		}
+		// Use one shared evidence object so changing the relationship cannot fail
+		// first on an unrelated evidence-key count.
+		for index := range g.Edges {
+			g.Edges[index].EvidenceIDs = []string{evidence}
+		}
+		path, err := BuildTemporalEvidencePath(context.Background(), g, PathOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		lane := &path.Lanes[0]
+		edges := edgeValues(lane.Edges)
+		for index := range edges {
+			if edges[index].Type != EdgeEnvironmentGateSatisfied {
+				continue
+			}
+			edges[index].Type = EdgeCrossedEnvironmentGate
+			edges[index].DerivationRule = "environment-crossing/v1"
+			edges[index].ID, err = StableEdgeIDV2(edges[index].Type, edges[index].Source, edges[index].Target, edges[index].EventTime, edges[index].EvidenceClass, edges[index].DerivationRule)
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+		nodes := make(map[string]VisualNode, len(lane.Nodes))
+		maxRows := 0
+		for _, node := range lane.Nodes {
+			nodes[node.Node.ID] = node
+			maxRows = max(maxRows, node.Row+1)
+		}
+		refs := map[string]string{evidence: "E001"}
+		lane.Edges = layoutEdges(edges, nodes, refs, lane.Finding, lane.Y, maxRows)
+		for index := range lane.Edges {
+			lane.Edges[index].LocalID = fmt.Sprintf("e%04d", index+1)
+		}
+		if err := ValidateTemporalEvidencePath(path); err == nil || !strings.Contains(err.Error(), "ENVIRONMENT_SECRET_ELIGIBLE") {
+			t.Fatalf("standalone path accepted eligibility without gate satisfaction: %v", err)
+		}
+	})
 }
 
 func TestGeneratedRoutesAvoidEveryNonEndpointNode(t *testing.T) {
@@ -317,6 +507,9 @@ func TestRouteEdgeAvoidsFullNodeGridForEveryColumnPair(t *testing.T) {
 					t.Fatalf("columns %d to %d contain a diagonal route", sourceColumn, targetColumn)
 				}
 			}
+			if routeRetraces(points) {
+				t.Fatalf("columns %d to %d contain a retraced route segment: %v", sourceColumn, targetColumn, points)
+			}
 			for _, node := range nodes {
 				if node.Node.ID == source.Node.ID || node.Node.ID == target.Node.ID {
 					continue
@@ -328,6 +521,146 @@ func TestRouteEdgeAvoidsFullNodeGridForEveryColumnPair(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestRouteBanksSeparateEveryEndpointAndOmitOverCapacityLane(t *testing.T) {
+	t.Parallel()
+	path, err := BuildTemporalEvidencePath(context.Background(), manyBankEdgeGraph(t, pathRouteBankCapacity), PathOptions{
+		MaxNodes: HardPathNodes, MaxEdges: HardPathEdges, MaxEvidenceIDs: HardPathEvidenceIDs,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(path.Lanes) != 1 || len(path.Lanes[0].Edges) != pathRouteBankCapacity {
+		t.Fatalf("at-capacity lane was not selected: %+v", path.Counts)
+	}
+	sourceRails, targetRails := make(map[int]struct{}), make(map[int]struct{})
+	for _, edge := range path.Lanes[0].Edges {
+		sourceRails[edge.Points[1].X] = struct{}{}
+		targetRails[edge.Points[len(edge.Points)-2].X] = struct{}{}
+		if routeRetraces(edge.Points) {
+			t.Fatalf("edge %s retraces a routed segment: %v", edge.Edge.ID, edge.Points)
+		}
+	}
+	if len(sourceRails) != pathRouteBankCapacity || len(targetRails) != pathRouteBankCapacity {
+		t.Fatalf("route rails are not unique at capacity: source=%d target=%d", len(sourceRails), len(targetRails))
+	}
+	for name, rails := range map[string]map[int]struct{}{"source": sourceRails, "target": targetRails} {
+		ordered := make([]int, 0, len(rails))
+		for rail := range rails {
+			ordered = append(ordered, rail)
+		}
+		slices.Sort(ordered)
+		for index := 1; index < len(ordered); index++ {
+			if distance := ordered[index] - ordered[index-1]; distance < routeUnderlayWidth(EvidenceClassContradiction, 4)+2 {
+				t.Fatalf("%s route rails are too close for a non-junction underlay: %v", name, ordered)
+			}
+		}
+	}
+
+	overflow, err := BuildTemporalEvidencePath(context.Background(), manyBankEdgeGraph(t, pathRouteBankCapacity+1), PathOptions{
+		MaxNodes: HardPathNodes, MaxEdges: HardPathEdges, MaxEvidenceIDs: HardPathEvidenceIDs,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(overflow.Lanes) != 0 || overflow.Counts.SelectedFindings != 0 || overflow.Counts.OmittedFindings != 1 || overflow.Counts.OmittedEdges != pathRouteBankCapacity+1 {
+		t.Fatalf("over-capacity lane was partially rendered: %+v", overflow.Counts)
+	}
+	portOverflow, err := BuildTemporalEvidencePath(context.Background(), manyEdgeGraph(t, pathNodePortCapacity+1), PathOptions{
+		MaxNodes: HardPathNodes, MaxEdges: HardPathEdges, MaxEvidenceIDs: HardPathEvidenceIDs,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(portOverflow.Lanes) != 0 || portOverflow.Counts.OmittedFindings != 1 {
+		t.Fatalf("over-capacity node port was partially rendered: %+v", portOverflow.Counts)
+	}
+}
+
+func TestRoutePortAndTrackPitchClearArrowAndUnderlayEnvelopes(t *testing.T) {
+	t.Parallel()
+	if pathRailPitch < routeUnderlayWidth(EvidenceClassContradiction, 4)+2 {
+		t.Fatalf("rail pitch %d cannot separate a %dpx underlay", pathRailPitch, routeUnderlayWidth(EvidenceClassContradiction, 4))
+	}
+	if pathEdgeRouteRowHeight < routeUnderlayWidth(EvidenceClassContradiction, 4)+2 {
+		t.Fatalf("track pitch %d cannot separate a %dpx underlay", pathEdgeRouteRowHeight, routeUnderlayWidth(EvidenceClassContradiction, 4))
+	}
+	if pathPortPitch < 16 {
+		t.Fatalf("port pitch %d overlaps 14px arrowheads", pathPortPitch)
+	}
+	if pathNodeHeight != 2*pathPortInset+(pathNodePortCapacity-1)*pathPortPitch {
+		t.Fatalf("node height %d does not exactly bound %d separated ports", pathNodeHeight, pathNodePortCapacity)
+	}
+	if leftRail := pathColumnX[0] - pathRailDistanceMax; leftRail < pathLaneRectX+pathRouteClearance {
+		t.Fatalf("left outer rail %d crosses the lane-border clearance", leftRail)
+	}
+	lastColumn := pathColumnX[len(pathColumnX)-1]
+	if rightRail := lastColumn + pathNodeWidth + pathRailDistanceMax; rightRail > pathCanvasWidth-pathLaneRectX-pathRouteClearance {
+		t.Fatalf("right outer rail %d crosses the lane-border clearance", rightRail)
+	}
+	for column := 1; column < len(pathColumnX); column++ {
+		gap := pathColumnX[column] - (pathColumnX[column-1] + pathNodeWidth)
+		if gap < 2*pathRailDistanceMax+pathInterBankGap {
+			t.Fatalf("column gap %d cannot isolate two full route banks", gap)
+		}
+	}
+}
+
+func TestSameColumnAndCrossColumnEndpointStubsCannotFormFalseRelationship(t *testing.T) {
+	t.Parallel()
+	left := VisualNode{Column: 0, Row: 0, X: pathColumnX[0], Y: 278, Width: pathNodeWidth, Height: pathNodeHeight}
+	middleSource := VisualNode{Column: 1, Row: 0, X: pathColumnX[1], Y: 278, Width: pathNodeWidth, Height: pathNodeHeight}
+	middleTarget := VisualNode{Column: 1, Row: 1, X: pathColumnX[1], Y: 396, Width: pathNodeWidth, Height: pathNodeHeight}
+	right := VisualNode{Column: 2, Row: 1, X: pathColumnX[2], Y: 396, Width: pathNodeWidth, Height: pathNodeHeight}
+	sameColumn := routeEdge(middleSource, middleTarget, 700)
+	crossColumn := routeEdge(left, right, 714)
+	if horizontalSegmentsTouch(sameColumn[len(sameColumn)-2], sameColumn[len(sameColumn)-1], crossColumn[len(crossColumn)-2], crossColumn[len(crossColumn)-1]) {
+		t.Fatalf("unrelated target stubs form a false continuous relationship: same=%v cross=%v", sameColumn, crossColumn)
+	}
+}
+
+func routeRetraces(points []Point) bool {
+	for left := 1; left < len(points); left++ {
+		for right := left + 1; right < len(points); right++ {
+			if collinearSegmentOverlap(points[left-1], points[left], points[right-1], points[right]) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func TestRouteRetraceDetectorRejectsAdjacentReversalOnly(t *testing.T) {
+	t.Parallel()
+	if !routeRetraces([]Point{{X: 0, Y: 0}, {X: 10, Y: 0}, {X: 10, Y: 20}, {X: 10, Y: 5}, {X: 20, Y: 5}}) {
+		t.Fatal("adjacent same-gutter reversal was not detected")
+	}
+	for _, points := range [][]Point{
+		{{X: 0, Y: 0}, {X: 10, Y: 0}, {X: 10, Y: 20}},
+		{{X: 0, Y: 0}, {X: 10, Y: 0}, {X: 10, Y: 20}, {X: 20, Y: 20}},
+	} {
+		if routeRetraces(points) {
+			t.Fatalf("non-retracing route was rejected: %v", points)
+		}
+	}
+}
+
+func collinearSegmentOverlap(a, b, c, d Point) bool {
+	if a.X == b.X && c.X == d.X && a.X == c.X {
+		return min(max(a.Y, b.Y), max(c.Y, d.Y))-max(min(a.Y, b.Y), min(c.Y, d.Y)) > 0
+	}
+	if a.Y == b.Y && c.Y == d.Y && a.Y == c.Y {
+		return min(max(a.X, b.X), max(c.X, d.X))-max(min(a.X, b.X), min(c.X, d.X)) > 0
+	}
+	return false
+}
+
+func horizontalSegmentsTouch(a, b, c, d Point) bool {
+	if a.Y != b.Y || c.Y != d.Y || a.Y != c.Y {
+		return false
+	}
+	return min(max(a.X, b.X), max(c.X, d.X)) >= max(min(a.X, b.X), min(c.X, d.X))
 }
 
 func TestRouteIntersectionUsesStrokeClearance(t *testing.T) {
@@ -372,6 +705,41 @@ func TestSVGHostileLabelCorpusAndClosedXMLVocabulary(t *testing.T) {
 				t.Fatal("renderer emitted invalid UTF-8")
 			}
 		})
+	}
+}
+
+func TestSVGSanitizesHostileFindingDescriptionWithoutChangingRetainedGap(t *testing.T) {
+	t.Parallel()
+	g := testGraphV2(t)
+	hostileGap := "expired\x00\x1b[2J\r\nforged\u202e\u2066end"
+	found := false
+	for index := range g.FindingIndex {
+		if g.FindingIndex[index].State != model.UnknownEvidenceGap {
+			continue
+		}
+		g.FindingIndex[index].Repository = "fixture/repository\nforged\u202e"
+		g.FindingIndex[index].WorkflowPath = ".github/workflows/demo.yml\u2066"
+		g.FindingIndex[index].IndicatorID = "fixture-indicator\u202e"
+		g.FindingIndex[index].EvidenceGapReason = hostileGap
+		found = true
+	}
+	if !found {
+		t.Fatal("fixture lacks UNKNOWN_EVIDENCE_GAP finding")
+	}
+	_, data, err := RenderGraphSVG(context.Background(), g, PathOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	auditInertSVG(t, data)
+	for _, forbidden := range [][]byte{{0}, {0x1b}, {'\r'}, []byte("\u202e"), []byte("\u2066")} {
+		if bytes.Contains(data, forbidden) {
+			t.Fatalf("standalone SVG retained hostile control bytes %x", forbidden)
+		}
+	}
+	for _, finding := range g.FindingIndex {
+		if finding.State == model.UnknownEvidenceGap && finding.EvidenceGapReason != hostileGap {
+			t.Fatal("SVG presentation changed retained machine evidence gap")
+		}
 	}
 }
 
@@ -442,6 +810,40 @@ func TestSVGSanitizerFlattensUnicodeLineBoundaries(t *testing.T) {
 	got, truncated := sanitizeSVGText("left\u2028middle\u2029right", 128)
 	if truncated || got != "left middle right" {
 		t.Fatalf("sanitized=%q truncated=%v", got, truncated)
+	}
+}
+
+func TestFixedGeometryTextBoundsWideAndSpoofingLabelsDeterministically(t *testing.T) {
+	t.Parallel()
+	wide := strings.Repeat("界", 300)
+	fullScope, visibleScope := PresentTemporalScope(wide + "\u202e-hidden")
+	if strings.ContainsRune(fullScope, '\u202e') || strings.Contains(visibleScope, "hidden") {
+		t.Fatalf("scope retained bidi-controlled presentation: full=%q visible=%q", fullScope, visibleScope)
+	}
+	if len([]rune(visibleScope)) > 80 || !strings.HasSuffix(visibleScope, "…") {
+		t.Fatalf("wide scope is not bounded to 160 conservative units: runes=%d value=%q", len([]rune(visibleScope)), visibleScope)
+	}
+
+	fullGap, visibleGap := PresentTemporalGapReason(wide + "\x1b[2J\u2066-hidden")
+	if strings.ContainsRune(fullGap, '\u2066') || strings.ContainsRune(fullGap, '\x1b') || strings.Contains(visibleGap, "hidden") {
+		t.Fatalf("gap retained active presentation controls: full=%q visible=%q", fullGap, visibleGap)
+	}
+	if len([]rune(visibleGap)) > 60 || !strings.HasSuffix(visibleGap, "…") {
+		t.Fatalf("wide gap is not bounded to 120 conservative units: runes=%d value=%q", len([]rune(visibleGap)), visibleGap)
+	}
+
+	lines := visibleLabelLines(wide)
+	if len(lines) != 3 || !strings.HasSuffix(lines[len(lines)-1], "…") {
+		t.Fatalf("wide node label lines=%q", lines)
+	}
+	for _, line := range lines {
+		if len([]rune(line)) > 15 {
+			t.Fatalf("wide node line exceeds 30 conservative units: %q", line)
+		}
+	}
+	first := strings.Join(lines, "\x00")
+	if second := strings.Join(visibleLabelLines(wide), "\x00"); first != second {
+		t.Fatal("wide-label presentation is nondeterministic")
 	}
 }
 
@@ -552,6 +954,33 @@ func manyEdgeGraph(t *testing.T, count int) GraphV2 {
 	return g
 }
 
+func manyBankEdgeGraph(t *testing.T, count int) GraphV2 {
+	t.Helper()
+	focus := indexedFindingID(0)
+	g := GraphV2{
+		SchemaVersion: SchemaVersionV2, CaseKind: CaseKindSynthetic,
+		FindingIndex: []FindingIndexEntry{testFinding(focus, model.ConfirmedExecuted)},
+		Nodes: []NodeV2{
+			{ID: "step-a", Type: NodeStep, Label: "step-a", FocusFindingIDs: []string{focus}},
+			{ID: "step-b", Type: NodeStep, Label: "step-b", FocusFindingIDs: []string{focus}},
+			{ID: "commit-a", Type: NodeActionCommit, Label: "commit-a", FocusFindingIDs: []string{focus}},
+			{ID: "commit-b", Type: NodeActionCommit, Label: "commit-b", FocusFindingIDs: []string{focus}},
+		},
+	}
+	for index := 0; index < count; index++ {
+		suffix := "a"
+		if index >= (count+1)/2 {
+			suffix = "b"
+		}
+		edge, err := NewEdgeV2(EdgeStepExecutedAction, "step-"+suffix, "commit-"+suffix, []string{indexedEvidenceID(0)}, fmt.Sprintf("t-bank-%04d", index), EvidenceClassExactObservation, "", []string{focus})
+		if err != nil {
+			t.Fatal(err)
+		}
+		g.Edges = append(g.Edges, edge)
+	}
+	return g
+}
+
 func manyEvidenceGraph(t *testing.T, count int) GraphV2 {
 	t.Helper()
 	focus := indexedFindingID(0)
@@ -652,9 +1081,12 @@ func auditInertSVG(t *testing.T, data []byte) {
 	if bytes.HasPrefix(data, []byte("<?")) || bytes.Contains(data, []byte("<!DOCTYPE")) || bytes.Contains(data, []byte("<!ENTITY")) || bytes.Contains(data, []byte("<![CDATA[")) {
 		t.Fatal("SVG contains a declaration, DTD, entity, or CDATA")
 	}
+	if bytes.Count(data, []byte("<style>")) != 1 || !bytes.Contains(data, []byte("<style>"+forcedColorStylesheet+"</style>")) {
+		t.Fatal("SVG does not contain exactly the fixed forced-colors policy")
+	}
 	allowedElements := map[string]struct{}{
 		"svg": {}, "title": {}, "desc": {}, "g": {}, "rect": {}, "line": {},
-		"polyline": {}, "polygon": {}, "circle": {}, "text": {}, "tspan": {},
+		"polyline": {}, "polygon": {}, "circle": {}, "text": {}, "tspan": {}, "style": {},
 	}
 	decoder := xml.NewDecoder(bytes.NewReader(data))
 	for {

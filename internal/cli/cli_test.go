@@ -3,11 +3,14 @@ package cli
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/torjan0/cirewind/internal/casegen"
 )
 
 func TestHelpAndVersion(t *testing.T) {
@@ -53,6 +56,30 @@ func TestCLIErrorBoundaryRedactsInjectedPrivateStagingPath(t *testing.T) {
 	}
 	if !strings.Contains(diagnostic, "case operation failed in private staging") || !strings.Contains(diagnostic, "private path withheld") {
 		t.Fatalf("CLI diagnostic lost safe operational context: %q", diagnostic)
+	}
+}
+
+func TestCLIErrorBoundaryPreservesCleanupFailureAfterCancellation(t *testing.T) {
+	t.Parallel()
+	privateFailure := fmt.Errorf("%w: remove /private/.cirewind-case-random", casegen.ErrStagedCaseCleanup)
+	var stderr bytes.Buffer
+	if code := writeCLIError(&stderr, errors.Join(context.Canceled, privateFailure)); code != 130 {
+		t.Fatalf("cancellation exit=%d stderr=%q", code, stderr.String())
+	}
+	diagnostic := stderr.String()
+	if !strings.Contains(diagnostic, "operation canceled") || !strings.Contains(diagnostic, "cleanup also failed") {
+		t.Fatalf("cancellation hid cleanup failure: %q", diagnostic)
+	}
+	if strings.Contains(diagnostic, ".cirewind-case-") || strings.Contains(diagnostic, "/private") {
+		t.Fatalf("cancellation diagnostic exposed private staging: %q", diagnostic)
+	}
+}
+
+func TestTerminalValuePreservesLegitimateStagingLikeOutputName(t *testing.T) {
+	t.Parallel()
+	input := filepath.Join("review", ".cirewind-case-legitimate")
+	if got := sanitizeTerminalValue(input); got != input {
+		t.Fatalf("successful output path = %q, want %q", got, input)
 	}
 }
 

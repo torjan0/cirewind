@@ -28,6 +28,7 @@ const (
 // synthetic fixture. It deliberately preserves attempt and job identity.
 type ExpectedFinding struct {
 	IndicatorID  string
+	Workflow     string
 	RunID        int64
 	RunAttempt   int
 	JobID        int64
@@ -101,7 +102,7 @@ func newOracle() Oracle {
 		{IndicatorID: "synthetic-compromised-commit", RunID: 1004, RunAttempt: 1, JobID: 2004, State: model.PotentialTransitive, Provenance: model.L1Possible},
 		{IndicatorID: "synthetic-mutable-ref", RunID: 1004, RunAttempt: 1, JobID: 2004, State: model.PotentialTransitive, Provenance: model.L1Possible},
 		{IndicatorID: "synthetic-mutable-ref", RunID: 1005, RunAttempt: 1, JobID: 2005, State: model.RunInWindowMutableRef, Provenance: model.L2Probable},
-		{IndicatorID: "synthetic-compromised-commit", RunID: 1006, RunAttempt: 1, JobID: 2006, State: model.CurrentReferenceOnly, Provenance: model.L1Possible},
+		{IndicatorID: "synthetic-compromised-commit", Workflow: ".github/workflows/current.yml", State: model.CurrentReferenceOnly, Provenance: model.L1Possible},
 		{IndicatorID: "synthetic-action-package", RunID: 1007, RunAttempt: 1, JobID: 2007, State: model.UnknownEvidenceGap, Provenance: model.L0Unknown},
 		{IndicatorID: "synthetic-compromised-commit", RunID: 1008, RunAttempt: 1, JobID: 2008, StepIdentity: "101/1008/1/2008/step:2/MAIN/1", State: model.ContradictoryEvidence, Provenance: model.L4Certain},
 		{IndicatorID: "synthetic-compromised-commit", RunID: 1010, RunAttempt: 1, JobID: 2010, State: model.DeclaredAtRunSHA, Provenance: model.L3Strong},
@@ -241,6 +242,15 @@ func (o Oracle) Validate(snapshot archive.Snapshot, caseValue report.Case) error
 		}
 		if state != want.State || model.ProvenanceLevel(finding.Provenance) != want.Provenance {
 			return fmt.Errorf("finding %s got %s/%s, want %s/%s", key, finding.State, finding.Provenance, want.State, want.Provenance)
+		}
+		if want.Workflow != "" && finding.Workflow != want.Workflow {
+			return fmt.Errorf("finding %s workflow=%q, want %q", key, finding.Workflow, want.Workflow)
+		}
+		if state == model.CurrentReferenceOnly && finding.EventTime != "unknown" {
+			return fmt.Errorf("present-day-only finding %s event time=%q, want explicitly unknown", key, finding.EventTime)
+		}
+		if state == model.CurrentReferenceOnly && len(finding.CollectionCoverage) != 0 {
+			return fmt.Errorf("present-day-only finding %s acquired historical run/job coverage %v", key, finding.CollectionCoverage)
 		}
 		if state == model.NoMatchConfirmed {
 			if !equalStrings(finding.EvidenceIDs, want.EvidenceIDs) || !equalStrings(finding.CollectionCoverage, want.CoverageIDs) || len(finding.EvidenceGaps) != 0 {

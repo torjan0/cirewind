@@ -10,21 +10,22 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/torjan0/cirewind/internal/model"
+	"github.com/torjan0/cirewind/internal/sanitize"
 )
 
 const (
-	colorExact         = "#005A9C"
-	colorInference     = "#8A4B08"
-	colorTemporal      = "#006B4F"
-	colorContradiction = "#B42318"
-	colorGap           = "#5F6368"
-	colorText          = "#111827"
-	colorBorder        = "#334155"
-	colorBackground    = "#FFFFFF"
-	fontStack          = "ui-monospace, monospace"
+	colorExact            = "#005A9C"
+	colorInference        = "#8A4B08"
+	colorTemporal         = "#006B4F"
+	colorContradiction    = "#B42318"
+	colorGap              = "#5F6368"
+	colorText             = "#111827"
+	colorBorder           = "#334155"
+	colorBackground       = "#FFFFFF"
+	fontStack             = "ui-monospace, monospace"
+	forcedColorStylesheet = "svg{forced-color-adjust:none}"
 )
 
 var errSVGTooLarge = errors.New("temporal evidence path exceeds SVG byte limit")
@@ -63,6 +64,13 @@ func RenderSVG(ctx context.Context, path TemporalEvidencePath) ([]byte, error) {
 		path.Counts.SelectedNodes, path.Counts.TotalNodes, path.Counts.SelectedEdges,
 		path.Counts.TotalEdges, path.Counts.SelectedEvidenceIDs, path.Counts.TotalEvidenceIDs)
 	if err := textElement(encoder, "desc", attrs("id", "tep-desc"), description); err != nil {
+		return nil, err
+	}
+	// The fixed accessible palette and white crossover underlays carry
+	// relationship topology. Preserve them in forced-colors mode so a crossing
+	// cannot be recolored into a false junction. Labels and the ledger remain
+	// the non-color semantic equivalents.
+	if err := textElement(encoder, "style", nil, forcedColorStylesheet); err != nil {
 		return nil, err
 	}
 	if err := emptyElement(encoder, "rect", attrs("x", "0", "y", "0", "width", strconv.Itoa(path.Width), "height", strconv.Itoa(path.Height), "fill", colorBackground)); err != nil {
@@ -122,7 +130,7 @@ func validateTemporalPath(path TemporalEvidencePath) error {
 	if !path.CaseKind.valid() {
 		return fmt.Errorf("invalid temporal path case kind %q", path.CaseKind)
 	}
-	if path.Width != pathCanvasWidth || path.Height < 1 || path.Height > 1_000_000 {
+	if path.Width != pathCanvasWidth || path.Height < 1 || path.Height > MaxSVGHeight {
 		return errors.New("invalid temporal path canvas")
 	}
 	if len(path.Lanes) > HardPathFindingLanes || len(path.EvidenceKey) > HardPathEvidenceIDs {
@@ -167,6 +175,11 @@ func validateTemporalPath(path TemporalEvidencePath) error {
 			return errors.New("invalid temporal path lane geometry")
 		}
 		laneNodes := make(map[string]VisualNode, len(lane.Nodes))
+		nonExecutedEnvironments := make(map[string]struct{})
+		qualifiedPendingEnvironments := make(map[string]struct{})
+		targetedEnvironments := make(map[string]struct{})
+		satisfiedEnvironments := make(map[string]struct{})
+		eligibleEnvironments := make(map[string]struct{})
 		rows := [4]int{}
 		for _, node := range lane.Nodes {
 			if !presentableNode(node.Node.Type) || node.LocalID == "" || node.Width != pathNodeWidth || node.Height != pathNodeHeight || node.Column < 0 || node.Column > 3 || node.Row < 0 {
@@ -211,6 +224,14 @@ func validateTemporalPath(path TemporalEvidencePath) error {
 			if !containsString(node.Node.FocusFindingIDs, lane.Finding.FindingRevisionID) {
 				return errors.New("visual node lacks lane focus")
 			}
+			if lane.Finding.State != model.ConfirmedExecuted {
+				if _, prohibited := nonExecutedContextNodeTypes[node.Node.Type]; prohibited {
+					return fmt.Errorf("visual node %q adds %s context to non-executed finding", node.Node.ID, node.Node.Type)
+				}
+				if node.Node.Type == NodeEnvironment {
+					nonExecutedEnvironments[node.Node.ID] = struct{}{}
+				}
+			}
 			laneNodes[node.Node.ID] = node
 			logicalNodes[node.Node.ID] = struct{}{}
 		}
@@ -238,6 +259,9 @@ func validateTemporalPath(path TemporalEvidencePath) error {
 			extraRows++
 		}
 		laneEdgeValues := edgeValues(lane.Edges)
+		if !visualEdgesFitRouteBanks(laneEdgeValues, laneNodes) {
+			return fmt.Errorf("finding lane %q exceeds the deterministic route-bank capacity", lane.Finding.FindingRevisionID)
+		}
 		wantHeight := 88 + max(1, maxRows)*(pathNodeHeight+pathRowGap) + edgeRouteBandHeight(laneEdgeValues) + edgeLabelBandHeight(len(lane.Edges)) + extraRows*58
 		if lane.Height != wantHeight {
 			return fmt.Errorf("noncanonical height for finding lane %q", lane.Finding.FindingRevisionID)
@@ -246,6 +270,23 @@ func validateTemporalPath(path TemporalEvidencePath) error {
 		for edgeIndex, edge := range lane.Edges {
 			if edge.LocalID == "" || !edge.Edge.EvidenceClass.valid() || len(edge.Edge.EvidenceIDs) == 0 {
 				return errors.New("invalid temporal path edge")
+			}
+			if !relationshipAllowsEvidenceClass(edge.Edge.Type, edge.Edge.EvidenceClass) {
+				return fmt.Errorf("edge %q relationship %s cannot use evidence class %s", edge.Edge.ID, edge.Edge.Type, edge.Edge.EvidenceClass)
+			}
+			if err := validateEdgeFindingContext(edge.Edge, lane.Finding); err != nil {
+				return fmt.Errorf("edge %q: %w", edge.Edge.ID, err)
+			}
+			if lane.Finding.State != model.ConfirmedExecuted && edge.Edge.Type == EdgeTargetedEnvironment {
+				qualifiedPendingEnvironments[edge.Edge.Target] = struct{}{}
+			}
+			switch edge.Edge.Type {
+			case EdgeTargetedEnvironment:
+				targetedEnvironments[edge.Edge.Source+"\x00"+edge.Edge.Target] = struct{}{}
+			case EdgeEnvironmentGateSatisfied:
+				satisfiedEnvironments[edge.Edge.Source+"\x00"+edge.Edge.Target] = struct{}{}
+			case EdgeEnvironmentSecretEligible:
+				eligibleEnvironments[edge.Edge.Source] = struct{}{}
 			}
 			edgeSequence++
 			if edge.LocalID != fmt.Sprintf("e%04d", edgeSequence) {
@@ -260,7 +301,7 @@ func validateTemporalPath(path TemporalEvidencePath) error {
 			if !sourceOK || !targetOK {
 				return fmt.Errorf("edge %q has a dangling visual endpoint", edge.Edge.ID)
 			}
-			rule, knownType := endpointRules[edge.Edge.Type]
+			rule, knownType := v2EndpointRules[edge.Edge.Type]
 			_, sourceAllowed := rule.sources[source.Node.Type]
 			_, targetAllowed := rule.targets[target.Node.Type]
 			if !knownType || !sourceAllowed || !targetAllowed || edge.Edge.Source == edge.Edge.Target {
@@ -274,6 +315,17 @@ func validateTemporalPath(path TemporalEvidencePath) error {
 			}
 			if edge.Edge.EvidenceClass == EvidenceClassInference && edge.Edge.DerivationRule == "" {
 				return fmt.Errorf("inferred edge %q lacks a derivation rule", edge.Edge.ID)
+			}
+			if edge.Edge.Type == EdgeEnvironmentGateSatisfied {
+				if _, ok := EnvironmentGateSatisfiedStateForRule(edge.Edge.DerivationRule); !ok {
+					return fmt.Errorf("inferred ENVIRONMENT_GATE_SATISFIED edge %q has an unsupported derivation rule", edge.Edge.ID)
+				}
+				if !retainedGateStateHasKnownEventTime(edge.Edge.DerivationRule, edge.Edge.EventTime) {
+					return fmt.Errorf("inferred ENVIRONMENT_GATE_SATISFIED edge %q has unknown event time for not-required state", edge.Edge.ID)
+				}
+			}
+			if edge.Edge.Type == EdgeEnvironmentSecretEligible && edge.Edge.DerivationRule != EnvironmentSecretEligibilityRule {
+				return fmt.Errorf("ENVIRONMENT_SECRET_ELIGIBLE edge %q has an unsupported derivation rule", edge.Edge.ID)
 			}
 			wantID, err := StableEdgeIDV2(edge.Edge.Type, edge.Edge.Source, edge.Edge.Target, edge.Edge.EventTime, edge.Edge.EvidenceClass, edge.Edge.DerivationRule)
 			if err != nil || edge.Edge.ID != wantID {
@@ -357,6 +409,28 @@ func validateTemporalPath(path TemporalEvidencePath) error {
 			}
 			materialEdges[edge.Edge.ID] = struct{}{}
 		}
+		for pair := range satisfiedEnvironments {
+			if _, ok := targetedEnvironments[pair]; !ok {
+				return errors.New("ENVIRONMENT_GATE_SATISFIED lacks the same-lane TARGETED_ENVIRONMENT relationship")
+			}
+		}
+		for environmentID := range eligibleEnvironments {
+			qualified := false
+			for pair := range satisfiedEnvironments {
+				if strings.HasSuffix(pair, "\x00"+environmentID) {
+					qualified = true
+					break
+				}
+			}
+			if !qualified {
+				return fmt.Errorf("ENVIRONMENT_SECRET_ELIGIBLE for environment %q lacks the same-lane target and gate-requirement relationship", environmentID)
+			}
+		}
+		for environmentID := range nonExecutedEnvironments {
+			if _, ok := qualifiedPendingEnvironments[environmentID]; !ok {
+				return fmt.Errorf("environment node %q lacks a narrow pending target relationship for non-executed finding", environmentID)
+			}
+		}
 		canonicalEdgeInput := make([]EdgeV2, len(lane.Edges))
 		for index := range lane.Edges {
 			canonicalEdgeInput[index] = lane.Edges[index].Edge
@@ -379,7 +453,7 @@ func validateTemporalPath(path TemporalEvidencePath) error {
 			if notice.Code != ProjectionNoticeUnclassifiableLegacyBasis || notice.FindingRevisionID != lane.Finding.FindingRevisionID {
 				return fmt.Errorf("invalid projection notice in finding lane %q", lane.Finding.FindingRevisionID)
 			}
-			if _, ok := endpointRules[notice.Relationship]; !ok || len(notice.EvidenceIDs) == 0 {
+			if _, ok := legacyBasisNoticeRelationships[notice.Relationship]; !ok || len(notice.EvidenceIDs) == 0 {
 				return fmt.Errorf("invalid projection notice relationship in finding lane %q", lane.Finding.FindingRevisionID)
 			}
 			key := string(notice.Relationship) + "\x00" + string(notice.Code)
@@ -463,7 +537,7 @@ func renderLegend(encoder *xml.Encoder) error {
 		{36, EvidenceClassExactObservation, "Exact observation — solid"},
 		{370, EvidenceClassInference, "Inference — dashed"},
 		{684, EvidenceClassTemporalCorrelation, "Observed after; non-causal — dotted"},
-		{1092, EvidenceClassContradiction, "Contradiction — double/opposing"},
+		{1120, EvidenceClassContradiction, "Contradiction — double/opposing"},
 	}
 	for _, item := range items {
 		if err := legendLine(encoder, item.x, 72, item.class); err != nil {
@@ -513,7 +587,7 @@ func renderOmissionNotice(encoder *xml.Encoder, counts SelectionCounts) error {
 	if counts.OmittedFindings+counts.OmittedNodes+counts.OmittedEdges+counts.OmittedEvidenceIDs > 0 {
 		text += " Omitted content remains in the complete case outputs."
 	}
-	if err := emptyElement(encoder, "rect", attrs("x", "36", "y", "158", "width", "1668", "height", "52", "rx", "8", "fill", colorBackground, "stroke", colorBorder, "stroke-width", "2")); err != nil {
+	if err := emptyElement(encoder, "rect", attrs("x", "36", "y", "158", "width", strconv.Itoa(pathCanvasWidth-72), "height", "52", "rx", "8", "fill", colorBackground, "stroke", colorBorder, "stroke-width", "2")); err != nil {
 		return err
 	}
 	return textElement(encoder, "text", textAttrs(56, 190, 16, "normal", "start"), text)
@@ -525,29 +599,21 @@ func renderLane(encoder *xml.Encoder, lane TemporalEvidenceLane, key []EvidenceR
 	if err := encoder.EncodeToken(group); err != nil {
 		return err
 	}
-	if err := textElement(encoder, "title", nil, string(lane.Finding.State)+" "+string(lane.Finding.ProvenanceLevel)); err != nil {
+	header := TemporalLaneHeader(lane.Finding)
+	if err := textElement(encoder, "title", nil, header); err != nil {
 		return err
 	}
-	if err := textElement(encoder, "desc", nil, laneDescription(lane.Finding)); err != nil {
+	if err := textElement(encoder, "desc", nil, TemporalLaneDescription(lane.Finding)); err != nil {
 		return err
 	}
-	if err := emptyElement(encoder, "rect", attrs("x", "24", "y", strconv.Itoa(lane.Y), "width", "1692", "height", strconv.Itoa(lane.Height), "rx", "12", "fill", colorBackground, "stroke", colorBorder, "stroke-width", "2")); err != nil {
+	if err := emptyElement(encoder, "rect", attrs("x", "24", "y", strconv.Itoa(lane.Y), "width", strconv.Itoa(pathCanvasWidth-48), "height", strconv.Itoa(lane.Height), "rx", "12", "fill", colorBackground, "stroke", colorBorder, "stroke-width", "2")); err != nil {
 		return err
 	}
-	if err := textElement(encoder, "text", textAttrs(42, lane.Y+30, 18, "bold", "start"), string(lane.Finding.State)+" · "+string(lane.Finding.ProvenanceLevel)); err != nil {
+	if err := textElement(encoder, "text", textAttrs(42, lane.Y+30, 18, "bold", "start"), header); err != nil {
 		return err
 	}
-	scope := lane.Finding.Repository + " · " + lane.Finding.WorkflowPath
-	if lane.Finding.RunID != nil {
-		scope += " · run " + strconv.FormatInt(int64(*lane.Finding.RunID), 10)
-	}
-	if lane.Finding.RunAttempt != nil {
-		scope += " · attempt " + strconv.FormatUint(uint64(*lane.Finding.RunAttempt), 10)
-	}
-	if lane.Finding.JobID != nil {
-		scope += " · job " + strconv.FormatInt(int64(*lane.Finding.JobID), 10)
-	}
-	if err := textElement(encoder, "text", textAttrs(42, lane.Y+56, 16, "normal", "start"), scope); err != nil {
+	_, visibleScope := TemporalLaneScope(lane.Finding)
+	if err := textElement(encoder, "text", textAttrs(42, lane.Y+56, 16, "normal", "start"), visibleScope); err != nil {
 		return err
 	}
 
@@ -563,32 +629,18 @@ func renderLane(encoder *xml.Encoder, lane TemporalEvidenceLane, key []EvidenceR
 	}
 	noticeY := lane.Y + lane.Height - 34
 	if lane.Finding.State == model.UnknownEvidenceGap {
-		reason, _ := sanitizeSVGText(lane.Finding.EvidenceGapReason, maxLabelBytes)
-		if err := renderGap(encoder, 52, noticeY-len(lane.Notices)*58, reason); err != nil {
+		_, visibleReason := PresentTemporalGapReason(lane.Finding.EvidenceGapReason)
+		if err := renderGap(encoder, 52, noticeY-len(lane.Notices)*58, visibleReason); err != nil {
 			return err
 		}
 	}
 	for i, notice := range lane.Notices {
 		y := noticeY - (len(lane.Notices)-1-i)*58
-		if err := renderProjectionNotice(encoder, notice, y); err != nil {
+		if err := renderProjectionNotice(encoder, notice, key, y); err != nil {
 			return err
 		}
 	}
 	return encoder.EncodeToken(group.End())
-}
-
-func laneDescription(finding FindingIndexEntry) string {
-	parts := []string{"Canonical finding " + string(finding.State), "provenance " + string(finding.ProvenanceLevel), "repository " + finding.Repository, "workflow " + finding.WorkflowPath, "indicator " + finding.IndicatorID}
-	if finding.RunID != nil {
-		parts = append(parts, "run "+strconv.FormatInt(int64(*finding.RunID), 10))
-	}
-	if finding.RunAttempt != nil {
-		parts = append(parts, "attempt "+strconv.FormatUint(uint64(*finding.RunAttempt), 10))
-	}
-	if finding.JobID != nil {
-		parts = append(parts, "job "+strconv.FormatInt(int64(*finding.JobID), 10))
-	}
-	return strings.Join(parts, "; ")
 }
 
 func renderNode(encoder *xml.Encoder, node VisualNode) error {
@@ -614,7 +666,7 @@ func renderNode(encoder *xml.Encoder, node VisualNode) error {
 	if err := textElement(encoder, "text", textAttrs(node.X+12, node.Y+22, 16, "bold", "start"), string(node.Node.Type)); err != nil {
 		return err
 	}
-	start := xml.StartElement{Name: xml.Name{Local: "text"}, Attr: textAttrs(node.X+12, node.Y+47, 16, "normal", "start")}
+	start := xml.StartElement{Name: xml.Name{Local: "text"}, Attr: textAttrs(node.X+12, node.Y+45, 16, "normal", "start")}
 	if err := encoder.EncodeToken(start); err != nil {
 		return err
 	}
@@ -660,6 +712,18 @@ func renderEdge(encoder *xml.Encoder, edge VisualEdge) error {
 	if dash != "" {
 		lineAttrs = append(lineAttrs, xml.Attr{Name: xml.Name{Local: "stroke-dasharray"}, Value: dash})
 	}
+	if err := emptyElement(encoder, "polyline", attrs(
+		"points", points,
+		"fill", "none",
+		"stroke", colorBackground,
+		"stroke-width", strconv.Itoa(routeUnderlayWidth(edge.Edge.EvidenceClass, width)),
+		"stroke-linejoin", "round",
+		"stroke-linecap", "butt",
+		"aria-hidden", "true",
+		"data-route-underlay", "true",
+	)); err != nil {
+		return err
+	}
 	if edge.Edge.EvidenceClass == EvidenceClassContradiction {
 		first := append([]xml.Attr(nil), lineAttrs...)
 		first[0].Value = pointText(edge.Points, -3)
@@ -695,6 +759,13 @@ func renderEdge(encoder *xml.Encoder, edge VisualEdge) error {
 		return err
 	}
 	return encoder.EncodeToken(group.End())
+}
+
+func routeUnderlayWidth(class EvidenceClass, foregroundWidth int) int {
+	if class == EvidenceClassContradiction {
+		return 14
+	}
+	return foregroundWidth + 6
 }
 
 type integerRect struct {
@@ -776,8 +847,21 @@ func renderGap(encoder *xml.Encoder, x, y int, reason string) error {
 	return textElement(encoder, "text", textAttrs(x+100, y+6, 16, "bold", "start"), "UNKNOWN_EVIDENCE_GAP — "+reason)
 }
 
-func renderProjectionNotice(encoder *xml.Encoder, notice ProjectionNotice, y int) error {
-	if err := emptyElement(encoder, "rect", attrs("x", "52", "y", strconv.Itoa(y-24), "width", "1618", "height", "42", "rx", "6", "fill", colorBackground, "stroke", colorGap, "stroke-width", "2", "stroke-dasharray", "8 6")); err != nil {
+func renderProjectionNotice(encoder *xml.Encoder, notice ProjectionNotice, key []EvidenceReference, y int) error {
+	full, visible := PresentProjectionNotice(notice, key)
+	group := xml.StartElement{Name: xml.Name{Local: "g"}, Attr: attrs(
+		"data-projection-notice", "true", "data-relationship", string(notice.Relationship),
+	)}
+	if err := encoder.EncodeToken(group); err != nil {
+		return err
+	}
+	if err := textElement(encoder, "title", nil, "Partial relationship projection"); err != nil {
+		return err
+	}
+	if err := textElement(encoder, "desc", nil, full); err != nil {
+		return err
+	}
+	if err := emptyElement(encoder, "rect", attrs("x", "52", "y", strconv.Itoa(y-24), "width", strconv.Itoa(pathCanvasWidth-122), "height", "42", "rx", "6", "fill", colorBackground, "stroke", colorGap, "stroke-width", "2", "stroke-dasharray", "8 6")); err != nil {
 		return err
 	}
 	if err := emptyElement(encoder, "circle", attrs("cx", "76", "cy", strconv.Itoa(y-3), "r", "12", "fill", colorBackground, "stroke", colorGap, "stroke-width", "2")); err != nil {
@@ -786,8 +870,10 @@ func renderProjectionNotice(encoder *xml.Encoder, notice ProjectionNotice, y int
 	if err := textElement(encoder, "text", textAttrs(76, y+3, 16, "bold", "middle"), "i"); err != nil {
 		return err
 	}
-	text := "visual relationship omitted — legacy evidence basis unavailable · " + string(notice.Relationship) + " · " + strings.Join(notice.EvidenceIDs, ", ")
-	return textElement(encoder, "text", textAttrs(100, y+3, 16, "normal", "start"), text)
+	if err := textElement(encoder, "text", textAttrs(100, y+3, 16, "normal", "start"), visible); err != nil {
+		return err
+	}
+	return encoder.EncodeToken(group.End())
 }
 
 func renderEvidenceKey(ctx context.Context, encoder *xml.Encoder, key []EvidenceReference, y int) error {
@@ -854,95 +940,5 @@ func emptyElement(encoder *xml.Encoder, name string, attributes []xml.Attr) erro
 
 // sanitizeSVGText applies XML-sink sanitization before encoding/xml escaping.
 func sanitizeSVGText(value string, maxBytes int) (string, bool) {
-	if maxBytes <= 0 {
-		return "", value != ""
-	}
-	var builder strings.Builder
-	truncated, pendingSpace := false, false
-	for index := 0; index < len(value); {
-		if value[index] == 0x1b {
-			index = skipSVGTerminalEscape(value, index)
-			continue
-		}
-		r, size := utf8.DecodeRuneInString(value[index:])
-		if r == utf8.RuneError && size == 1 {
-			r, size = utf8.RuneError, 1
-		}
-		index += size
-		if r == '\n' || r == '\r' || r == '\t' || r == '\u2028' || r == '\u2029' {
-			pendingSpace = builder.Len() > 0
-			continue
-		}
-		if !xmlSafeRune(r) {
-			continue
-		}
-		if pendingSpace {
-			if builder.Len()+1 > maxBytes {
-				truncated = true
-				break
-			}
-			builder.WriteByte(' ')
-			pendingSpace = false
-		}
-		encoded := string(r)
-		if builder.Len()+len(encoded) > maxBytes {
-			truncated = true
-			break
-		}
-		builder.WriteString(encoded)
-	}
-	result := strings.TrimSpace(builder.String())
-	if truncated {
-		const suffix = " … [truncated]"
-		for len(result)+len(suffix) > maxBytes && result != "" {
-			_, size := utf8.DecodeLastRuneInString(result)
-			result = result[:len(result)-size]
-		}
-		if len(suffix) <= maxBytes {
-			result = strings.TrimSpace(result) + suffix
-		}
-	}
-	return strings.TrimSpace(result), truncated
-}
-
-func xmlSafeRune(r rune) bool {
-	if r < 0x20 || r == 0x7f || r >= 0x80 && r <= 0x9f {
-		return false
-	}
-	if r >= 0x202a && r <= 0x202e || r >= 0x2066 && r <= 0x2069 || r == 0x200e || r == 0x200f {
-		return false
-	}
-	if r > utf8.MaxRune || r >= 0xd800 && r <= 0xdfff {
-		return false
-	}
-	if r >= 0xfdd0 && r <= 0xfdef || r&0xffff == 0xfffe || r&0xffff == 0xffff {
-		return false
-	}
-	return r >= 0x20 && (r <= 0xd7ff || r >= 0xe000 && r <= 0xfffd || r >= 0x10000)
-}
-
-func skipSVGTerminalEscape(value string, start int) int {
-	if start+1 >= len(value) {
-		return len(value)
-	}
-	switch value[start+1] {
-	case '[':
-		for i := start + 2; i < len(value); i++ {
-			if value[i] >= 0x40 && value[i] <= 0x7e {
-				return i + 1
-			}
-		}
-	case ']', 'P', 'X', '^', '_':
-		for i := start + 2; i < len(value); i++ {
-			if value[i] == 0x07 {
-				return i + 1
-			}
-			if value[i] == 0x1b && i+1 < len(value) && value[i+1] == '\\' {
-				return i + 2
-			}
-		}
-	default:
-		return start + 2
-	}
-	return len(value)
+	return sanitize.Presentation(value, maxBytes)
 }

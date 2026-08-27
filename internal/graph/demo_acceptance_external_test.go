@@ -14,9 +14,10 @@ import (
 )
 
 type demoLaneIdentity struct {
-	state   model.FindingState
-	run     int64
-	attempt uint32
+	state     model.FindingState
+	run       int64
+	attempt   uint32
+	indicator string
 }
 
 func TestSyntheticDemoTemporalEvidencePathAcceptanceOracle(t *testing.T) {
@@ -56,6 +57,7 @@ func TestSyntheticDemoTemporalEvidencePathAcceptanceOracle(t *testing.T) {
 		if lane.Finding.RunAttempt != nil {
 			identity.attempt = uint32(*lane.Finding.RunAttempt)
 		}
+		identity.indicator = lane.Finding.IndicatorID
 		lanes[identity] = lane
 		labelRects := make([]visualRect, 0, len(lane.Edges))
 		for _, edge := range lane.Edges {
@@ -97,10 +99,27 @@ func TestSyntheticDemoTemporalEvidencePathAcceptanceOracle(t *testing.T) {
 				}
 			}
 		}
+		for left := range lane.Edges {
+			for right := left + 1; right < len(lane.Edges); right++ {
+				if visualRoutesCollinearlyOverlap(lane.Edges[left].Points, lane.Edges[right].Points) {
+					t.Fatalf("lane %s routes %s and %s share a positive-length centerline", lane.Finding.FindingRevisionID, lane.Edges[left].Edge.ID, lane.Edges[right].Edge.ID)
+				}
+				if unrelatedEndpointStubsTouch(lane.Edges[left], lane.Edges[right]) {
+					t.Fatalf("lane %s routes %s and %s visually join unrelated endpoint stubs", lane.Finding.FindingRevisionID, lane.Edges[left].Edge.ID, lane.Edges[right].Edge.ID)
+				}
+			}
+		}
 	}
 	rootDimensions := fmt.Sprintf(`width="%d" height="%d" viewBox="0 0 %d %d"`, path.Width, path.Height, path.Width, path.Height)
 	if !strings.Contains(string(svg), rootDimensions) {
 		t.Fatalf("standalone SVG lacks intrinsic dimensions matching its viewBox: %s", rootDimensions)
+	}
+	renderedEdges := 0
+	for _, lane := range path.Lanes {
+		renderedEdges += len(lane.Edges)
+	}
+	if got := strings.Count(string(svg), `data-route-underlay="true"`); got != renderedEdges {
+		t.Fatalf("standalone route underlays=%d, want one per rendered edge (%d)", got, renderedEdges)
 	}
 
 	for _, class := range []graph.EvidenceClass{
@@ -138,6 +157,17 @@ func TestSyntheticDemoTemporalEvidencePathAcceptanceOracle(t *testing.T) {
 	if !laneHasEdge(executed, graph.EdgeStepExecutedAction) {
 		t.Fatal("affected B lane lacks exact execution relationship")
 	}
+	if header := graph.TemporalLaneHeader(knownGood.Finding); !strings.Contains(header, "comparison context") || !strings.Contains(string(svg), header) {
+		t.Fatalf("known-good no-match lane lacks visible comparison labeling: %q", header)
+	}
+
+	transitiveCommit := requireLane(t, lanes, demoLaneIdentity{state: model.PotentialTransitive, run: 1004, attempt: 1, indicator: "synthetic-compromised-commit"})
+	transitiveMutable := requireLane(t, lanes, demoLaneIdentity{state: model.PotentialTransitive, run: 1004, attempt: 1, indicator: "synthetic-mutable-ref"})
+	_, commitScope := graph.TemporalLaneScope(transitiveCommit.Finding)
+	_, mutableScope := graph.TemporalLaneScope(transitiveMutable.Finding)
+	if commitScope == mutableScope || !strings.Contains(commitScope, "synthetic-compromised-commit") || !strings.Contains(mutableScope, "synthetic-mutable-ref") {
+		t.Fatalf("distinct transitive propositions are not visibly distinguishable: commit=%q mutable=%q", commitScope, mutableScope)
+	}
 	downloaded := requireLane(t, lanes, demoLaneIdentity{state: model.ConfirmedDownloaded, run: 1002, attempt: 1})
 	if !laneHasEdge(downloaded, graph.EdgeJobPreparedAction) || laneHasEdge(downloaded, graph.EdgeStepExecutedAction) {
 		t.Fatal("downloaded/prepared-only B lane acquired execution semantics")
@@ -145,10 +175,11 @@ func TestSyntheticDemoTemporalEvidencePathAcceptanceOracle(t *testing.T) {
 
 	pending := requireLane(t, lanes, demoLaneIdentity{state: model.RunInWindowMutableRef, run: 1005, attempt: 1})
 	if !laneHasEdge(pending, graph.EdgeTargetedEnvironment) {
-		t.Fatal("pending environment lane lacks its directly evidenced target")
+		t.Fatal("pending environment lane lacks its historical-definition/API-job inferred target")
 	}
 	for _, prohibited := range []graph.EdgeType{
 		graph.EdgeCrossedEnvironmentGate,
+		graph.EdgeEnvironmentGateSatisfied,
 		graph.EdgeEnvironmentSecretEligible,
 		graph.EdgeHadTokenPermission,
 		graph.EdgeReferencedSecret,
@@ -174,7 +205,10 @@ func TestSyntheticDemoTemporalEvidencePathAcceptanceOracle(t *testing.T) {
 		}
 	}
 
-	current := requireLane(t, lanes, demoLaneIdentity{state: model.CurrentReferenceOnly, run: 1006, attempt: 1})
+	current := requireLane(t, lanes, demoLaneIdentity{state: model.CurrentReferenceOnly})
+	if current.Finding.RunID != nil || current.Finding.RunAttempt != nil || current.Finding.JobID != nil || current.Finding.StepIdentity != "" {
+		t.Fatal("present-day-only finding acquired historical execution identity")
+	}
 	historical := requireLane(t, lanes, demoLaneIdentity{state: model.DeclaredAtRunSHA, run: 1010, attempt: 1})
 	currentDefinitions := nodeIDsByType(current, graph.NodeWorkflowDefinition)
 	historicalDefinitions := nodeIDsByType(historical, graph.NodeWorkflowDefinition)
@@ -187,7 +221,7 @@ func TestSyntheticDemoTemporalEvidencePathAcceptanceOracle(t *testing.T) {
 		"contents: write",
 		"could mint OIDC token",
 		"observed after — causation not established",
-		"targeted; gate not shown crossed",
+		"targeted; gate not shown satisfied",
 		"UNKNOWN_EVIDENCE_GAP",
 	} {
 		if !strings.Contains(text, required) {
@@ -205,6 +239,52 @@ func TestSyntheticDemoTemporalEvidencePathAcceptanceOracle(t *testing.T) {
 			t.Errorf("demo SVG contains prohibited claim %q", prohibited)
 		}
 	}
+}
+
+func visualRoutesCollinearlyOverlap(left, right []graph.Point) bool {
+	for leftIndex := 1; leftIndex < len(left); leftIndex++ {
+		for rightIndex := 1; rightIndex < len(right); rightIndex++ {
+			if visualSegmentsCollinearlyOverlap(left[leftIndex-1], left[leftIndex], right[rightIndex-1], right[rightIndex]) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func visualSegmentsCollinearlyOverlap(a, b, c, d graph.Point) bool {
+	if a.X == b.X && c.X == d.X && a.X == c.X {
+		return min(max(a.Y, b.Y), max(c.Y, d.Y))-max(min(a.Y, b.Y), min(c.Y, d.Y)) > 0
+	}
+	if a.Y == b.Y && c.Y == d.Y && a.Y == c.Y {
+		return min(max(a.X, b.X), max(c.X, d.X))-max(min(a.X, b.X), min(c.X, d.X)) > 0
+	}
+	return false
+}
+
+func unrelatedEndpointStubsTouch(left, right graph.VisualEdge) bool {
+	type endpointStub struct {
+		from, to graph.Point
+		nodeID   string
+	}
+	stubs := func(edge graph.VisualEdge) []endpointStub {
+		last := len(edge.Points) - 1
+		return []endpointStub{
+			{from: edge.Points[0], to: edge.Points[1], nodeID: edge.Edge.Source},
+			{from: edge.Points[last-1], to: edge.Points[last], nodeID: edge.Edge.Target},
+		}
+	}
+	for _, a := range stubs(left) {
+		for _, b := range stubs(right) {
+			if a.nodeID == b.nodeID || a.from.Y != a.to.Y || b.from.Y != b.to.Y || a.from.Y != b.from.Y {
+				continue
+			}
+			if min(max(a.from.X, a.to.X), max(b.from.X, b.to.X)) >= max(min(a.from.X, a.to.X), min(b.from.X, b.to.X)) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func visualRouteIntersectsRect(points []graph.Point, rect visualRect) bool {
@@ -235,11 +315,25 @@ func visualRectsOverlap(left, right visualRect) bool {
 
 func requireLane(t *testing.T, lanes map[demoLaneIdentity]graph.TemporalEvidenceLane, key demoLaneIdentity) graph.TemporalEvidenceLane {
 	t.Helper()
-	lane, ok := lanes[key]
-	if !ok {
-		t.Fatalf("missing visual lane state=%s run=%d attempt=%d", key.state, key.run, key.attempt)
+	if key.indicator != "" {
+		lane, ok := lanes[key]
+		if !ok {
+			t.Fatalf("missing visual lane state=%s run=%d attempt=%d indicator=%s", key.state, key.run, key.attempt, key.indicator)
+		}
+		return lane
 	}
-	return lane
+	var result graph.TemporalEvidenceLane
+	matches := 0
+	for identity, lane := range lanes {
+		if identity.state == key.state && identity.run == key.run && identity.attempt == key.attempt {
+			result = lane
+			matches++
+		}
+	}
+	if matches != 1 {
+		t.Fatalf("visual lane state=%s run=%d attempt=%d matches=%d, want 1", key.state, key.run, key.attempt, matches)
+	}
+	return result
 }
 
 func laneHasEdge(lane graph.TemporalEvidenceLane, edgeType graph.EdgeType) bool {

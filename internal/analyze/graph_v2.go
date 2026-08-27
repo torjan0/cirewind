@@ -14,8 +14,7 @@ import (
 
 const (
 	graphOIDCCapabilityRule      = OIDCCapabilityRuleVersion
-	graphEnvironmentGateRule     = "environment-gate-from-job-state/v1"
-	graphEnvironmentEligibleRule = "environment-secret-eligibility/v1"
+	graphEnvironmentEligibleRule = graph.EnvironmentSecretEligibilityRule
 )
 
 type edgeClassification struct {
@@ -25,6 +24,17 @@ type edgeClassification struct {
 	omit        bool
 }
 
+type exactIdentityCandidate struct {
+	kind  graph.ExactIdentityKind
+	value string
+}
+
+type findingExactIdentityBinding struct {
+	component incident.Component
+	eligible  map[string]struct{}
+	knownGood map[string]struct{}
+}
+
 // buildGraphV2 projects explicit evidence classes from the typed facts that
 // produced the frozen v1 graph. The renderer only validates these classes; it
 // never guesses semantics from an edge name or color.
@@ -32,15 +42,21 @@ func buildGraphV2(idx index, legacy graph.Graph, findings []report.Finding, pack
 	result := graph.GraphV2{
 		SchemaVersion: graph.SchemaVersionV2,
 		CaseKind:      graphCaseKind(kind),
-		Nodes:         make([]graph.NodeV2, len(legacy.Nodes)),
 		FindingIndex:  buildFindingIndex(idx, findings, pack),
 	}
-	for index, node := range legacy.Nodes {
-		result.Nodes[index] = node
-		result.Nodes[index].EvidenceIDs = append([]string(nil), node.EvidenceIDs...)
-		result.Nodes[index].FocusFindingIDs = append([]string(nil), node.FocusFindingIDs...)
+	for _, node := range legacy.Nodes {
+		if isV2ScopedExposureNode(node.Type) {
+			continue
+		}
+		projected := node
+		projected.EvidenceIDs = append([]string(nil), node.EvidenceIDs...)
+		projected.FocusFindingIDs = append([]string(nil), node.FocusFindingIDs...)
+		result.Nodes = append(result.Nodes, projected)
 	}
 	for _, edge := range legacy.Edges {
+		if isV2ScopedExposureEdge(edge.Type) {
+			continue
+		}
 		classes := classificationsForEdge(idx, edge)
 		for _, classified := range classes {
 			if classified.omit {
@@ -59,90 +75,17 @@ func buildGraphV2(idx index, legacy graph.Graph, findings []report.Finding, pack
 			result.Edges = append(result.Edges, projected)
 		}
 	}
-	// The frozen v1 graph attaches exposure context only to confirmed execution
-	// findings. v0.2 additionally presents an exact environment target for an
-	// unstarted or otherwise non-executed job, because that absence is the fact
-	// that prevents environment-secret eligibility. This augments only the v2
-	// projection and never turns targeting into gate crossing or secret access.
-	if err := addNonExecutedEnvironmentContext(idx, findings, &result); err != nil {
+	// Scope-sensitive exposure identities are deliberately reprojected from
+	// typed facts instead of copied from the frozen compatibility graph. The v1
+	// projector predates repository/execution scoping for these node types and
+	// must remain byte-for-byte unchanged for retained cases.
+	if err := addV2ScopedExposureContext(idx, findings, &result); err != nil {
 		return graph.GraphV2{}, err
 	}
 	if err := result.NormalizeAndValidate(); err != nil {
 		return graph.GraphV2{}, err
 	}
 	return result, nil
-}
-
-func addNonExecutedEnvironmentContext(idx index, findings []report.Finding, result *graph.GraphV2) error {
-	builder := graphBuilder{nodes: map[string]graph.Node{}, edges: map[string]graph.Edge{}}
-	for _, finding := range findings {
-		if finding.State == string(model.ConfirmedExecuted) || finding.RunID <= 0 || finding.RunAttempt <= 0 || finding.JobID <= 0 {
-			continue
-		}
-		repositoryID, ok := repositoryIDForGraph(idx, finding.Repository)
-		if !ok {
-			continue
-		}
-		execution := model.JobExecutionIdentity{RepositoryID: repositoryID, RunID: model.WorkflowRunID(finding.RunID), RunAttempt: model.RunAttempt(finding.RunAttempt), JobID: model.JobID(finding.JobID)}
-		for _, fact := range idx.exposures {
-			if fact.Exposure == nil || fact.Exposure.Environment == nil || fact.Exposure.Execution != execution {
-				continue
-			}
-			environment := *fact.Exposure.Environment
-			if !isNarrowNonExecutedEnvironmentContext(idx, execution, environment) {
-				continue
-			}
-			evidenceIDs := idsToStrings(fact.EvidenceIDs)
-			jobNode := builder.jobNode(execution, evidenceIDs, finding.FindingRevisionID)
-			environmentNode := builder.addNode(
-				graph.NodeEnvironment,
-				environment.EnvironmentName+" / gate "+environment.GateState,
-				[]string{"environment", environment.EnvironmentName},
-				evidenceIDs,
-				finding.FindingRevisionID,
-			)
-			builder.addEdge(
-				graph.EdgeTargetedEnvironment,
-				jobNode,
-				environmentNode,
-				evidenceIDs,
-				eventText(fact.Exposure.EventTime),
-				false,
-				"",
-				finding.FindingRevisionID,
-			)
-		}
-	}
-	nodeIndex := make(map[string]int, len(result.Nodes))
-	for index := range result.Nodes {
-		nodeIndex[result.Nodes[index].ID] = index
-	}
-	for _, node := range builder.nodes {
-		if index, exists := nodeIndex[node.ID]; exists {
-			current := &result.Nodes[index]
-			current.EvidenceIDs = append(current.EvidenceIDs, node.EvidenceIDs...)
-			current.FocusFindingIDs = append(current.FocusFindingIDs, node.FocusFindingIDs...)
-			if node.Label < current.Label {
-				current.Label = node.Label
-			}
-			continue
-		}
-		nodeIndex[node.ID] = len(result.Nodes)
-		result.Nodes = append(result.Nodes, node)
-	}
-	for _, edge := range builder.edges {
-		for _, classified := range classificationsForEdge(idx, edge) {
-			if classified.omit {
-				continue
-			}
-			projected, err := graph.NewEdgeV2(edge.Type, edge.Source, edge.Target, classified.evidenceIDs, edge.EventTime, classified.class, classified.rule, edge.FocusFindingIDs)
-			if err != nil {
-				return fmt.Errorf("project v0.2 environment edge %s: %w", edge.ID, err)
-			}
-			result.Edges = append(result.Edges, projected)
-		}
-	}
-	return nil
 }
 
 // isNarrowNonExecutedEnvironmentContext admits only the presentation-only
@@ -195,9 +138,17 @@ func classificationsForEdge(idx index, edge graph.Edge) []edgeClassification {
 	case graph.EdgeHadTokenPermission, graph.EdgeReferencedSecret, graph.EdgePassedSecretTo, graph.EdgeInheritedSecret, graph.EdgeCouldMintOIDC:
 		return credentialClassifications(idx, edge)
 	case graph.EdgeCrossedEnvironmentGate:
-		return []edgeClassification{{class: graph.EvidenceClassInference, rule: graphEnvironmentGateRule, evidenceIDs: edge.EvidenceIDs}}
+		return []edgeClassification{{class: graph.EvidenceClassInference, rule: "environment-gate-from-job-state/v1", evidenceIDs: edge.EvidenceIDs}}
 	case graph.EdgeEnvironmentSecretEligible:
 		return []edgeClassification{{class: graph.EvidenceClassInference, rule: graphEnvironmentEligibleRule, evidenceIDs: edge.EvidenceIDs}}
+	}
+	if !edge.Inferred {
+		switch edge.Type {
+		case graph.EdgeWorkflowDeclaredAction, graph.EdgeWorkflowCalledWorkflow, graph.EdgeLocalActionResolvedTo:
+			if classified, ok := dependencyDefinitionClassifications(idx, edge); ok {
+				return classified
+			}
+		}
 	}
 	if edge.Inferred {
 		rule := edge.DerivationRule
@@ -206,7 +157,70 @@ func classificationsForEdge(idx index, edge graph.Edge) []edgeClassification {
 		}
 		return []edgeClassification{{class: graph.EvidenceClassInference, rule: rule, evidenceIDs: edge.EvidenceIDs}}
 	}
-	return []edgeClassification{{class: graph.EvidenceClassExactObservation, evidenceIDs: edge.EvidenceIDs}}
+	return []edgeClassification{{class: graph.EvidenceClassExactObservation, rule: edge.DerivationRule, evidenceIDs: edge.EvidenceIDs}}
+}
+
+// dependencyDefinitionClassifications recovers the temporal source basis from
+// typed dependency facts without changing the byte-frozen v1 graph. One v1
+// edge can aggregate more than one basis, so v2 splits those propositions and
+// retains only the evidence IDs supporting each basis.
+func dependencyDefinitionClassifications(idx index, edge graph.Edge) ([]edgeClassification, bool) {
+	groups := make(map[string][]string)
+	for _, fact := range idx.dependencies {
+		if !dependencyFactProjectsEdge(fact, edge) {
+			continue
+		}
+		rule := definitionBasisRule(fact.Dependency.Basis)
+		if rule == "" {
+			continue
+		}
+		edgeEvidence := stringSet(edge.EvidenceIDs)
+		for _, evidenceID := range idsToStrings(fact.EvidenceIDs) {
+			if _, ok := edgeEvidence[evidenceID]; ok {
+				groups[rule] = append(groups[rule], evidenceID)
+			}
+		}
+	}
+	if len(groups) == 0 {
+		return nil, false
+	}
+	rules := make([]string, 0, len(groups))
+	for rule := range groups {
+		rules = append(rules, rule)
+	}
+	sort.Strings(rules)
+	result := make([]edgeClassification, 0, len(rules))
+	for _, rule := range rules {
+		result = append(result, edgeClassification{
+			class:       graph.EvidenceClassExactObservation,
+			rule:        rule,
+			evidenceIDs: sortedUniqueStrings(groups[rule]),
+		})
+	}
+	return result, true
+}
+
+func dependencyFactProjectsEdge(fact archive.Fact, edge graph.Edge) bool {
+	if fact.Dependency == nil || dependencyEdgeType(fact.Dependency.Relation) != edge.Type || !evidenceIntersects(fact.EvidenceIDs, stringSet(edge.EvidenceIDs)) {
+		return false
+	}
+	builder := graphBuilder{nodes: map[string]graph.Node{}, edges: map[string]graph.Edge{}}
+	source := builder.dependencySource(*fact.Dependency, edge.EvidenceIDs, "")
+	target, _, _ := builder.dependencyTarget(*fact.Dependency, edge.EvidenceIDs, "")
+	return source == edge.Source && target == edge.Target && eventText(fact.Dependency.EventTime) == edge.EventTime
+}
+
+func definitionBasisRule(basis archive.DefinitionBasis) string {
+	switch basis {
+	case archive.DefinitionHistoricalAtRun:
+		return graph.DefinitionBasisHistoricalAtRunRule
+	case archive.DefinitionCurrentSnapshot:
+		return graph.DefinitionBasisCurrentSnapshotRule
+	case archive.DefinitionRuntimeAttemptMetadata:
+		return graph.DefinitionBasisRuntimeAttemptMetadataRule
+	default:
+		return ""
+	}
 }
 
 func credentialClassifications(idx index, edge graph.Edge) []edgeClassification {
@@ -318,25 +332,7 @@ func credentialSupportsEdge(kind model.CredentialExposureKind, edge graph.EdgeTy
 }
 
 func buildFindingIndex(idx index, findings []report.Finding, pack *incident.ValidatedPack) []graph.FindingIndexEntry {
-	indicatorComponents := make(map[string]string)
-	indicatorIdentityKinds := make(map[string]graph.ExactIdentityKind)
-	knownGood := make(map[string]map[string]bool)
-	if pack != nil {
-		for _, indicator := range pack.Pack.Spec.Indicators {
-			indicatorComponents[indicator.ID] = indicator.ComponentID
-			indicatorIdentityKinds[indicator.ID], _ = incidentExactIdentity(indicator.Kind, indicator.Value)
-		}
-		for _, good := range pack.Pack.Spec.KnownGood {
-			identityKind, identity := incidentExactIdentity(good.Kind, good.Value)
-			if identity == "" {
-				continue
-			}
-			if knownGood[good.ComponentID] == nil {
-				knownGood[good.ComponentID] = map[string]bool{}
-			}
-			knownGood[good.ComponentID][string(identityKind)+"\x00"+identity] = true
-		}
-	}
+	identityBindings := findingExactIdentityBindings(pack)
 	result := make([]graph.FindingIndexEntry, 0, len(findings))
 	for _, finding := range findings {
 		entry := graph.FindingIndexEntry{
@@ -364,12 +360,57 @@ func buildFindingIndex(idx index, findings []report.Finding, pack *incident.Vali
 		if len(finding.EvidenceGaps) > 0 {
 			entry.EvidenceGapReason = strings.Join(sortedUniqueStrings(finding.EvidenceGaps), "; ")
 		}
-		entry.ExactIdentityKind, entry.ExactIdentity = findingExactIdentity(idx, finding, indicatorIdentityKinds[finding.IndicatorID])
-		componentID := indicatorComponents[finding.IndicatorID]
-		entry.ExactKnownGood = entry.ExactIdentity != "" && knownGood[componentID][string(entry.ExactIdentityKind)+"\x00"+entry.ExactIdentity]
+		binding, bound := identityBindings[finding.IndicatorID]
+		if bound {
+			entry.ExactIdentityKind, entry.ExactIdentity = findingExactIdentity(idx, finding, binding)
+			_, entry.ExactKnownGood = binding.knownGood[exactIdentityKey(entry.ExactIdentityKind, entry.ExactIdentity)]
+			entry.ExactKnownGood = entry.ExactIdentity != "" && entry.ExactKnownGood
+		}
 		result = append(result, entry)
 	}
 	return result
+}
+
+func findingExactIdentityBindings(pack *incident.ValidatedPack) map[string]findingExactIdentityBinding {
+	bindings := map[string]findingExactIdentityBinding{}
+	if pack == nil {
+		return bindings
+	}
+	components := make(map[string]incident.Component, len(pack.Pack.Spec.Components))
+	for _, component := range pack.Pack.Spec.Components {
+		components[component.ID] = component
+	}
+	knownGood := make(map[string]map[string]struct{})
+	for _, good := range pack.Pack.Spec.KnownGood {
+		kind, identity := incidentExactIdentity(good.Kind, good.Value)
+		if kind == "" || identity == "" {
+			continue
+		}
+		if knownGood[good.ComponentID] == nil {
+			knownGood[good.ComponentID] = map[string]struct{}{}
+		}
+		knownGood[good.ComponentID][exactIdentityKey(kind, identity)] = struct{}{}
+	}
+	for _, indicator := range pack.Pack.Spec.Indicators {
+		component, exists := components[indicator.ComponentID]
+		if !exists {
+			continue
+		}
+		binding := findingExactIdentityBinding{
+			component: component,
+			eligible:  map[string]struct{}{},
+			knownGood: knownGood[indicator.ComponentID],
+		}
+		for key := range binding.knownGood {
+			binding.eligible[key] = struct{}{}
+		}
+		kind, identity := incidentExactIdentity(indicator.Kind, indicator.Value)
+		if kind != "" && identity != "" {
+			binding.eligible[exactIdentityKey(kind, identity)] = struct{}{}
+		}
+		bindings[indicator.ID] = binding
+	}
+	return bindings
 }
 
 func findingIndexCoverageClosed(idx index, finding report.Finding) bool {
@@ -418,62 +459,59 @@ func incidentExactIdentity(kind string, value incident.IndicatorValue) (graph.Ex
 	return "", ""
 }
 
-func findingExactIdentity(idx index, finding report.Finding, preferred graph.ExactIdentityKind) (graph.ExactIdentityKind, string) {
+func exactIdentityKey(kind graph.ExactIdentityKind, value string) string {
+	return string(kind) + "\x00" + value
+}
+
+func findingExactIdentity(idx index, finding report.Finding, binding findingExactIdentityBinding) (graph.ExactIdentityKind, string) {
 	repositoryID, found := repositoryIDForGraph(idx, finding.Repository)
 	if !found {
 		return "", ""
 	}
 	wanted := stringSet(finding.EvidenceIDs)
-	var candidates []struct {
-		kind  graph.ExactIdentityKind
-		value string
+	candidates := map[string]exactIdentityCandidate{}
+	addCandidate := func(candidate exactIdentityCandidate) {
+		key := exactIdentityKey(candidate.kind, candidate.value)
+		if _, eligible := binding.eligible[key]; eligible {
+			candidates[key] = candidate
+		}
 	}
 	for _, fact := range idx.actions {
 		if fact.ActionOccurrence == nil || !factMatchesFinding(fact, finding, repositoryID) || !evidenceIntersects(fact.EvidenceIDs, wanted) {
 			continue
 		}
 		observation := fact.ActionOccurrence.Observation
+		if !componentMatches(binding.component, string(observation.ActionRepository), observation.ActionSubpath) {
+			continue
+		}
 		if observation.SourceObjectID != nil {
 			object := model.GitObjectID(*observation.SourceObjectID)
-			candidates = append(candidates, struct {
-				kind  graph.ExactIdentityKind
-				value string
-			}{graph.ExactIdentityActionCommitSHA, string(object.Algorithm) + ":" + object.Value})
+			addCandidate(exactIdentityCandidate{graph.ExactIdentityActionCommitSHA, string(object.Algorithm) + ":" + object.Value})
 		}
 		if observation.PackageDigest != nil {
 			digest := *observation.PackageDigest
-			candidates = append(candidates, struct {
-				kind  graph.ExactIdentityKind
-				value string
-			}{graph.ExactIdentityPackageDigest, string(digest.Subject) + ":" + string(digest.Algorithm) + ":" + digest.Value})
+			addCandidate(exactIdentityCandidate{graph.ExactIdentityPackageDigest, string(digest.Subject) + ":" + string(digest.Algorithm) + ":" + digest.Value})
 		}
 	}
 	for _, fact := range idx.dependencies {
-		if fact.Dependency == nil || !factMatchesFinding(fact, finding, repositoryID) || !evidenceIntersects(fact.EvidenceIDs, wanted) || fact.Dependency.TargetCalledWorkflowObjectID == nil {
+		if fact.Dependency == nil || !factMatchesFinding(fact, finding, repositoryID) || !evidenceIntersects(fact.EvidenceIDs, wanted) {
 			continue
 		}
-		object := model.GitObjectID(*fact.Dependency.TargetCalledWorkflowObjectID)
-		candidates = append(candidates, struct {
-			kind  graph.ExactIdentityKind
-			value string
-		}{graph.ExactIdentityCalledWorkflowSHA, string(object.Algorithm) + ":" + object.Value})
+		dependency := fact.Dependency
+		if !componentMatches(binding.component, string(dependency.TargetRepository), dependency.TargetPath) || dependency.TargetCalledWorkflowObjectID == nil {
+			continue
+		}
+		object := model.GitObjectID(*dependency.TargetCalledWorkflowObjectID)
+		addCandidate(exactIdentityCandidate{graph.ExactIdentityCalledWorkflowSHA, string(object.Algorithm) + ":" + object.Value})
 	}
-	if len(candidates) == 0 {
+	// Evidence IDs identify retained objects, not individual lines within a
+	// shared setup log. More than one distinct incident-eligible identity in
+	// that evidence cannot be bound safely to this derived finding.
+	if len(candidates) != 1 {
 		return "", ""
 	}
-	if preferred != "" {
-		filtered := candidates[:0]
-		for _, candidate := range candidates {
-			if candidate.kind == preferred {
-				filtered = append(filtered, candidate)
-			}
-		}
-		if len(filtered) > 0 {
-			candidates = filtered
-		}
+	for _, candidate := range candidates {
+		return candidate.kind, candidate.value
 	}
-	sort.Slice(candidates, func(i, j int) bool {
-		return string(candidates[i].kind)+"\x00"+candidates[i].value < string(candidates[j].kind)+"\x00"+candidates[j].value
-	})
-	return candidates[0].kind, candidates[0].value
+	return "", ""
 }

@@ -82,7 +82,7 @@ func runReplay(ctx context.Context, args []string, stdout, stderr io.Writer) err
 		return errors.Join(generateErr, closeErr)
 	}
 	printCaseSummary(stdout, derived)
-	fmt.Fprintf(stdout, "case: %s\n", sanitizeDiagnostic(options.Output))
+	fmt.Fprintf(stdout, "case: %s\n", sanitizeTerminalValue(options.Output))
 	return nil
 }
 
@@ -123,7 +123,7 @@ func runArchiveWithDependencies(ctx context.Context, args []string, stdout, stde
 	if err := destination.Close(); err != nil {
 		return fmt.Errorf("close archive: %w", err)
 	}
-	fmt.Fprintf(stdout, "archive: %s\nfacts: %d\nevidence observations: %d\nnetwork requests: 0\n", sanitizeDiagnostic(options.Store), len(snapshot.Facts), len(snapshot.Evidence))
+	fmt.Fprintf(stdout, "archive: %s\nfacts: %d\nevidence observations: %d\nnetwork requests: 0\n", sanitizeTerminalValue(options.Store), len(snapshot.Facts), len(snapshot.Evidence))
 	return nil
 }
 
@@ -219,7 +219,7 @@ func runNetworkInvestigationWithRunner(ctx context.Context, options investigateO
 		printCoverageOnly(stdout, derived)
 	} else {
 		printCaseSummary(stdout, derived)
-		fmt.Fprintf(stdout, "collection gaps: %d\ncase: %s\n", len(result.Gaps), sanitizeDiagnostic(options.Output))
+		fmt.Fprintf(stdout, "collection gaps: %d\ncase: %s\n", len(result.Gaps), sanitizeTerminalValue(options.Output))
 	}
 	return nil
 }
@@ -349,7 +349,7 @@ func runNetworkArchiveWithRunner(ctx context.Context, options archiveOptions, st
 		action = "created"
 	}
 	fmt.Fprintf(stdout, "coverage: %s\narchive: %s (%s)\nfacts: %d\nevidence observations: %d\ncollection gaps: %d\n",
-		coverage, sanitizeDiagnostic(options.Store), action, len(snapshot.Facts), len(snapshot.Evidence), len(result.Gaps))
+		coverage, sanitizeTerminalValue(options.Store), action, len(snapshot.Facts), len(snapshot.Evidence), len(result.Gaps))
 	return nil
 }
 

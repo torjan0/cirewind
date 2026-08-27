@@ -83,15 +83,57 @@ func ValidateSnapshot(snapshot archive.Snapshot) error {
 	if err := validateExactCalledWorkflow(dependencyFacts); err != nil {
 		return err
 	}
+	if err := validateWorkflowDependencyPaths(runs, dependencyFacts); err != nil {
+		return err
+	}
 	if err := validateRuntimeDefinitionContradiction(actionFacts, dependencyFacts); err != nil {
 		return err
 	}
 	return nil
 }
 
+func validateWorkflowDependencyPaths(runs map[string]archive.RunFact, dependencies []archive.Fact) error {
+	for _, fact := range dependencies {
+		dependency := fact.Dependency
+		if dependency == nil {
+			continue
+		}
+		var repositoryID model.RepositoryID
+		var runID model.WorkflowRunID
+		switch dependency.Relation {
+		case archive.DependencyWorkflowDeclaredAction, archive.DependencyLocalActionResolvedTo:
+			if dependency.Basis == archive.DefinitionCurrentSnapshot {
+				if dependency.Execution != nil || dependency.AttemptExecution != nil || dependency.StepKey != "" {
+					return fmt.Errorf("current-snapshot dependency %s carries historical execution identity", dependency.Relation)
+				}
+				continue
+			}
+			if dependency.Execution == nil {
+				return fmt.Errorf("workflow-origin dependency %s lacks execution identity", dependency.Relation)
+			}
+			repositoryID, runID = dependency.Execution.RepositoryID, dependency.Execution.RunID
+		case archive.DependencyWorkflowCalledWorkflow:
+			if dependency.AttemptExecution == nil {
+				return errors.New("called-workflow dependency lacks run-attempt identity")
+			}
+			repositoryID, runID = dependency.AttemptExecution.RepositoryID, dependency.AttemptExecution.RunID
+		default:
+			continue
+		}
+		run, found := runs[runKey(repositoryID, runID)]
+		if !found || run.WorkflowPath == nil {
+			return fmt.Errorf("workflow-origin dependency %s has no run workflow path", dependency.Relation)
+		}
+		// CallerPath identifies the exact definition that declared this edge. It
+		// may be a nested reusable workflow and therefore need not equal the
+		// top-level WorkflowRun path.
+	}
+	return nil
+}
+
 func validateExecutionParents(runs map[string]archive.RunFact, attempts map[string]archive.AttemptFact, jobs map[string]archive.JobFact) error {
-	if len(runs) != 11 {
-		return fmt.Errorf("run count=%d, want 11 coherent run facts", len(runs))
+	if len(runs) != 10 {
+		return fmt.Errorf("run count=%d, want 10 coherent historical run facts", len(runs))
 	}
 	jobKeys := make([]string, 0, len(jobs))
 	for key := range jobs {

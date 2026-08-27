@@ -75,7 +75,7 @@ func TestExactRuntimeAndTransitiveSupportSelectOneStrongestRevision(t *testing.T
 	workflowPath, _ := model.NewWorkflowPath(".github/workflows/build.yml")
 	object, _ := model.NewGitObjectID(model.HashSHA1, strings.Repeat("1", 40))
 	actionObject, _ := model.NewActionSourceObjectID(object)
-	callerObject := model.CallerWorkflowObjectID(model.GitObjectID{Algorithm: model.HashSHA1, Value: strings.Repeat("2", 40)})
+	callerObject := model.ActionSourceObjectID(model.GitObjectID{Algorithm: model.HashSHA1, Value: strings.Repeat("2", 40)})
 	execution := model.JobExecutionIdentity{RepositoryID: 1, RunID: 10, RunAttempt: 1, JobID: 20}
 	subject := archive.FactSubject{RepositoryID: 1, RunID: ptr(model.WorkflowRunID(10)), RunAttempt: ptr(model.RunAttempt(1)), JobID: ptr(model.JobID(20))}
 	runtimeEvidence := model.EvidenceID("ev1:" + strings.Repeat("a", 64))
@@ -97,9 +97,9 @@ func TestExactRuntimeAndTransitiveSupportSelectOneStrongestRevision(t *testing.T
 				ID: "fact1:" + strings.Repeat("e", 64), Kind: archive.FactDependency, Subject: subject, EventTime: event,
 				EvidenceIDs: []model.EvidenceID{definitionEvidence},
 				Dependency: &archive.DependencyFact{
-					Relation: archive.DependencyWorkflowDeclaredAction, TargetKind: archive.DependencyTargetAction,
+					Relation: archive.DependencyActionContainsAction, TargetKind: archive.DependencyTargetAction,
 					Basis: archive.DefinitionHistoricalAtRun, CallerRepositoryID: 1, CallerRepository: repository,
-					CallerPath: "action.yml", CallerWorkflowObjectID: &callerObject,
+					CallerPath: "action.yml", CallerActionObjectID: &callerObject,
 					TargetRepository: actionRepository, TargetActionObjectID: &actionObject,
 					TransitiveDepth: 1, Execution: &execution, EventTime: event,
 				},
@@ -422,12 +422,12 @@ func TestCalledWorkflowConfirmationRequiresExactAttemptMetadata(t *testing.T) {
 	}
 	historical := archive.Fact{ID: "fact1:" + strings.Repeat("b", 64), Kind: archive.FactDependency, Subject: archive.FactSubject{RepositoryID: 1, RunID: ptr(model.WorkflowRunID(10)), RunAttempt: ptr(model.RunAttempt(2)), JobID: ptr(model.JobID(20))}, EvidenceIDs: []model.EvidenceID{evidenceID}, Dependency: &archive.DependencyFact{
 		Relation: archive.DependencyWorkflowCalledWorkflow, TargetKind: archive.DependencyTargetReusableWorkflow, Basis: archive.DefinitionHistoricalAtRun,
-		CallerRepositoryID: 1, CallerRepository: repository, CallerPath: ".github/workflows/build.yml", CallerWorkflowObjectID: &caller,
+		CallerRepositoryID: 1, CallerRepository: repository, CallerPath: ".github/workflows/nested-reusable.yml", CallerWorkflowObjectID: &caller,
 		TargetRepository: target, TargetPath: ".github/workflows/reusable.yaml", TargetCalledWorkflowObjectID: &called, Execution: &execution, ContradictsFactIDs: []string{}, EventTime: event,
 	}}
 	runtime := archive.Fact{ID: "fact1:" + strings.Repeat("c", 64), Kind: archive.FactDependency, Subject: archive.FactSubject{RepositoryID: 1, RunID: ptr(model.WorkflowRunID(10)), RunAttempt: ptr(model.RunAttempt(2))}, EvidenceIDs: []model.EvidenceID{evidenceID}, Dependency: &archive.DependencyFact{
 		Relation: archive.DependencyWorkflowCalledWorkflow, TargetKind: archive.DependencyTargetReusableWorkflow, Basis: archive.DefinitionRuntimeAttemptMetadata,
-		CallerRepositoryID: 1, CallerRepository: repository, CallerPath: ".github/workflows/build.yml", TargetRepository: target,
+		CallerRepositoryID: 1, CallerRepository: repository, CallerPath: ".github/workflows/nested-reusable.yml", TargetRepository: target,
 		TargetPath: ".github/workflows/reusable.yaml", TargetCalledWorkflowObjectID: &called, AttemptExecution: &attempt, ContradictsFactIDs: []string{}, EventTime: event,
 	}}
 	for _, test := range []struct {
@@ -450,6 +450,9 @@ func TestCalledWorkflowConfirmationRequiresExactAttemptMetadata(t *testing.T) {
 					found = true
 					if finding.State != string(test.want) {
 						t.Fatalf("state=%s, want %s", finding.State, test.want)
+					}
+					if finding.Workflow != string(workflowPath) {
+						t.Fatalf("finding workflow=%q, want top-level run workflow %q", finding.Workflow, workflowPath)
 					}
 				}
 			}
@@ -769,6 +772,15 @@ func TestBuildMetadataCountsTypedLogCoverageWithoutCapabilityRows(t *testing.T) 
 	}
 	if !metadata.Coverage.Partial {
 		t.Fatal("typed missing-log coverage did not make coverage partial")
+	}
+	const clarified = "Retained typed job_logs coverage records report 1 retrieved and 1 missing; the aggregate job_logs capability summary is absent."
+	if !slices.Contains(metadata.Coverage.IncompleteEvidence, clarified) {
+		t.Fatalf("missing aggregate-capability warning was not scoped to retained typed facts: %v", metadata.Coverage.IncompleteEvidence)
+	}
+	for _, message := range metadata.Coverage.IncompleteEvidence {
+		if message == "Core capability job_logs has no collection record." {
+			t.Fatalf("ambiguous missing-capability warning survived: %q", message)
+		}
 	}
 }
 

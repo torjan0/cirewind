@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/torjan0/cirewind/internal/model"
+	"github.com/torjan0/cirewind/internal/sanitize"
 )
 
 const (
@@ -21,27 +23,39 @@ const (
 	DefaultPathEvidenceIDs  = 256
 	HardPathEvidenceIDs     = 512
 	MaxSVGBytes             = 8 << 20
+	MaxSVGHeight            = 1_000_000
 
-	pathCanvasWidth = 1740
-	pathTop         = 248
-	pathLaneGap     = 28
-	pathNodeWidth   = 330
-	pathNodeHeight  = 88
-	pathRowGap      = 30
+	pathTop        = 248
+	pathLaneGap    = 28
+	pathNodeWidth  = 330
+	pathNodeHeight = 108
+	pathRowGap     = 30
 
 	// Every relationship receives a separate horizontal track below the node
 	// grid. Endpoint stubs reach that track through the fixed column gutters,
 	// so a route cannot pass through an unrelated node.
 	pathEdgeRouteTop       = 12
-	pathEdgeRouteRowHeight = 14
+	pathEdgeRouteRowHeight = 16
 	pathEdgeRouteClassGap  = 12
 	pathEdgeRouteBottom    = 12
 	pathRouteClearance     = 8
+	pathPortInset          = 14
+	pathPortPitch          = 16
+	pathNodePortCapacity   = 6
+	pathRailDistanceMin    = 20
+	pathRailPitch          = 16
+	pathRouteBankCapacity  = 12
+	pathRailDistanceMax    = pathRailDistanceMin + (pathRouteBankCapacity-1)*pathRailPitch
+	pathInterBankGap       = 16
+	pathLaneRectX          = 24
+	pathOuterMargin        = pathLaneRectX + pathRouteClearance + pathRailDistanceMax
+	pathColumnGap          = 2*pathRailDistanceMax + pathInterBankGap
+	pathCanvasWidth        = 2*pathOuterMargin + 4*pathNodeWidth + 3*pathColumnGap
 
 	// Relationship labels live in a dedicated ledger below each lane's node
 	// grid. They never share route midpoints with nodes or with another label.
 	pathEdgeLabelRectX      = 52
-	pathEdgeLabelRectWidth  = 1618
+	pathEdgeLabelRectWidth  = pathCanvasWidth - 122
 	pathEdgeLabelRectHeight = 46
 	pathEdgeLabelTextX      = 64
 	pathEdgeLabelRowHeight  = 52
@@ -51,7 +65,12 @@ const (
 	pathEdgeLabelBottom     = 16
 )
 
-var pathColumnX = [...]int{36, 456, 876, 1296}
+var pathColumnX = [...]int{
+	pathOuterMargin,
+	pathOuterMargin + pathNodeWidth + pathColumnGap,
+	pathOuterMargin + 2*(pathNodeWidth+pathColumnGap),
+	pathOuterMargin + 3*(pathNodeWidth+pathColumnGap),
+}
 
 type PathOptions struct {
 	MaxFindingLanes int
@@ -107,9 +126,68 @@ type VisualEdge struct {
 	AdditionalRefs   int
 }
 
+type routeEndpointKey struct {
+	edgeIndex int
+	source    bool
+}
+
+type routePortGroup struct {
+	nodeID string
+	right  bool
+}
+
+type routeRailBank struct {
+	column int
+	right  bool
+}
+
+type routeEndpointUse struct {
+	key  routeEndpointKey
+	node VisualNode
+}
+
+type routeEndpoint struct {
+	right        bool
+	y            int
+	railDistance int
+}
+
 type EvidenceReference struct {
 	CompactID  string
 	EvidenceID string
+}
+
+const maxProjectionNoticeVisibleRefs = 5
+
+// PresentProjectionNotice returns a bounded visual label and a complete text
+// equivalent for one non-finding projection notice. Full evidence identities
+// remain available to assistive technology and in the evidence-reference key;
+// the fixed SVG row uses only deterministic E### references.
+func PresentProjectionNotice(notice ProjectionNotice, key []EvidenceReference) (full, visible string) {
+	const lead = "visual relationship omitted — legacy evidence basis unavailable · "
+	full = lead + string(notice.Relationship) + " · evidence " + strings.Join(notice.EvidenceIDs, ", ")
+	refByEvidence := make(map[string]string, len(key))
+	for _, reference := range key {
+		refByEvidence[reference.EvidenceID] = reference.CompactID
+	}
+	refs := make([]string, 0, min(maxProjectionNoticeVisibleRefs, len(notice.EvidenceIDs)))
+	for _, evidenceID := range notice.EvidenceIDs {
+		if len(refs) == maxProjectionNoticeVisibleRefs {
+			break
+		}
+		if compact := refByEvidence[evidenceID]; compact != "" {
+			refs = append(refs, compact)
+		}
+	}
+	if len(refs) == 0 {
+		refs = append(refs, "[reference unavailable]")
+	}
+	visible = lead + string(notice.Relationship) + " · " + strings.Join(refs, ", ")
+	if additional := len(notice.EvidenceIDs) - len(refs); additional > 0 {
+		visible += fmt.Sprintf(" · +%d more", additional)
+	}
+	visible, _ = sanitize.TruncateDisplay(visible, 180, 150)
+	return full, visible
 }
 
 type TemporalEvidenceLane struct {
@@ -216,6 +294,9 @@ func buildTemporalEvidencePath(ctx context.Context, g GraphV2, options PathOptio
 	selectedEvidence := make(map[string]struct{})
 	trySelect := func(entry FindingIndexEntry) bool {
 		if len(selected) >= laneLimit {
+			return false
+		}
+		if !findingFitsRouteGeometry(g, entry.FindingRevisionID) {
 			return false
 		}
 		nodeIDs, edgeIDs, evidenceIDs := findingSlice(g, entry.FindingRevisionID)
@@ -387,6 +468,9 @@ func RenderGraphSVG(ctx context.Context, graphInput GraphV2, options PathOptions
 		path, buildErr := buildTemporalEvidencePath(ctx, g, options, laneLimit)
 		if buildErr != nil {
 			return TemporalEvidencePath{}, nil, buildErr
+		}
+		if path.Height > MaxSVGHeight {
+			return path, nil, errSVGTooLarge
 		}
 		data, renderErr := RenderSVG(ctx, path)
 		return path, data, renderErr
@@ -587,6 +671,7 @@ func layoutEdges(edges []EdgeV2, nodes map[string]VisualNode, refs map[string]st
 		kj := fmt.Sprintf("%02d/%04d/%02d/%04d/%04d/%s", sj.Column, sj.Row, tj.Column, tj.Row, edgeTypeRank(edges[j].Type), edges[j].ID)
 		return ki < kj
 	})
+	ports := layoutRouteEndpoints(edges, nodes)
 	result := make([]VisualEdge, 0, len(edges))
 	nodeBandEndY := laneY + 88 + max(1, maxRows)*(pathNodeHeight+pathRowGap)
 	labelBandY := nodeBandEndY + edgeRouteBandHeight(edges)
@@ -610,7 +695,13 @@ func layoutEdges(edges []EdgeV2, nodes map[string]VisualNode, refs map[string]st
 		if edge.EvidenceClass == EvidenceClassContradiction && ordinaryRouteCount > 0 {
 			routeTrackY += pathEdgeRouteClassGap
 		}
-		points := routeEdge(source, target, routeTrackY)
+		points := routeEdgeWithEndpoints(
+			source,
+			target,
+			routeTrackY,
+			ports[routeEndpointKey{edgeIndex: edgeIndex, source: true}],
+			ports[routeEndpointKey{edgeIndex: edgeIndex, source: false}],
+		)
 		edgeRefs := make([]string, 0, min(8, len(edge.EvidenceIDs)))
 		for i, id := range edge.EvidenceIDs {
 			if i < 8 {
@@ -634,35 +725,155 @@ func layoutEdges(edges []EdgeV2, nodes map[string]VisualNode, refs map[string]st
 }
 
 func routeEdge(source, target VisualNode, trackY int) []Point {
-	sourcePortX, sourceGutterX := routePort(source, target)
-	targetPortX, targetGutterX := routePort(target, source)
+	sourceRight, targetRight := routeSides(source, target)
+	return routeEdgeWithEndpoints(
+		source,
+		target,
+		trackY,
+		routeEndpoint{right: sourceRight, y: source.Y + source.Height/2, railDistance: (pathRailDistanceMin + pathRailDistanceMax) / 2},
+		routeEndpoint{right: targetRight, y: target.Y + target.Height/2, railDistance: (pathRailDistanceMin + pathRailDistanceMax) / 2},
+	)
+}
+
+func routeEdgeWithEndpoints(source, target VisualNode, trackY int, sourceEndpoint, targetEndpoint routeEndpoint) []Point {
+	sourcePortX, sourceGutterX := routePort(source, sourceEndpoint)
+	targetPortX, targetGutterX := routePort(target, targetEndpoint)
 	points := []Point{
-		{X: sourcePortX, Y: source.Y + source.Height/2},
-		{X: sourceGutterX, Y: source.Y + source.Height/2},
+		{X: sourcePortX, Y: sourceEndpoint.y},
+		{X: sourceGutterX, Y: sourceEndpoint.y},
 		{X: sourceGutterX, Y: trackY},
 		{X: targetGutterX, Y: trackY},
-		{X: targetGutterX, Y: target.Y + target.Height/2},
-		{X: targetPortX, Y: target.Y + target.Height/2},
+		{X: targetGutterX, Y: targetEndpoint.y},
+		{X: targetPortX, Y: targetEndpoint.y},
 	}
 	return compactRoute(points)
 }
 
-func routePort(node, peer VisualNode) (portX, gutterX int) {
-	useRight := peer.Column > node.Column || peer.Column == node.Column && node.Column < len(pathColumnX)-1
-	if useRight {
+func routeSides(source, target VisualNode) (sourceRight, targetRight bool) {
+	return routeSidesForColumns(source.Column, target.Column)
+}
+
+func routeSidesForColumns(sourceColumn, targetColumn int) (sourceRight, targetRight bool) {
+	if sourceColumn == targetColumn {
+		return false, true
+	}
+	return targetColumn > sourceColumn, sourceColumn > targetColumn
+}
+
+func routePort(node VisualNode, endpoint routeEndpoint) (portX, gutterX int) {
+	if endpoint.right {
 		portX = node.X + node.Width
-		rightBoundary := pathCanvasWidth
-		if node.Column < len(pathColumnX)-1 {
-			rightBoundary = pathColumnX[node.Column+1]
-		}
-		return portX, portX + (rightBoundary-portX)/2
+		return portX, portX + endpoint.railDistance
 	}
 	portX = node.X
-	leftBoundary := 0
-	if node.Column > 0 {
-		leftBoundary = pathColumnX[node.Column-1] + pathNodeWidth
+	return portX, portX - endpoint.railDistance
+}
+
+func layoutRouteEndpoints(edges []EdgeV2, nodes map[string]VisualNode) map[routeEndpointKey]routeEndpoint {
+	portGroups := make(map[routePortGroup][]routeEndpointUse)
+	railBanks := make(map[routeRailBank][]routeEndpointUse)
+	for edgeIndex, edge := range edges {
+		source, target := nodes[edge.Source], nodes[edge.Target]
+		sourceRight, targetRight := routeSides(source, target)
+		sourceKey := routeEndpointKey{edgeIndex: edgeIndex, source: true}
+		targetKey := routeEndpointKey{edgeIndex: edgeIndex, source: false}
+		sourceUse := routeEndpointUse{key: sourceKey, node: source}
+		targetUse := routeEndpointUse{key: targetKey, node: target}
+		portGroups[routePortGroup{nodeID: edge.Source, right: sourceRight}] = append(portGroups[routePortGroup{nodeID: edge.Source, right: sourceRight}], sourceUse)
+		portGroups[routePortGroup{nodeID: edge.Target, right: targetRight}] = append(portGroups[routePortGroup{nodeID: edge.Target, right: targetRight}], targetUse)
+		railBanks[routeRailBank{column: source.Column, right: sourceRight}] = append(railBanks[routeRailBank{column: source.Column, right: sourceRight}], sourceUse)
+		railBanks[routeRailBank{column: target.Column, right: targetRight}] = append(railBanks[routeRailBank{column: target.Column, right: targetRight}], targetUse)
 	}
-	return portX, leftBoundary + (portX-leftBoundary)/2
+	result := make(map[routeEndpointKey]routeEndpoint, len(edges)*2)
+	for group, uses := range portGroups {
+		startY := uses[0].node.Y + pathPortInset + (pathNodePortCapacity-len(uses))*pathPortPitch/2
+		for index, use := range uses {
+			endpoint := result[use.key]
+			endpoint.right = group.right
+			endpoint.y = startY + index*pathPortPitch
+			result[use.key] = endpoint
+		}
+	}
+	for _, uses := range railBanks {
+		for index, use := range uses {
+			endpoint := result[use.key]
+			endpoint.railDistance = pathRailDistanceMin + index*pathRailPitch
+			result[use.key] = endpoint
+		}
+	}
+	return result
+}
+
+func findingFitsRouteGeometry(g GraphV2, findingRevisionID string) bool {
+	nodeIDs, edgeIDs, _ := findingSlice(g, findingRevisionID)
+	columns := make(map[string]int, len(nodeIDs))
+	for _, node := range g.Nodes {
+		if _, selected := nodeIDs[node.ID]; selected && presentableNode(node.Type) {
+			columns[node.ID] = nodeColumn(node.Type)
+		}
+	}
+	demand := make(map[routeRailBank]int)
+	portDemand := make(map[routePortGroup]int)
+	for _, edge := range g.Edges {
+		if _, selected := edgeIDs[edge.ID]; !selected {
+			continue
+		}
+		sourceColumn, sourceOK := columns[edge.Source]
+		targetColumn, targetOK := columns[edge.Target]
+		if !sourceOK || !targetOK {
+			continue
+		}
+		sourceRight, targetRight := routeSidesForColumns(sourceColumn, targetColumn)
+		for _, endpoint := range []struct {
+			bank routeRailBank
+			port routePortGroup
+		}{
+			{bank: routeRailBank{column: sourceColumn, right: sourceRight}, port: routePortGroup{nodeID: edge.Source, right: sourceRight}},
+			{bank: routeRailBank{column: targetColumn, right: targetRight}, port: routePortGroup{nodeID: edge.Target, right: targetRight}},
+		} {
+			bank := endpoint.bank
+			demand[bank]++
+			if demand[bank] > pathRouteBankCapacity {
+				return false
+			}
+			portDemand[endpoint.port]++
+			if portDemand[endpoint.port] > pathNodePortCapacity {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func visualEdgesFitRouteBanks(edges []EdgeV2, nodes map[string]VisualNode) bool {
+	demand := make(map[routeRailBank]int)
+	portDemand := make(map[routePortGroup]int)
+	for _, edge := range edges {
+		source, sourceOK := nodes[edge.Source]
+		target, targetOK := nodes[edge.Target]
+		if !sourceOK || !targetOK {
+			continue
+		}
+		sourceRight, targetRight := routeSides(source, target)
+		for _, endpoint := range []struct {
+			bank routeRailBank
+			port routePortGroup
+		}{
+			{bank: routeRailBank{column: source.Column, right: sourceRight}, port: routePortGroup{nodeID: edge.Source, right: sourceRight}},
+			{bank: routeRailBank{column: target.Column, right: targetRight}, port: routePortGroup{nodeID: edge.Target, right: targetRight}},
+		} {
+			bank := endpoint.bank
+			demand[bank]++
+			if demand[bank] > pathRouteBankCapacity {
+				return false
+			}
+			portDemand[endpoint.port]++
+			if portDemand[endpoint.port] > pathNodePortCapacity {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func compactRoute(points []Point) []Point {
@@ -721,6 +932,7 @@ func edgeTypeRank(edgeType EdgeType) int {
 		EdgeStepExecutedAction, EdgeExecutedOnRunner, EdgeRunnerInGroup,
 		EdgeHadTokenPermission, EdgeReferencedSecret, EdgePassedSecretTo,
 		EdgeInheritedSecret, EdgeTargetedEnvironment, EdgeCrossedEnvironmentGate,
+		EdgeEnvironmentGateSatisfied,
 		EdgeEnvironmentSecretEligible, EdgeCouldMintOIDC, EdgeProducedArtifact,
 		EdgePublishedPackage, EdgeCreatedRelease, EdgeCreatedDeployment,
 		EdgeRepositoryWrite, EdgePullRequestChange, EdgeObservedAfter, EdgeFindingAbout,
@@ -733,17 +945,60 @@ func edgeTypeRank(edgeType EdgeType) int {
 	return 1_000
 }
 
-func relationshipText(edge EdgeV2, laneEdges []EdgeV2, finding FindingIndexEntry) string {
+func relationshipText(edge EdgeV2, laneEdges []EdgeV2, _ FindingIndexEntry) string {
+	if edge.Type == EdgeTargetedEnvironment {
+		satisfied := false
+		for _, other := range laneEdges {
+			if (other.Type == EdgeCrossedEnvironmentGate || other.Type == EdgeEnvironmentGateSatisfied) && other.Source == edge.Source && other.Target == edge.Target {
+				satisfied = true
+				break
+			}
+		}
+		if edge.EvidenceClass == EvidenceClassInference {
+			if !satisfied {
+				return "targeted; gate not shown satisfied — environment target inferred"
+			}
+			return "environment target inferred"
+		}
+		if !satisfied {
+			return "environment target observed; gate not shown satisfied"
+		}
+		return "environment target observed"
+	}
+	if edge.Type == EdgeWorkflowDeclaredAction {
+		return definitionRelationshipText(edge)
+	}
+	if edge.Type == EdgeWorkflowCalledWorkflow {
+		return definitionRelationshipText(edge)
+	}
+	if edge.Type == EdgeLocalActionResolvedTo {
+		return definitionRelationshipText(edge)
+	}
+	if edge.Type == EdgeEnvironmentGateSatisfied {
+		return environmentGateSatisfiedRelationshipText(edge.DerivationRule)
+	}
+	if edge.EvidenceClass == EvidenceClassInference {
+		if text, ok := map[EdgeType]string{
+			EdgeStepInJob:                 "step associated with job by derivation",
+			EdgeHadTokenPermission:        "token permission capability inferred",
+			EdgeReferencedSecret:          "secret name reference inferred",
+			EdgePassedSecretTo:            "secret mapping or passage inferred",
+			EdgeInheritedSecret:           "secret inheritance relationship inferred",
+			EdgeCrossedEnvironmentGate:    "environment gate crossing inferred",
+			EdgeEnvironmentSecretEligible: "environment-secret eligibility inferred; read or use not established",
+			EdgeCouldMintOIDC:             "could mint OIDC token — capability inferred; cloud access not established",
+			EdgeFindingAbout:              "finding association inferred",
+		}[edge.Type]; ok {
+			return text
+		}
+	}
 	text := map[EdgeType]string{
 		EdgeRunInRepository:           "run recorded in repository",
 		EdgeAttemptOfRun:              "attempt of run",
 		EdgeJobExecutedInAttempt:      "job recorded in attempt",
 		EdgeStepInJob:                 "step recorded in job",
 		EdgeRunInstantiatedWorkflow:   "run instantiated historical workflow",
-		EdgeWorkflowDeclaredAction:    workflowDeclarationText(finding),
-		EdgeWorkflowCalledWorkflow:    "historical workflow called reusable workflow",
 		EdgeActionContainsAction:      "composite definition contains Action",
-		EdgeLocalActionResolvedTo:     "local Action resolved at historical commit",
 		EdgeRefResolvedTo:             "reference resolved to exact identity",
 		EdgePackageSourceCommit:       "package records source commit",
 		EdgeJobPreparedAction:         "preparation demonstrated",
@@ -755,8 +1010,8 @@ func relationshipText(edge EdgeV2, laneEdges []EdgeV2, finding FindingIndexEntry
 		EdgeReferencedSecret:          "secret name referenced",
 		EdgePassedSecretTo:            "secret mapped or passed",
 		EdgeInheritedSecret:           "secret relationship inherited",
-		EdgeTargetedEnvironment:       "targeted environment",
-		EdgeCrossedEnvironmentGate:    "environment gate shown crossed",
+		EdgeTargetedEnvironment:       "environment target observed",
+		EdgeCrossedEnvironmentGate:    "environment gate crossing observed",
 		EdgeEnvironmentSecretEligible: "environment secret eligible",
 		EdgeCouldMintOIDC:             "could mint OIDC token",
 		EdgeProducedArtifact:          "artifact created by same job or step",
@@ -770,74 +1025,150 @@ func relationshipText(edge EdgeV2, laneEdges []EdgeV2, finding FindingIndexEntry
 		EdgeSupportedByEvidence:       "supported by evidence",
 		EdgeContradicts:               "contradicts",
 	}[edge.Type]
-	if edge.Type == EdgeTargetedEnvironment {
-		crossed := false
-		for _, other := range laneEdges {
-			if other.Type == EdgeCrossedEnvironmentGate && other.Source == edge.Source && other.Target == edge.Target {
-				crossed = true
-				break
-			}
-		}
-		if !crossed {
-			text = "targeted; gate not shown crossed"
-		}
-	}
-	if edge.EvidenceClass == EvidenceClassInference {
-		text += " — inferred"
-	}
 	return text
 }
 
-// workflowDeclarationText uses only the typed finding state. Workflow and
-// node labels are hostile display data and must never decide whether a
-// definition is present-day or historical.
-func workflowDeclarationText(finding FindingIndexEntry) string {
-	if finding.State == model.CurrentReferenceOnly {
-		return "present-day workflow snapshot declared Action"
+func environmentGateSatisfiedRelationshipText(rule string) string {
+	state, ok := EnvironmentGateSatisfiedStateForRule(rule)
+	if !ok {
+		return "environment gate requirement state unsupported"
 	}
-	return "historical workflow declared Action"
+	switch state {
+	case "approved":
+		return "environment gate requirement satisfied — retained approval"
+	case "bypassed":
+		return "environment gate requirement satisfied — retained bypass; approval not inferred"
+	case "crossed":
+		return "environment gate requirement satisfied — retained crossing"
+	case "not-required":
+		return "environment gate requirement satisfied — contemporaneously not required; approval not inferred"
+	default:
+		return "environment gate requirement state unsupported"
+	}
+}
+
+// definitionRelationshipText uses only the closed source-basis marker carried
+// by the edge. Finding state and hostile node labels cannot safely recover the
+// temporal identity of a workflow or local Action definition.
+func definitionRelationshipText(edge EdgeV2) string {
+	exact := map[EdgeType]string{
+		EdgeWorkflowDeclaredAction: "workflow definition declared Action",
+		EdgeWorkflowCalledWorkflow: "reusable-workflow call recorded",
+		EdgeLocalActionResolvedTo:  "local Action definition resolved",
+	}[edge.Type]
+	inferred := map[EdgeType]string{
+		EdgeWorkflowDeclaredAction: "workflow Action declaration inferred",
+		EdgeWorkflowCalledWorkflow: "reusable-workflow call inferred",
+		EdgeLocalActionResolvedTo:  "local Action resolution inferred",
+	}[edge.Type]
+	phrases := map[string]map[EdgeType]string{
+		DefinitionBasisHistoricalAtRunRule: {
+			EdgeWorkflowDeclaredAction: "historical workflow declared Action",
+			EdgeWorkflowCalledWorkflow: "historical workflow called reusable workflow",
+			EdgeLocalActionResolvedTo:  "local Action resolved at historical commit",
+		},
+		DefinitionBasisCurrentSnapshotRule: {
+			EdgeWorkflowDeclaredAction: "present-day workflow snapshot declared Action",
+			EdgeWorkflowCalledWorkflow: "present-day workflow snapshot called reusable workflow",
+			EdgeLocalActionResolvedTo:  "local Action resolved in present-day snapshot",
+		},
+		DefinitionBasisRuntimeAttemptMetadataRule: {
+			EdgeWorkflowCalledWorkflow: "GitHub run-attempt metadata recorded reusable-workflow call",
+		},
+	}
+	if phrase := phrases[edge.DerivationRule][edge.Type]; phrase != "" {
+		if edge.EvidenceClass == EvidenceClassInference {
+			return phrase + " by derivation"
+		}
+		return phrase
+	}
+	if edge.EvidenceClass == EvidenceClassInference {
+		return inferred
+	}
+	return exact
 }
 
 func visibleLabelLines(full string) []string {
-	clean, truncated := truncateRunesAndBytes(full, 96, 192)
-	runes := []rune(clean)
-	var lines []string
-	for len(runes) > 0 && len(lines) < 3 {
-		limit := min(32, len(runes))
-		cut := limit
-		if limit < len(runes) {
-			for i := limit - 1; i > 0; i-- {
-				if runes[i] == ' ' {
-					cut = i
-					break
-				}
-			}
-		}
-		line := strings.TrimSpace(string(runes[:cut]))
-		if line == "" {
-			line = string(runes[:limit])
-			cut = limit
-		}
-		lines = append(lines, line)
-		runes = runes[cut:]
-		for len(runes) > 0 && runes[0] == ' ' {
-			runes = runes[1:]
-		}
-	}
-	if len(runes) > 0 {
-		truncated = true
-	}
-	if len(lines) == 0 {
-		lines = []string{"[unavailable]"}
-	}
-	if truncated {
-		last := []rune(lines[len(lines)-1])
-		if len(last) >= 32 {
-			last = last[:31]
-		}
-		lines[len(lines)-1] = strings.TrimSpace(string(last)) + "…"
+	clean, byteTruncated := truncateRunesAndBytes(full, 96, 192)
+	lines, displayTruncated := sanitize.WrapDisplay(clean, 96, 30, 3)
+	if byteTruncated && !displayTruncated {
+		last, _ := sanitize.TruncateDisplay(lines[len(lines)-1]+"…", 96, 30)
+		lines[len(lines)-1] = last
 	}
 	return lines
+}
+
+// PresentTemporalScope returns a full presentation-safe scope for accessible
+// text and a fixed-geometry line for the visual SVG. The underlying finding
+// index remains unchanged.
+func PresentTemporalScope(value string) (full, visible string) {
+	full, _ = sanitize.Presentation(value, 4096)
+	visible, _ = sanitize.TruncateDisplay(full, 192, 160)
+	return full, visible
+}
+
+// TemporalLaneHeader returns the canonical visible lane heading. A scope-
+// closed known-good negative is explicitly labeled as comparison context so it
+// cannot be mistaken for a case-wide clean conclusion or an affected run.
+func TemporalLaneHeader(finding FindingIndexEntry) string {
+	header := string(finding.State) + " · " + string(finding.ProvenanceLevel)
+	if finding.State == model.NoMatchConfirmed {
+		header += " · comparison context"
+	}
+	return header
+}
+
+// TemporalLaneScope keeps the occurrence and indicator visible together. The
+// indicator is material when otherwise identical findings represent different
+// incident propositions.
+func TemporalLaneScope(finding FindingIndexEntry) (full, visible string) {
+	parts := []string{"indicator " + finding.IndicatorID, finding.Repository, finding.WorkflowPath}
+	if finding.RunID != nil {
+		parts = append(parts, "run "+strconv.FormatInt(int64(*finding.RunID), 10))
+	}
+	if finding.RunAttempt != nil {
+		parts = append(parts, "attempt "+strconv.FormatUint(uint64(*finding.RunAttempt), 10))
+	}
+	if finding.JobID != nil {
+		parts = append(parts, "job "+strconv.FormatInt(int64(*finding.JobID), 10))
+	}
+	return PresentTemporalScope(strings.Join(parts, " · "))
+}
+
+// TemporalLaneDescription is the full sanitized text alternative for a lane.
+func TemporalLaneDescription(finding FindingIndexEntry) string {
+	parts := []string{
+		"Canonical finding " + string(finding.State),
+		"provenance " + string(finding.ProvenanceLevel),
+		"repository " + finding.Repository,
+		"workflow " + finding.WorkflowPath,
+		"indicator " + finding.IndicatorID,
+	}
+	if finding.RunID != nil {
+		parts = append(parts, "run "+strconv.FormatInt(int64(*finding.RunID), 10))
+	}
+	if finding.RunAttempt != nil {
+		parts = append(parts, "attempt "+strconv.FormatUint(uint64(*finding.RunAttempt), 10))
+	}
+	if finding.JobID != nil {
+		parts = append(parts, "job "+strconv.FormatInt(int64(*finding.JobID), 10))
+	}
+	if finding.State == model.NoMatchConfirmed {
+		parts = append(parts, "known-good rerun comparison context", "not an affected run", "scope-closed negative only")
+	}
+	if finding.State == model.UnknownEvidenceGap && finding.EvidenceGapReason != "" {
+		parts = append(parts, "evidence gap "+finding.EvidenceGapReason)
+	}
+	value, _ := sanitize.Presentation(strings.Join(parts, "; "), 16<<10)
+	return value
+}
+
+// PresentTemporalGapReason returns a full presentation-safe reason for the
+// text equivalent and a fixed-geometry reason for the visual SVG.
+func PresentTemporalGapReason(value string) (full, visible string) {
+	full, _ = sanitize.Presentation(value, 4096)
+	visible, _ = sanitize.TruncateDisplay(full, 128, 120)
+	return full, visible
 }
 
 func truncateRunesAndBytes(value string, maxRunes, maxBytes int) (string, bool) {

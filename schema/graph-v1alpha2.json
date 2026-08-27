@@ -50,6 +50,7 @@
         "EXECUTED_ON_RUNNER", "RUNNER_IN_GROUP", "HAD_TOKEN_PERMISSION",
         "REFERENCED_SECRET", "PASSED_SECRET_TO", "INHERITED_SECRET",
         "TARGETED_ENVIRONMENT", "CROSSED_ENVIRONMENT_GATE",
+        "ENVIRONMENT_GATE_SATISFIED",
         "ENVIRONMENT_SECRET_ELIGIBLE", "COULD_MINT_OIDC",
         "PRODUCED_ARTIFACT", "PUBLISHED_PACKAGE", "CREATED_RELEASE",
         "CREATED_DEPLOYMENT", "REPOSITORY_WRITE", "PULL_REQUEST_CHANGE",
@@ -79,15 +80,110 @@
         "source": { "type": "string", "minLength": 1, "maxLength": 2048 },
         "target": { "type": "string", "minLength": 1, "maxLength": 2048 },
         "evidenceIds": { "allOf": [{ "$ref": "#/$defs/evidenceIds" }, { "minItems": 1 }] },
-        "derivationRule": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "derivationRule": { "type": "string", "minLength": 1, "maxLength": 256, "description": "Required inference rule, or a closed definition-basis marker on an exact dependency relationship." },
         "eventTime": { "type": "string", "maxLength": 4096 },
         "evidenceClass": { "enum": ["EXACT_OBSERVATION", "INFERENCE", "TEMPORAL_CORRELATION", "CONTRADICTION"] },
         "focusFindingIds": { "allOf": [{ "$ref": "#/$defs/findingRevisionIds" }, { "minItems": 1 }] }
       },
       "allOf": [
         {
+          "if": {
+            "properties": {
+              "type": {
+                "enum": [
+                  "RUN_IN_REPOSITORY", "ATTEMPT_OF_RUN", "JOB_EXECUTED_IN_ATTEMPT",
+                  "RUN_INSTANTIATED_WORKFLOW", "WORKFLOW_CALLED_WORKFLOW",
+                  "ACTION_CONTAINS_ACTION", "LOCAL_ACTION_RESOLVED_TO",
+                  "REF_RESOLVED_TO", "PACKAGE_SOURCE_COMMIT",
+                  "JOB_PREPARED_ACTION", "STEP_DOWNLOADED_ACTION",
+                  "STEP_EXECUTED_ACTION", "EXECUTED_ON_RUNNER", "RUNNER_IN_GROUP",
+                  "PRODUCED_ARTIFACT", "PUBLISHED_PACKAGE",
+                  "CREATED_RELEASE", "CREATED_DEPLOYMENT", "REPOSITORY_WRITE",
+                  "PULL_REQUEST_CHANGE", "SUPPORTED_BY_EVIDENCE"
+                ]
+              }
+            },
+            "required": ["type"]
+          },
+          "then": { "properties": { "evidenceClass": { "const": "EXACT_OBSERVATION" } } }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "enum": ["ENVIRONMENT_SECRET_ELIGIBLE", "COULD_MINT_OIDC", "FINDING_ABOUT"]
+              }
+            },
+            "required": ["type"]
+          },
+          "then": { "properties": { "evidenceClass": { "const": "INFERENCE" } } }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "enum": [
+                  "STEP_IN_JOB", "WORKFLOW_DECLARED_ACTION", "HAD_TOKEN_PERMISSION",
+                  "REFERENCED_SECRET", "PASSED_SECRET_TO", "INHERITED_SECRET",
+                  "TARGETED_ENVIRONMENT", "CROSSED_ENVIRONMENT_GATE"
+                ]
+              }
+            },
+            "required": ["type"]
+          },
+          "then": { "properties": { "evidenceClass": { "enum": ["EXACT_OBSERVATION", "INFERENCE"] } } }
+        },
+        {
           "if": { "properties": { "evidenceClass": { "const": "INFERENCE" } }, "required": ["evidenceClass"] },
           "then": { "required": ["derivationRule"] }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": { "const": "ENVIRONMENT_GATE_SATISFIED" }
+            },
+            "required": ["type"]
+          },
+          "then": {
+            "required": ["derivationRule"],
+            "properties": {
+              "evidenceClass": { "const": "INFERENCE" },
+              "derivationRule": {
+                "enum": [
+                  "environment-gate-satisfied/approved/v1",
+                  "environment-gate-satisfied/bypassed/v1",
+                  "environment-gate-satisfied/crossed/v1",
+                  "environment-gate-satisfied/not-required/v1"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": { "const": "ENVIRONMENT_GATE_SATISFIED" },
+              "derivationRule": { "const": "environment-gate-satisfied/not-required/v1" }
+            },
+            "required": ["type", "derivationRule"]
+          },
+          "then": {
+            "required": ["eventTime"],
+            "properties": {
+              "eventTime": {
+                "minLength": 1,
+                "pattern": "^\\S(?:.*\\S)?$",
+                "not": { "pattern": "^[uU][nN][kK][nN][oO][wW][nN]$" }
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "ENVIRONMENT_SECRET_ELIGIBLE" } }, "required": ["type"] },
+          "then": {
+            "required": ["derivationRule"],
+            "properties": { "derivationRule": { "const": "environment-secret-eligibility/v1" } }
+          }
         },
         {
           "if": { "properties": { "evidenceClass": { "const": "TEMPORAL_CORRELATION" } }, "required": ["evidenceClass"] },
@@ -153,7 +249,12 @@
       "properties": {
         "code": { "const": "UNCLASSIFIABLE_LEGACY_BASIS" },
         "findingRevisionId": { "$ref": "#/$defs/findingRevisionId" },
-        "relationship": { "$ref": "#/$defs/edgeType" },
+        "relationship": {
+          "enum": [
+            "HAD_TOKEN_PERMISSION", "REFERENCED_SECRET", "PASSED_SECRET_TO",
+            "INHERITED_SECRET", "COULD_MINT_OIDC"
+          ]
+        },
         "evidenceIds": { "allOf": [{ "$ref": "#/$defs/evidenceIds" }, { "minItems": 1 }] }
       }
     }
