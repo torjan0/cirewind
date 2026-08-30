@@ -50,10 +50,24 @@ jobs:
           cache: true
       - name: Test
         run: go test ./...
+      - name: Test native demo qualification harness
+        if: matrix.name == 'linux-amd64'
+        run: PYTHONDONTWRITEBYTECODE=1 python3 scripts/qualify_demo_test.py
       - name: Vet
         run: go vet ./...
       - name: Build CLI
         run: go build -trimpath ./cmd/cirewind
+      - name: Qualify native macOS 15 arm64 demo
+        if: matrix.name == 'darwin-arm64'
+        shell: bash
+        run: |
+          python3 scripts/qualify_demo.py \
+            --source-root "$GITHUB_WORKSPACE" \
+            --source-commit "$GITHUB_SHA" \
+            --work-root "$RUNNER_TEMP/cirewind-demo-qualification" \
+            --require-macos-major 15 \
+            --require-machine arm64 \
+            --require-homebrew
 
   vulnerability:
     name: Reachable vulnerability scan
@@ -88,6 +102,30 @@ jobs:
           cache: true
       - name: Test with race detector
         run: go test -race ./...
+
+  pack-review-contract:
+    name: Incident-pack review contract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Require exact checked-in inputs
+        run: make pack-review-clean
+      - name: Validate synthetic review policy and governance contracts
+        env:
+          PACK_REVIEW_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: make pack-review-check
+      - name: Reject generated drift
+        run: make pack-review-clean
 
   release-contract:
     name: Reproducible release packaging contract

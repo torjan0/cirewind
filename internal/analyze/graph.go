@@ -247,10 +247,16 @@ func (b *graphBuilder) projectDependency(idx index, fact archive.Fact, focus str
 	if includeContradictions && exactTarget != "" {
 		for _, contradictedID := range dependency.ContradictsFactIDs {
 			other, ok := idx.factsByID[contradictedID]
-			if !ok || other.Dependency == nil {
+			if !ok {
 				continue
 			}
-			otherTarget := b.projectDependency(idx, other, focus, false)
+			otherTarget := ""
+			switch {
+			case other.Dependency != nil:
+				otherTarget = b.projectDependency(idx, other, focus, false)
+			case other.ActionOccurrence != nil && sameExactOccurrence(other.Subject, fact.Subject):
+				otherTarget = b.projectRuntimeAction(other, focus)
+			}
 			if otherTarget == "" || otherTarget == exactTarget {
 				continue
 			}
@@ -402,12 +408,17 @@ func (b *graphBuilder) projectCredential(credential model.CredentialExposure, so
 	evidenceIDs := idsToStrings(credential.EvidenceIDs)
 	switch credential.Kind {
 	case model.ExposureGitHubTokenPermission:
-		label := "GITHUB_TOKEN " + credential.Permission + ":" + credential.Access
+		label := "GITHUB_TOKEN " + credential.Permission + ": " + credential.Access
 		token := b.addNode(graph.NodeTokenCapability, label, []string{"token-capability", credential.Permission, credential.Access}, evidenceIDs, focus)
 		b.addEdge(graph.EdgeHadTokenPermission, jobNode, token, evidenceIDs, eventText(event), false, "", focus)
+		if runtimeObservedOIDCPermission(credential) {
+			provider := b.addNode(graph.NodeOIDCProvider, "GitHub Actions OIDC token service", []string{"oidc-provider", "github-actions"}, evidenceIDs, focus)
+			b.addEdge(graph.EdgeCouldMintOIDC, jobNode, provider, evidenceIDs, eventText(event), false, OIDCCapabilityRuleVersion, focus)
+		}
 	case model.ExposureOIDCMintingCapability:
-		provider := b.addNode(graph.NodeOIDCProvider, "GitHub Actions OIDC token service", []string{"oidc-provider", "github-actions"}, evidenceIDs, focus)
-		b.addEdge(graph.EdgeCouldMintOIDC, jobNode, provider, evidenceIDs, eventText(event), false, "", focus)
+		// Legacy precomputed assertions cannot self-certify capability. Only the
+		// typed runtime-observed id-token:write branch above projects this edge.
+		return
 	case model.ExposureSecretReferencedByJob:
 		secret := b.secretNode(credential.SecretName, "named secret reference", evidenceIDs, focus)
 		b.addEdge(graph.EdgeReferencedSecret, jobNode, secret, evidenceIDs, eventText(event), false, "", focus)

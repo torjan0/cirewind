@@ -18,6 +18,7 @@ import (
 	"github.com/torjan0/cirewind/internal/archive"
 	"github.com/torjan0/cirewind/internal/casefile"
 	"github.com/torjan0/cirewind/internal/evidence"
+	"github.com/torjan0/cirewind/internal/graph"
 	"github.com/torjan0/cirewind/internal/incident"
 	"github.com/torjan0/cirewind/internal/ledger"
 	"github.com/torjan0/cirewind/internal/match"
@@ -42,10 +43,30 @@ type RawSource interface {
 	CopyRaw(context.Context, string, io.Writer) error
 }
 
+const (
+	// These materialization limits intentionally match the strict v0.2 case
+	// verifier and the archive's per-object custody limit. Compact replay does
+	// not apply them because it copies no raw bytes.
+	maxCaseRawObjectBytes       = uint64(2 << 30)
+	maxCaseRawMaterializedBytes = uint64(10 << 30)
+	maxCaseRawObjectCount       = 100_000
+)
+
 // Generate creates every required case file in a private staging directory,
 // verifies its SQLite integrity, writes the manifest, and atomically publishes
 // the directory. Existing output directories are never overwritten.
 func Generate(ctx context.Context, options Options) (err error) {
+	return generate(ctx, options, generationHooks{})
+}
+
+// generationHooks is a per-call test seam for failures at boundaries that
+// cannot be reached through public inputs. Production generation supplies no
+// hooks.
+type generationHooks struct {
+	beforeFinalize func(context.Context, *casefile.Builder) error
+}
+
+func generate(ctx context.Context, options Options, hooks generationHooks) (err error) {
 	if options.Pack == nil {
 		return errors.New("validated incident pack is required")
 	}
@@ -54,16 +75,37 @@ func Generate(ctx context.Context, options Options) (err error) {
 		return fmt.Errorf("normalize archive snapshot: %w", err)
 	}
 	options.Snapshot = normalizedSnapshot
+	retainedLegacyCredentialBasis := archive.HasRetainedLegacyCredentialBasis(options.Snapshot)
+	if options.Case.Metadata.SchemaVersion == report.MetadataSchemaV2 {
+		rawMaterialized := options.Raw
+		options.Case.Metadata.RawMaterialized = &rawMaterialized
+	}
 	if err := options.Case.NormalizeAndValidate(); err != nil {
 		return fmt.Errorf("normalize case report: %w", err)
 	}
-	builder, err := casefile.NewBuilder(options.Output, options.Raw)
+	var builder *casefile.Builder
+	if options.Case.Metadata.SchemaVersion == report.MetadataSchemaV2 {
+		builder, err = casefile.NewBuilderV2(options.Output, options.Raw)
+	} else {
+		builder, err = casefile.NewBuilder(options.Output, options.Raw)
+	}
 	if err != nil {
 		return err
 	}
 	defer func() {
+		// Abort is deliberately unconditional. It is a no-op after a successful
+		// publication, and it removes private staged material when an error or
+		// panic unwinds this function.
+		cleanupErr := abortStagedCase(builder)
 		if err != nil {
-			_ = builder.Abort()
+			if cleanupErr != nil {
+				err = errors.Join(err, cleanupErr)
+			}
+			err = protectPrivateStagingDiagnostic(err)
+			return
+		}
+		if cleanupErr != nil {
+			err = protectPrivateStagingDiagnostic(cleanupErr)
 		}
 	}()
 	if err = writeRawEvidence(ctx, builder, options); err != nil {
@@ -72,6 +114,26 @@ func Generate(ctx context.Context, options Options) (err error) {
 
 	if err = writeCaseDatabase(ctx, builder, options); err != nil {
 		return err
+	}
+	var graphSVG []byte
+	if options.Case.Metadata.SchemaVersion == report.MetadataSchemaV2 {
+		databasePath, pathErr := builder.Path("case.db")
+		if pathErr != nil {
+			return pathErr
+		}
+		projected, projectionErr := reprojectCaseDatabase(ctx, databasePath, options.Case, options.Pack, retainedLegacyCredentialBasis)
+		if projectionErr != nil {
+			return projectionErr
+		}
+		options.Case.Findings = projected.findings
+		options.Case.Graph = projected.legacy
+		options.Case.GraphV2 = projected.typed
+		var path graph.TemporalEvidencePath
+		path, graphSVG, err = graph.RenderGraphSVG(ctx, options.Case.GraphV2, graph.PathOptions{})
+		if err != nil {
+			return fmt.Errorf("render temporal evidence path: %w", err)
+		}
+		options.Case.TemporalPath = path
 	}
 	if err = writeEvidenceLedger(builder, options); err != nil {
 		return err
@@ -83,12 +145,32 @@ func Generate(ctx context.Context, options Options) (err error) {
 		{"findings.json", func(w io.Writer) error { return report.WriteFindingsJSON(w, options.Case) }},
 		{"affected-runs.csv", func(w io.Writer) error { return report.WriteAffectedRunsCSV(w, options.Case) }},
 		{"collection-metadata.json", func(w io.Writer) error { return report.WriteMetadataJSON(w, options.Case.Metadata) }},
-		{"graph.json", func(w io.Writer) error { return report.WriteGraphJSON(w, options.Case.Graph) }},
-		{"report.html", func(w io.Writer) error { return report.WriteHTML(w, options.Case) }},
+		{"graph.json", func(w io.Writer) error {
+			if options.Case.Metadata.SchemaVersion == report.MetadataSchemaV2 {
+				return report.WriteGraphV2JSON(w, options.Case.GraphV2)
+			}
+			return report.WriteGraphJSON(w, options.Case.Graph)
+		}},
+		{"report.html", func(w io.Writer) error { return report.WriteHTMLContext(ctx, w, options.Case) }},
 		{"summary.md", func(w io.Writer) error { return report.WriteSummaryMarkdown(w, options.Case) }},
 	}
+	if options.Case.Metadata.SchemaVersion == report.MetadataSchemaV2 {
+		writers = append(writers, struct {
+			name string
+			fn   func(io.Writer) error
+		}{"graph.svg", func(w io.Writer) error {
+			_, err := w.Write(graphSVG)
+			return err
+		}})
+	}
+	sort.Slice(writers, func(i, j int) bool { return writers[i].name < writers[j].name })
 	for _, output := range writers {
 		if err = writeFile(builder, output.name, output.fn); err != nil {
+			return err
+		}
+	}
+	if hooks.beforeFinalize != nil {
+		if err = hooks.beforeFinalize(ctx, builder); err != nil {
 			return err
 		}
 	}
@@ -138,6 +220,9 @@ func writeRawEvidence(ctx context.Context, builder *casefile.Builder, options Op
 	if !options.Raw {
 		return nil
 	}
+	if err := preflightRawMaterialization(descriptors); err != nil {
+		return err
+	}
 	if options.RawSource == nil {
 		return errors.New("raw case retention requires an offline raw source")
 	}
@@ -150,9 +235,13 @@ func writeRawEvidence(ctx context.Context, builder *casefile.Builder, options Op
 			return err
 		}
 		hasher := sha256.New()
-		counter := &countingWriter{destination: io.MultiWriter(file, hasher)}
+		counter := &rawCopyWriter{ctx: ctx, destination: io.MultiWriter(file, hasher), expected: descriptor.byteLength}
 		copyErr := options.RawSource.CopyRaw(ctx, descriptor.digest, counter)
-		if copyErr == nil && (counter.count != descriptor.byteLength || hex.EncodeToString(hasher.Sum(nil)) != descriptor.digest) {
+		copyErr = errors.Join(copyErr, counter.err)
+		if contextErr := ctx.Err(); contextErr != nil {
+			copyErr = errors.Join(copyErr, contextErr)
+		}
+		if copyErr == nil && (counter.written != descriptor.byteLength || hex.EncodeToString(hasher.Sum(nil)) != descriptor.digest) {
 			copyErr = errors.New("copied raw evidence disagrees with its descriptor")
 		}
 		if copyErr == nil {
@@ -166,15 +255,123 @@ func writeRawEvidence(ctx context.Context, builder *casefile.Builder, options Op
 	return nil
 }
 
-type countingWriter struct {
-	destination io.Writer
-	count       uint64
+func preflightRawMaterialization(descriptors []rawDescriptor) error {
+	if len(descriptors) > maxCaseRawObjectCount {
+		return fmt.Errorf("raw evidence materialization exceeds the %d-object limit", maxCaseRawObjectCount)
+	}
+	var aggregate uint64
+	for _, descriptor := range descriptors {
+		if descriptor.byteLength > maxCaseRawObjectBytes {
+			return fmt.Errorf("raw evidence object %s exceeds the %d-byte limit", descriptor.digest, maxCaseRawObjectBytes)
+		}
+		if descriptor.byteLength > maxCaseRawMaterializedBytes || aggregate > maxCaseRawMaterializedBytes-descriptor.byteLength {
+			return fmt.Errorf("raw evidence materialization exceeds the %d-byte aggregate limit", maxCaseRawMaterializedBytes)
+		}
+		aggregate += descriptor.byteLength
+	}
+	return nil
 }
 
-func (w *countingWriter) Write(data []byte) (int, error) {
+// rawCopyWriter is a fail-closed boundary around a RawSource implementation.
+// It never writes bytes beyond the authenticated descriptor, remembers a
+// violation even if the source ignores the returned error, and observes
+// cancellation between writes.
+type rawCopyWriter struct {
+	ctx         context.Context
+	destination io.Writer
+	expected    uint64
+	written     uint64
+	err         error
+}
+
+func (w *rawCopyWriter) Write(data []byte) (int, error) {
+	if w.err != nil {
+		return 0, w.err
+	}
+	if err := w.ctx.Err(); err != nil {
+		w.err = err
+		return 0, err
+	}
+	if w.written > w.expected || uint64(len(data)) > w.expected-w.written {
+		w.err = errors.New("raw evidence source exceeds its declared byte length")
+		return 0, w.err
+	}
 	written, err := w.destination.Write(data)
-	w.count += uint64(written)
-	return written, err
+	if written < 0 || written > len(data) {
+		w.err = errors.New("raw evidence destination returned an invalid write count")
+		return 0, w.err
+	}
+	w.written += uint64(written)
+	if err != nil {
+		w.err = err
+		return written, err
+	}
+	if written != len(data) {
+		w.err = io.ErrShortWrite
+		return written, w.err
+	}
+	if err := w.ctx.Err(); err != nil {
+		w.err = err
+		return written, err
+	}
+	return written, nil
+}
+
+type caseAborter interface {
+	Abort() error
+}
+
+type stagedCaseCleanupError struct {
+	cause error
+}
+
+// ErrStagedCaseCleanup permits the CLI boundary to preserve a safe cleanup
+// warning even when the primary operation was canceled. It carries no path or
+// underlying operating-system diagnostic.
+var ErrStagedCaseCleanup = errors.New("staged case cleanup failed")
+
+func (e *stagedCaseCleanupError) Error() string {
+	return "clean up staged case: staging directory removal failed"
+}
+
+func (e *stagedCaseCleanupError) Unwrap() error {
+	return e.cause
+}
+
+func (e *stagedCaseCleanupError) Is(target error) bool {
+	return target == ErrStagedCaseCleanup
+}
+
+type stagedCaseOperationError struct {
+	cause error
+}
+
+func (e *stagedCaseOperationError) Error() string {
+	return "materialize case in private staging: operation failed; private path withheld"
+}
+
+func (e *stagedCaseOperationError) Unwrap() error {
+	return e.cause
+}
+
+func protectPrivateStagingDiagnostic(err error) error {
+	if err == nil || !strings.Contains(err.Error(), ".cirewind-case-") {
+		return err
+	}
+	// OS and SQLite errors can carry the randomized private staging path.
+	// Preserve errors.Is/errors.As causality without exposing that path through
+	// the ordinary CLI diagnostic returned by Error.
+	return &stagedCaseOperationError{cause: err}
+}
+
+func abortStagedCase(builder caseAborter) error {
+	if err := builder.Abort(); err != nil {
+		// Builder cleanup errors can contain the randomized private staging
+		// path. Keep errors.Is/As support without placing that path in normal
+		// terminal or report output.
+		return &stagedCaseCleanupError{cause: err}
+	}
+	return nil
 }
 
 func writeFile(builder *casefile.Builder, name string, write func(io.Writer) error) error {
@@ -403,6 +600,11 @@ func persistFacts(ctx context.Context, tx *sql.Tx, snapshot archive.Snapshot) er
 	committedAt := snapshot.Metadata.CreatedAt.Format(time.RFC3339Nano)
 	if _, err := tx.ExecContext(ctx, `INSERT INTO archive_batches(batch_id,primary_collection_id,content_sha256,state,prepared_at,committed_at) VALUES(?,?,?,?,?,?)`, batchID, snapshot.Collections[0].ID, hex.EncodeToString(sum[:]), "COMMITTED", committedAt, committedAt); err != nil {
 		return fmt.Errorf("persist case fact batch: %w", err)
+	}
+	for _, session := range snapshot.Collections {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO archive_batch_collections(batch_id,collection_id) VALUES(?,?)`, batchID, session.ID); err != nil {
+			return fmt.Errorf("persist case batch collection provenance: %w", err)
+		}
 	}
 	for _, fact := range snapshot.Facts {
 		eventJSON, _ := json.Marshal(fact.EventTime)

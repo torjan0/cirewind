@@ -1,0 +1,172 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "review-approval-v1alpha1.json",
+  "title": "CIRewind real incident human review record v1alpha1",
+  "description": "Canonical machine-readable review.json record. It is an auditable claim bound to exact bytes and external platform metadata; it is not a signature, cannot certify its own independence, and cannot establish factual truth or reviewed status by itself.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "reviewId",
+    "reviewer",
+    "declaredRole",
+    "independent",
+    "conflictDisclosure",
+    "incidentId",
+    "packVersion",
+    "candidateCommit",
+    "bindings",
+    "platformReview",
+    "scopes",
+    "commands",
+    "sourceObjectsChecked",
+    "decision",
+    "reviewedAt",
+    "rationale",
+    "knownLimitations"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "cirewind.review-approval/v1alpha1" },
+    "reviewId": { "$ref": "review-common-v1alpha1.json#/$defs/pathID" },
+    "reviewer": { "$ref": "review-common-v1alpha1.json#/$defs/reviewerIdentity" },
+    "declaredRole": { "enum": ["maintainer", "outside-technical"] },
+    "independent": {
+      "description": "The reviewer's declaration only. Policy must corroborate identity and disqualifying relationships; this Boolean is never self-certifying.",
+      "type": "boolean"
+    },
+    "conflictDisclosure": {
+      "allOf": [
+        { "$ref": "review-common-v1alpha1.json#/$defs/nonEmptySafeText" },
+        { "maxLength": 2000 }
+      ]
+    },
+    "incidentId": { "$ref": "review-common-v1alpha1.json#/$defs/pathID" },
+    "packVersion": { "$ref": "review-common-v1alpha1.json#/$defs/semver" },
+    "candidateCommit": { "$ref": "review-common-v1alpha1.json#/$defs/gitCommit" },
+    "bindings": { "$ref": "#/$defs/bindings" },
+    "platformReview": { "$ref": "#/$defs/platformReview" },
+    "scopes": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 20,
+      "uniqueItems": true,
+      "items": { "$ref": "review-common-v1alpha1.json#/$defs/reviewScope" }
+    },
+    "commands": {
+      "type": "array",
+      "maxItems": 50,
+      "items": { "$ref": "#/$defs/command" }
+    },
+    "sourceObjectsChecked": {
+      "type": "array",
+      "maxItems": 2000,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/sourceObject" }
+    },
+    "decision": { "enum": ["approve", "request_changes", "abstain"] },
+    "reviewedAt": { "$ref": "review-common-v1alpha1.json#/$defs/utcTimestamp" },
+    "rationale": { "$ref": "review-common-v1alpha1.json#/$defs/nonEmptySafeText" },
+    "knownLimitations": {
+      "type": "array",
+      "maxItems": 100,
+      "uniqueItems": true,
+      "items": {
+        "allOf": [
+          { "$ref": "review-common-v1alpha1.json#/$defs/nonEmptySafeText" },
+          { "maxLength": 2000 }
+        ]
+      }
+    }
+  },
+  "$defs": {
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidateManifestSha256",
+        "originalPackSha256",
+        "canonicalPackSha256",
+        "claimsSha256",
+        "sourcesSha256",
+        "conflictsSha256",
+        "fixtureManifestSha256",
+        "validatorPolicySha256",
+        "reviewPolicySha256"
+      ],
+      "properties": {
+        "candidateManifestSha256": { "$ref": "review-common-v1alpha1.json#/$defs/sha256" },
+        "originalPackSha256": { "$ref": "review-common-v1alpha1.json#/$defs/sha256" },
+        "canonicalPackSha256": { "$ref": "review-common-v1alpha1.json#/$defs/sha256" },
+        "claimsSha256": { "$ref": "review-common-v1alpha1.json#/$defs/sha256" },
+        "sourcesSha256": { "$ref": "review-common-v1alpha1.json#/$defs/sha256" },
+        "conflictsSha256": { "$ref": "review-common-v1alpha1.json#/$defs/sha256" },
+        "fixtureManifestSha256": { "$ref": "review-common-v1alpha1.json#/$defs/sha256" },
+        "validatorPolicySha256": { "$ref": "review-common-v1alpha1.json#/$defs/sha256" },
+        "reviewPolicySha256": { "$ref": "review-common-v1alpha1.json#/$defs/sha256" }
+      }
+    },
+    "platformReview": {
+      "description": "Reference to the corresponding GitHub pull-request review. Matching must be corroborated by a separately captured offline platform-approval snapshot.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "pullRequestNumber", "reviewUrl", "reviewDatabaseId", "assertionSha256", "bodySha256"],
+      "properties": {
+        "repository": { "$ref": "review-common-v1alpha1.json#/$defs/githubRepository" },
+        "pullRequestNumber": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "reviewUrl": { "$ref": "review-common-v1alpha1.json#/$defs/githubReviewURL" },
+        "reviewDatabaseId": { "$ref": "review-common-v1alpha1.json#/$defs/databaseID" },
+        "assertionSha256": {
+          "description": "SHA-256 of the canonical material review assertion; platform identifiers and timestamps are excluded from that assertion.",
+          "$ref": "review-common-v1alpha1.json#/$defs/sha256"
+        },
+        "bodySha256": {
+          "description": "SHA-256 of the exact fixed GitHub review body containing assertionSha256.",
+          "$ref": "review-common-v1alpha1.json#/$defs/sha256"
+        }
+      }
+    },
+    "command": {
+      "description": "An inert record of an offline reproduction invocation; validators never execute it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tool", "version", "arguments"],
+      "properties": {
+        "tool": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._+-]{0,199}$"
+        },
+        "version": {
+          "allOf": [
+            { "$ref": "review-common-v1alpha1.json#/$defs/nonEmptySingleLineSafeText" },
+            { "maxLength": 200 }
+          ]
+        },
+        "arguments": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "allOf": [
+              { "$ref": "review-common-v1alpha1.json#/$defs/nonEmptySingleLineSafeText" },
+              { "maxLength": 1000 }
+            ]
+          }
+        }
+      }
+    },
+    "sourceObject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceId", "sha256"],
+      "properties": {
+        "sourceId": { "$ref": "review-common-v1alpha1.json#/$defs/stableID" },
+        "sha256": { "$ref": "review-common-v1alpha1.json#/$defs/sha256" }
+      }
+    }
+  }
+}

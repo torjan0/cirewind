@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "review-sources-v1alpha1.json",
+  "title": "CIRewind real incident source ledger v1alpha1",
+  "description": "Bounded metadata for exact reviewed source objects. Locators are provenance only and are never instructions for automatic retrieval.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "sources"],
+  "properties": {
+    "schemaVersion": { "const": "cirewind.review-sources/v1alpha1" },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 2000,
+      "items": { "$ref": "#/$defs/source" }
+    }
+  },
+  "$defs": {
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceId",
+        "sourceClass",
+        "publisher",
+        "title",
+        "locator",
+        "retrievedAt",
+        "mediaType",
+        "reviewedByteLength",
+        "reviewedSha256",
+        "redistributionAssessment",
+        "conflictIds"
+      ],
+      "properties": {
+        "sourceId": { "$ref": "review-common-v1alpha1.json#/$defs/stableID" },
+        "sourceClass": {
+          "enum": [
+            "maintainer-advisory",
+            "immutable-repository-object",
+            "github-advisory-database",
+            "government-advisory",
+            "original-research",
+            "secondary-lead",
+            "synthetic-fixture"
+          ]
+        },
+        "publisher": {
+          "allOf": [
+            { "$ref": "review-common-v1alpha1.json#/$defs/nonEmptySingleLineSafeText" },
+            { "maxLength": 200 }
+          ]
+        },
+        "title": {
+          "allOf": [
+            { "$ref": "review-common-v1alpha1.json#/$defs/nonEmptySingleLineSafeText" },
+            { "maxLength": 500 }
+          ]
+        },
+        "locator": {
+          "description": "An inert HTTPS provenance locator that validation never follows.",
+          "$ref": "review-common-v1alpha1.json#/$defs/httpsURL"
+        },
+        "publishedAt": { "$ref": "review-common-v1alpha1.json#/$defs/utcTimestamp" },
+        "updatedAt": { "$ref": "review-common-v1alpha1.json#/$defs/utcTimestamp" },
+        "statedPrecision": { "enum": ["second", "minute", "hour", "day", "unknown"] },
+        "retrievedAt": { "$ref": "review-common-v1alpha1.json#/$defs/utcTimestamp" },
+        "immutableRevision": {
+          "allOf": [
+            { "$ref": "review-common-v1alpha1.json#/$defs/nonEmptySingleLineSafeText" },
+            { "maxLength": 500 }
+          ]
+        },
+        "mediaType": { "$ref": "review-common-v1alpha1.json#/$defs/mediaType" },
+        "reviewedByteLength": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1073741824
+        },
+        "reviewedSha256": { "$ref": "review-common-v1alpha1.json#/$defs/sha256" },
+        "archivePath": { "$ref": "review-common-v1alpha1.json#/$defs/safeRelativePath" },
+        "notRedistributedReason": {
+          "allOf": [
+            { "$ref": "review-common-v1alpha1.json#/$defs/nonEmptySafeText" },
+            { "maxLength": 1000 }
+          ]
+        },
+        "redistributionAssessment": {
+          "description": "Combined license and redistribution assessment for the reviewed object.",
+          "enum": ["redistributable", "metadata-only", "restricted", "unknown"]
+        },
+        "supersedesSourceId": { "$ref": "review-common-v1alpha1.json#/$defs/stableID" },
+        "notes": { "$ref": "review-common-v1alpha1.json#/$defs/safeText" },
+        "conflictIds": { "$ref": "review-common-v1alpha1.json#/$defs/safeIDSet" }
+      },
+      "oneOf": [
+        {
+          "required": ["archivePath"],
+          "not": { "required": ["notRedistributedReason"] }
+        },
+        {
+          "required": ["notRedistributedReason"],
+          "not": { "required": ["archivePath"] }
+        }
+      ]
+    }
+  }
+}

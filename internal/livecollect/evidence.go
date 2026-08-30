@@ -154,7 +154,7 @@ type jobProjectionDocument struct {
 	Labels          []string `json:"labels"`
 	RunnerID        int64    `json:"runner_id,omitempty"`
 	RunnerName      string   `json:"runner_name,omitempty"`
-	RunnerGroupID   int64    `json:"runner_group_id,omitempty"`
+	RunnerGroupID   *int64   `json:"runner_group_id,omitempty"`
 	RunnerGroupName string   `json:"runner_group_name,omitempty"`
 }
 
@@ -285,7 +285,7 @@ func projectJob(repositoryID int64, runID int64, attempt int, job githubapi.Work
 		Schema: "cirewind.github-job-projection/v1", RepositoryID: repositoryID, RunID: runID,
 		RunAttempt: attempt, JobID: job.ID, Name: safeField(job.Name, 4096), Status: safeMachine(job.Status, 128),
 		Conclusion: safeMachine(job.Conclusion, 128), Labels: labels, RunnerID: job.RunnerID,
-		RunnerName: safeField(job.RunnerName, 1024), RunnerGroupID: job.RunnerGroupID,
+		RunnerName: safeField(job.RunnerName, 1024), RunnerGroupID: cloneOptionalInt64(job.RunnerGroupID),
 		RunnerGroupName: safeField(job.RunnerGroupName, 1024),
 	}
 	if job.StartedAt != nil && !job.StartedAt.IsZero() {
@@ -295,6 +295,14 @@ func projectJob(repositoryID int64, runID int64, attempt int, job githubapi.Work
 		result.CompletedAt = job.CompletedAt.UTC().Format(time.RFC3339Nano)
 	}
 	return result
+}
+
+func cloneOptionalInt64(value *int64) *int64 {
+	if value == nil {
+		return nil
+	}
+	copy := *value
+	return &copy
 }
 
 func projectReferenced(values []githubapi.ReferencedWorkflow) []referencedWorkflowProjection {

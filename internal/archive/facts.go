@@ -18,6 +18,18 @@ const maxDependencyDepth = 32
 // of the identity, so a later collection can attach an additional observation
 // without rewriting the archived fact.
 func NormalizeFact(input Fact) (Fact, error) {
+	return normalizeFact(input, false)
+}
+
+// NormalizeRetainedV1Fact preserves the exact canonical identity of a retained
+// v1alpha1 exposure whose credential basis is empty or no longer part of the
+// current closed vocabulary. All other fact validation remains identical to
+// NormalizeFact. It must never be used for newly collected facts.
+func NormalizeRetainedV1Fact(input Fact) (Fact, error) {
+	return normalizeFact(input, true)
+}
+
+func normalizeFact(input Fact, allowRetainedLegacyBasis bool) (Fact, error) {
 	fact := input
 	normalizeFactSlices(&fact)
 	fact.EvidenceIDs = sortEvidenceIDs(fact.EvidenceIDs)
@@ -167,7 +179,7 @@ func NormalizeFact(input Fact) (Fact, error) {
 			return Fact{}, errors.New("exposure payload has a different fact kind")
 		}
 		var err error
-		nested, err = validateExposureFact(*fact.Exposure)
+		nested, err = validateExposureFact(*fact.Exposure, allowRetainedLegacyBasis)
 		if err != nil {
 			return Fact{}, err
 		}
@@ -376,6 +388,15 @@ func validateDependencyFact(fact DependencyFact) error {
 			return errors.New("attempt-level reusable-workflow metadata cannot carry a step identity")
 		}
 	}
+	if fact.Basis == DefinitionCurrentSnapshot {
+		if fact.Execution != nil || fact.AttemptExecution != nil || fact.StepKey != "" {
+			return errors.New("current snapshot cannot carry historical run-attempt, job, or step identity")
+		}
+		if fact.EventTime.Start != nil || fact.EventTime.End != nil || fact.EventTime.Bounds != nil ||
+			fact.EventTime.Precision != model.PrecisionUnknown || fact.EventTime.Approximation != model.ApproximationUnknown || fact.EventTime.Basis != model.TimeBasisUnknown {
+			return errors.New("current snapshot cannot carry a historical event time")
+		}
+	}
 	if fact.TargetKind == DependencyTargetReusableWorkflow && fact.TargetPath == "" {
 		return errors.New("reusable-workflow target requires a path")
 	}
@@ -423,7 +444,7 @@ func validateDependencyFact(fact DependencyFact) error {
 	return fact.EventTime.Validate()
 }
 
-func validateExposureFact(fact ExposureFact) ([]model.EvidenceID, error) {
+func validateExposureFact(fact ExposureFact, allowRetainedLegacyBasis bool) ([]model.EvidenceID, error) {
 	if err := fact.Execution.Validate(); err != nil {
 		return nil, err
 	}
@@ -437,7 +458,7 @@ func validateExposureFact(fact ExposureFact) ([]model.EvidenceID, error) {
 	var evidenceIDs []model.EvidenceID
 	if fact.Credential != nil {
 		kinds++
-		if err := fact.Credential.Validate(); err != nil {
+		if err := validateCredentialExposure(*fact.Credential, allowRetainedLegacyBasis); err != nil {
 			return nil, err
 		}
 		evidenceIDs = append(evidenceIDs, fact.Credential.EvidenceIDs...)
@@ -457,7 +478,7 @@ func validateExposureFact(fact ExposureFact) ([]model.EvidenceID, error) {
 	}
 	if fact.Environment != nil {
 		kinds++
-		if err := validateEnvironment(*fact.Environment); err != nil {
+		if err := validateEnvironment(*fact.Environment, fact.EventTime); err != nil {
 			return nil, err
 		}
 	}
@@ -465,6 +486,30 @@ func validateExposureFact(fact ExposureFact) ([]model.EvidenceID, error) {
 		return nil, errors.New("exposure fact requires exactly one credential, resource, runner, or environment assertion")
 	}
 	return evidenceIDs, nil
+}
+
+func validateCredentialExposure(credential model.CredentialExposure, allowRetainedLegacyBasis bool) error {
+	if credential.Basis.Valid() {
+		return credential.Validate()
+	}
+	if !allowRetainedLegacyBasis {
+		return credential.Validate()
+	}
+	// Empty was legal in the retained v1 model. A nonempty value can represent
+	// a basis removed from the current closed vocabulary, but it remains hostile
+	// input and must be a small machine name before being preserved verbatim.
+	if credential.Basis != "" {
+		if err := safeMachineName(string(credential.Basis), 128); err != nil {
+			return fmt.Errorf("retained credential-exposure basis: %w", err)
+		}
+	}
+	preserved := credential.Basis
+	credential.Basis = model.ExposureBasisStaticInferred
+	if err := credential.Validate(); err != nil {
+		return err
+	}
+	credential.Basis = preserved
+	return nil
 }
 
 func validateRunner(runner RunnerContextFact) error {
@@ -475,6 +520,9 @@ func validateRunner(runner RunnerContextFact) error {
 	}
 	if runner.RunnerID != nil && *runner.RunnerID <= 0 {
 		return errors.New("runner ID must be positive")
+	}
+	if runner.RunnerGroupID != nil && *runner.RunnerGroupID < 0 {
+		return errors.New("runner group ID must be nonnegative")
 	}
 	for _, value := range []string{runner.RunnerName, runner.RunnerGroup} {
 		if err := safeText(value, 1024, true); err != nil {
@@ -495,7 +543,7 @@ func validateRunner(runner RunnerContextFact) error {
 	return nil
 }
 
-func validateEnvironment(environment EnvironmentEligibilityFact) error {
+func validateEnvironment(environment EnvironmentEligibilityFact, event model.EventInterval) error {
 	if err := safeText(environment.EnvironmentName, 1024, false); err != nil {
 		return err
 	}
@@ -503,6 +551,9 @@ func validateEnvironment(environment EnvironmentEligibilityFact) error {
 	case "approved", "bypassed", "crossed", "pending", "rejected", "not-required", "unknown":
 	default:
 		return errors.New("environment gate state is invalid")
+	}
+	if environment.JobStarted && (environment.GateState == "pending" || environment.GateState == "rejected") {
+		return errors.New("a pending or rejected environment job cannot be recorded as started")
 	}
 	if environment.SecretNames == nil || len(environment.SecretNames) > 10_000 {
 		return errors.New("environment secret names must be an explicit bounded array")
@@ -515,8 +566,8 @@ func validateEnvironment(environment EnvironmentEligibilityFact) error {
 			return errors.New("environment secret names must be sorted and unique")
 		}
 	}
-	if len(environment.SecretNames) > 0 && (!environment.JobStarted || (environment.GateState != "approved" && environment.GateState != "bypassed" && environment.GateState != "crossed" && environment.GateState != "not-required")) {
-		return errors.New("environment secrets cannot be eligible before the job starts and crosses its gate")
+	if len(environment.SecretNames) > 0 && !environment.GateRequirementSatisfiedAt(event) {
+		return errors.New("environment secrets cannot be eligible before the job starts and the retained gate requirement is satisfied, bypassed, or not required")
 	}
 	return nil
 }

@@ -40,6 +40,16 @@ func TestNewBuildMetadataAndLDFlags(t *testing.T) {
 	}
 }
 
+func TestReleaseRepositoryAllowlistExcludesUnreviewedIncidentMaterial(t *testing.T) {
+	for _, file := range repositoryReleaseFiles() {
+		if strings.HasPrefix(file.Name, "incidents/candidates/") ||
+			strings.HasPrefix(file.Name, "review-packets/") ||
+			file.Name == "pack-review-policy.json" || file.Name == "review-registry.json" {
+			t.Fatalf("unreviewed governance material entered the release allowlist: %s", file.Name)
+		}
+	}
+}
+
 func TestValidateReleaseStamp(t *testing.T) {
 	metadata, err := NewBuildMetadata(testVersion, testCommit, testGo, testEpoch)
 	if err != nil {

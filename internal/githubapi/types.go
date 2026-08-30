@@ -163,7 +163,7 @@ type WorkflowJob struct {
 	Labels          []string   `json:"labels"`
 	RunnerID        int64      `json:"runner_id"`
 	RunnerName      string     `json:"runner_name"`
-	RunnerGroupID   int64      `json:"runner_group_id"`
+	RunnerGroupID   *int64     `json:"runner_group_id"`
 	RunnerGroupName string     `json:"runner_group_name"`
 }
 

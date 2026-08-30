@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"errors"
 	"flag"
 	"fmt"
@@ -226,6 +227,42 @@ type replayOptions struct {
 	Output              string
 	RawLogs             bool
 	FixedCollectionTime *time.Time
+}
+
+type demoOptions struct {
+	Output string
+}
+
+const demoUsage = `Usage:
+  cirewind demo --out CASE_DIR
+
+Generates and verifies a deterministic synthetic case without credentials or
+network access. The destination must not already exist. No raw logs are retained.
+`
+
+func parseDemo(args []string, output io.Writer) (demoOptions, error) {
+	var result demoOptions
+	// flag.FlagSet echoes the original command-line token on parse errors. Keep
+	// that hostile text out of the terminal sink; only trusted help is forwarded,
+	// while Run renders the returned error through the bounded sanitizer.
+	var flagOutput bytes.Buffer
+	fs := flag.NewFlagSet("demo", flag.ContinueOnError)
+	configureFlagHelp(fs, &flagOutput, demoUsage)
+	fs.StringVar(&result.Output, "out", "", "new synthetic case output directory")
+	if err := fs.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			_, _ = io.Copy(output, &flagOutput)
+			return result, err
+		}
+		return result, fmt.Errorf("%w: %v", errUsage, err)
+	}
+	if fs.NArg() != 0 {
+		return result, fmt.Errorf("%w: demo accepts flags only", errUsage)
+	}
+	if strings.TrimSpace(result.Output) == "" {
+		return result, fmt.Errorf("%w: --out is required", errUsage)
+	}
+	return result, nil
 }
 
 const replayUsage = `Usage:

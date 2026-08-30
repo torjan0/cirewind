@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "review-fixture-index-v1alpha1.json",
+  "title": "CIRewind deterministic review fixture index v1alpha1",
+  "description": "A closed, bounded index of synthetic review scenarios and their local archive snapshots. It records fixture inputs only and does not establish that a scenario was executed or that any incident fact is true.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "scenarios"],
+  "properties": {
+    "schemaVersion": { "const": "cirewind.review-fixture-index/v1alpha1" },
+    "scenarios": {
+      "$comment": "Canonical instances sort rows strictly by scenarioId and use each scenarioId once; semantic validation enforces key ordering and uniqueness.",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 2000,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/scenario" }
+    }
+  },
+  "$defs": {
+    "scenario": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scenarioId", "snapshotPath", "analysisTime"],
+      "properties": {
+        "scenarioId": { "$ref": "review-common-v1alpha1.json#/$defs/stableID" },
+        "snapshotPath": {
+          "description": "A fixed local fixture path; consumers must never interpret it as a network locator.",
+          "allOf": [
+            { "$ref": "review-common-v1alpha1.json#/$defs/safeRelativePath" },
+            {
+              "pattern": "^scenarios/[A-Za-z0-9][A-Za-z0-9._-]{0,99}/archive-snapshot\\.json$"
+            }
+          ]
+        },
+        "analysisTime": { "$ref": "review-common-v1alpha1.json#/$defs/utcTimestamp" }
+      }
+    }
+  }
+}

@@ -5,11 +5,13 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -361,6 +363,188 @@ func TestArchiveRejectsCredentialLikePayloadAndUnknownSnapshotFields(t *testing.
 	}
 }
 
+func TestRunnerGroupIDIsOptionalAndNonnegative(t *testing.T) {
+	t.Parallel()
+	evidenceID := model.EvidenceID("ev1:" + strings.Repeat("a", 64))
+	execution := model.JobExecutionIdentity{RepositoryID: 1, RunID: 1, RunAttempt: 1, JobID: 1}
+	zero := int64(0)
+	fact := Fact{
+		Kind: FactExposure, EvidenceIDs: []model.EvidenceID{evidenceID},
+		Exposure: &ExposureFact{
+			Execution: execution, EventTime: unknownEventTime(),
+			Runner: &RunnerContextFact{
+				Classification: "github-hosted", RunnerGroupID: &zero,
+				RunnerGroup: "GitHub Actions", Labels: []string{},
+			},
+		},
+	}
+	normalized, err := NormalizeFact(fact)
+	if err != nil {
+		t.Fatal(err)
+	}
+	encoded, err := json.Marshal(normalized.Exposure.Runner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(encoded, []byte(`"runner_group_id":0`)) {
+		t.Fatalf("meaningful zero runner group ID was omitted: %s", encoded)
+	}
+
+	absent := fact
+	absent.Exposure = &ExposureFact{Execution: execution, EventTime: unknownEventTime(), Runner: &RunnerContextFact{
+		Classification: "unknown", Labels: []string{},
+	}}
+	normalized, err = NormalizeFact(absent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	encoded, err = json.Marshal(normalized.Exposure.Runner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Contains(encoded, []byte("runner_group_id")) {
+		t.Fatalf("absent runner group ID changed retained JSON shape: %s", encoded)
+	}
+
+	negative := int64(-1)
+	fact.Exposure.Runner.RunnerGroupID = &negative
+	if _, err := NormalizeFact(fact); err == nil || !strings.Contains(err.Error(), "runner group ID must be nonnegative") {
+		t.Fatalf("negative runner group ID error=%v", err)
+	}
+}
+
+func TestEnvironmentGateStatesRequireCoherentJobStartAndPreserveTransitions(t *testing.T) {
+	t.Parallel()
+	evidenceID := model.EvidenceID("ev1:" + strings.Repeat("b", 64))
+	execution := model.JobExecutionIdentity{RepositoryID: 1, RunID: 1, RunAttempt: 1, JobID: 1}
+	secretName, err := model.NewSecretName("DEPLOY_KEY")
+	if err != nil {
+		t.Fatal(err)
+	}
+	makeFact := func(state string, started bool, names []model.SecretName, second int) Fact {
+		at := testInstant(second)
+		return Fact{
+			Kind: FactExposure, EvidenceIDs: []model.EvidenceID{evidenceID},
+			Exposure: &ExposureFact{
+				Execution:   execution,
+				Environment: &EnvironmentEligibilityFact{EnvironmentName: "production", GateState: state, JobStarted: started, SecretNames: names},
+				EventTime:   model.EventInterval{Start: &at, Precision: model.PrecisionSecond, Approximation: model.ApproximationExact, Basis: model.TimeBasisLogTimestamp},
+			},
+		}
+	}
+	for _, test := range []struct {
+		state   string
+		started bool
+		names   []model.SecretName
+		valid   bool
+	}{
+		{state: "approved", started: true, names: []model.SecretName{secretName}, valid: true},
+		{state: "bypassed", started: true, names: []model.SecretName{secretName}, valid: true},
+		{state: "crossed", started: true, names: []model.SecretName{secretName}, valid: true},
+		{state: "not-required", started: true, names: []model.SecretName{secretName}, valid: true},
+		{state: "pending", started: false, names: []model.SecretName{}, valid: true},
+		{state: "rejected", started: false, names: []model.SecretName{}, valid: true},
+		{state: "pending", started: true, names: []model.SecretName{}},
+		{state: "rejected", started: true, names: []model.SecretName{}},
+		{state: "unknown", started: true, names: []model.SecretName{secretName}},
+	} {
+		t.Run(test.state+"/started="+strconv.FormatBool(test.started)+"/names="+strconv.Itoa(len(test.names)), func(t *testing.T) {
+			_, err := NormalizeFact(makeFact(test.state, test.started, test.names, 1))
+			if (err == nil) != test.valid {
+				t.Fatalf("NormalizeFact() error=%v, valid=%t", err, test.valid)
+			}
+		})
+	}
+	unknownNotRequired := makeFact("not-required", true, []model.SecretName{secretName}, 1)
+	unknownNotRequired.Exposure.EventTime = model.EventInterval{
+		Precision: model.PrecisionUnknown, Approximation: model.ApproximationUnknown, Basis: model.TimeBasisUnknown,
+	}
+	if _, err := NormalizeFact(unknownNotRequired); err == nil || !strings.Contains(err.Error(), "environment secrets cannot be eligible") {
+		t.Fatalf("unknown-time not-required eligibility error=%v", err)
+	}
+
+	pending, err := NormalizeFact(makeFact("pending", false, []model.SecretName{}, 1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	crossed, err := NormalizeFact(makeFact("crossed", true, []model.SecretName{secretName}, 2))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pending.ID == crossed.ID || pending.Exposure.Environment.GateState != "pending" || crossed.Exposure.Environment.GateState != "crossed" {
+		t.Fatalf("event-timed pending and crossed observations were merged: pending=%#v crossed=%#v", pending, crossed)
+	}
+}
+
+func TestRetainedV1CredentialBasisCompatibilityIsReadOnlyAndNarrow(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name  string
+		basis model.CredentialExposureBasis
+	}{
+		{name: "empty", basis: ""},
+		{name: "unrecognized", basis: "removed-basis-v0"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			batch := testBatch(t)
+			var input Fact
+			for _, fact := range batch.Facts {
+				if fact.Exposure != nil && fact.Exposure.Credential != nil {
+					input = fact
+					break
+				}
+			}
+			if input.Exposure == nil {
+				t.Fatal("fixture lacks credential exposure")
+			}
+			input.Exposure.Credential.Basis = test.basis
+			input.ID = ""
+			if _, err := NormalizeFact(input); err == nil || !strings.Contains(err.Error(), "credential-exposure basis") {
+				t.Fatalf("fresh NormalizeFact accepted basis %q: %v", test.basis, err)
+			}
+			retained, err := NormalizeRetainedV1Fact(input)
+			if err != nil {
+				t.Fatalf("retained v1 fact basis %q: %v", test.basis, err)
+			}
+			if retained.Exposure.Credential.Basis != test.basis || retained.ID == "" {
+				t.Fatalf("retained fact did not preserve canonical payload: %#v", retained.Exposure.Credential)
+			}
+
+			for index := range batch.Facts {
+				if batch.Facts[index].Exposure != nil && batch.Facts[index].Exposure.Credential != nil {
+					batch.Facts[index] = retained
+				}
+			}
+			store, err := Create(context.Background(), filepath.Join(t.TempDir(), "fresh.db"), Options{CreatedAt: testInstant(0)})
+			if err != nil {
+				t.Fatal(err)
+			}
+			appendErr := store.Append(context.Background(), batch)
+			closeErr := store.Close()
+			if appendErr == nil || !strings.Contains(appendErr.Error(), "credential-exposure basis") {
+				t.Fatalf("fresh Append accepted retained-only basis %q: %v", test.basis, appendErr)
+			}
+			if closeErr != nil {
+				t.Fatal(closeErr)
+			}
+		})
+	}
+
+	input := testBatch(t).Facts[0]
+	for _, fact := range testBatch(t).Facts {
+		if fact.Exposure != nil && fact.Exposure.Credential != nil {
+			input = fact
+			break
+		}
+	}
+	input.Exposure.Credential.Basis = "<unsafe>"
+	input.ID = ""
+	if _, err := NormalizeRetainedV1Fact(input); err == nil || !strings.Contains(err.Error(), "unsupported character") {
+		t.Fatalf("unsafe retained basis was accepted: %v", err)
+	}
+}
+
 func TestReplaySnapshotRejectsUnknownPersistedFactFields(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -546,6 +730,27 @@ func TestDependencyFactKeepsTypedHistoricalIdentities(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	for _, test := range []struct {
+		name   string
+		mutate func(*DependencyFact)
+	}{
+		{name: "historical execution identity", mutate: func(value *DependencyFact) {
+			execution := model.JobExecutionIdentity{RepositoryID: 1, RunID: 10, RunAttempt: 1, JobID: 20}
+			value.Execution = &execution
+		}},
+		{name: "historical event time", mutate: func(value *DependencyFact) { value.EventTime = testEvent(1) }},
+	} {
+		t.Run("current snapshot rejects "+test.name, func(t *testing.T) {
+			bad := current
+			bad.ID = ""
+			dependency := *current.Dependency
+			test.mutate(&dependency)
+			bad.Dependency = &dependency
+			if _, err := NormalizeFact(bad); err == nil || !strings.Contains(err.Error(), "current snapshot") {
+				t.Fatalf("current snapshot accepted %s: %v", test.name, err)
+			}
+		})
+	}
 	caller := model.CallerWorkflowObjectID(model.GitObjectID{Algorithm: model.HashSHA1, Value: strings.Repeat("b", 40)})
 	target := model.ActionSourceObjectID(model.GitObjectID{Algorithm: model.HashSHA1, Value: strings.Repeat("a", 40)})
 	historical := current
@@ -672,7 +877,7 @@ func testBatch(t *testing.T) Batch {
 	facts := []Fact{
 		{Kind: FactExposure, EvidenceIDs: []model.EvidenceID{evidenceID}, Exposure: &ExposureFact{
 			Execution: execution, StepKey: step.Key(), EventTime: testEvent(4),
-			Credential: &model.CredentialExposure{Kind: model.ExposureSecretPassedToStep, SecretName: &secretName,
+			Credential: &model.CredentialExposure{Kind: model.ExposureSecretPassedToStep, Basis: model.ExposureBasisHistoricalDefinitionFlow, SecretName: &secretName,
 				Conclusion: "The named secret was passed to this started step.", EvidenceIDs: []model.EvidenceID{evidenceID}},
 		}},
 		{Kind: FactJob, EvidenceIDs: []model.EvidenceID{evidenceID}, Job: &JobFact{Execution: execution, DisplayName: "build", Status: "completed", Conclusion: "success", EventTime: testEvent(3)}},

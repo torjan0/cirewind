@@ -43,3 +43,26 @@ func TestProjectResponsesPreservesSafeAcquisitionMetadata(t *testing.T) {
 		}
 	}
 }
+
+func TestJobProjectionPreservesRunnerGroupIDPresenceIncludingZero(t *testing.T) {
+	t.Parallel()
+	zero := int64(0)
+	withZero := projectJob(1, 2, 1, githubapi.WorkflowJob{ID: 3, Labels: []string{}, RunnerGroupID: &zero})
+	zero = 99
+	encoded, err := json.Marshal(withZero)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(encoded), `"runner_group_id":0`) {
+		t.Fatalf("meaningful zero runner-group ID was not retained: %s", encoded)
+	}
+
+	withoutID := projectJob(1, 2, 1, githubapi.WorkflowJob{ID: 3, Labels: []string{}, RunnerGroupName: "GitHub Actions"})
+	encoded, err = json.Marshal(withoutID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(encoded), "runner_group_id") {
+		t.Fatalf("absent runner-group ID was manufactured from a group name: %s", encoded)
+	}
+}

@@ -31,6 +31,26 @@ func TestMaterialEdgesRequireEvidenceAndValidEndpoints(t *testing.T) {
 	}
 }
 
+func TestFrozenV1GraphRejectsV2OnlyRelationships(t *testing.T) {
+	t.Parallel()
+	g := Graph{
+		Nodes: []Node{
+			{ID: "job", Type: NodeJob, Label: "job"},
+			{ID: "environment", Type: NodeEnvironment, Label: "environment"},
+		},
+		Edges: []Edge{{
+			ID:          "edge",
+			Type:        EdgeEnvironmentGateSatisfied,
+			Source:      "job",
+			Target:      "environment",
+			EvidenceIDs: []string{evidenceID("a")},
+		}},
+	}
+	if err := g.NormalizeAndValidate(); err == nil {
+		t.Fatal("frozen v0.1 graph accepted v0.2-only ENVIRONMENT_GATE_SATISFIED")
+	}
+}
+
 func TestGraphNormalizesDeterministicallyAndValidatesFocus(t *testing.T) {
 	t.Parallel()
 	g := Graph{

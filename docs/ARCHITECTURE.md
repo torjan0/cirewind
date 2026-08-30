@@ -429,7 +429,7 @@ sequenceDiagram
 | --- | --- | --- |
 | `report.html` | Self-contained offline human report and derived graph | Sensitive metadata; escaped |
 | `findings.json` | Stable machine-readable findings | Sensitive metadata |
-| `affected-runs.csv` | Spreadsheet-safe attempt/job summary | Sensitive metadata; formula-hardened |
+| `affected-runs.csv` | Spreadsheet-safe finding summary with explicit run/comparison/static context | Sensitive metadata; formula-hardened |
 | `evidence.jsonl` | Append-only evidence metadata/compact observation ledger | Potentially sensitive names, no values |
 | `manifest.sha256` | Sorted SHA-256 manifest of finalized regular files | Non-secret, no authenticity by itself |
 | `case.db` | Relational source of truth for the case | Sensitive metadata |
@@ -439,6 +439,16 @@ sequenceDiagram
 | `raw/` | Opt-in bounded source objects named by verified source SHA-256 | Highest sensitivity; absent by default |
 
 The case directory is created with owner-only permissions where the platform supports them. Files are written to safe temporary siblings and atomically renamed only after close/hash. The writer refuses symlink components and an unexpected non-empty output unless an explicit, separately designed overwrite policy is used.
+
+`affected-runs.csv` preserves its original eleven-column prefix and appends the
+closed `finding_context`, `indicator_id`, and `finding_revision_id` columns.
+The context values are
+`run-scoped-finding`, `known-good-rerun-comparison-not-affected-run`,
+`scope-closed-no-match-not-affected-run`,
+`current-reference-only-no-historical-run`, and
+`finding-without-run-identity`. Thus a comparison, current-only reference, or
+scope-closed negative cannot be mistaken for an affected historical attempt,
+and two incident propositions about the same run remain distinct and traceable.
 
 ### Relational table proposal
 
@@ -576,7 +586,8 @@ The graph is generated from normalized relational rows after findings finalize. 
 | `PASSED_SECRET_TO` | Exact input/environment/reusable mapping edge scoped to its one destination |
 | `INHERITED_SECRET` | `secrets: inherit` at one call hop; eligible name set may remain unknown |
 | `TARGETED_ENVIRONMENT` | Historical job declaration or attempt/job metadata identifying the environment |
-| `CROSSED_ENVIRONMENT_GATE` | Gate approval/bypass evidence plus job start; absence of a pending record alone is insufficient |
+| `CROSSED_ENVIRONMENT_GATE` | A directly observed or separately qualified crossed-gate proposition; absence of a pending record alone is insufficient |
+| `ENVIRONMENT_GATE_SATISFIED` | v0.2 derived join of the exact targeted job, job start, and a retained `approved`, `bypassed`, `crossed`, or contemporaneous `not-required` state; one of four closed state-specific derivation rules preserves the outcome in edge identity and wording, and bypass/no-rule is never called approval |
 | `COULD_MINT_OIDC` | Affected lifecycle began and the job's effective permission includes `id-token: write` |
 | `TRUST_POLICY_ACCEPTS` | Reserved for a post-v0.1 provider adapter with content-addressed relying-party policy; never inferred from `id-token: write` |
 | `PRODUCED_ARTIFACT`, `PUBLISHED_PACKAGE`, `CREATED_RELEASE`, `CREATED_DEPLOYMENT` | Direct API/log identity join; otherwise use a separate `OBSERVED_AFTER` correlation rather than one of these direct verbs |

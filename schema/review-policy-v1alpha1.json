@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "review-policy-v1alpha1.json",
+  "title": "CIRewind real incident human review policy v1alpha1",
+  "description": "Hash-bound maintainer eligibility and review-profile policy. This file defines eligibility inputs; declared review roles cannot add maintainers to the eligible pool.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "policyVersion", "officialRepository", "eligibleMaintainers", "profiles"],
+  "properties": {
+    "schemaVersion": { "const": "cirewind.review-policy/v1alpha1" },
+    "policyVersion": { "$ref": "review-common-v1alpha1.json#/$defs/stableID" },
+    "officialRepository": {
+      "description": "Lowercase canonical GitHub owner/repository in which qualifying pull-request reviews and capture workflow runs must exist.",
+      "allOf": [
+        { "$ref": "review-common-v1alpha1.json#/$defs/githubRepository" },
+        { "pattern": "^[a-z0-9_.-]+/[a-z0-9_.-]+$" }
+      ]
+    },
+    "eligibleMaintainers": {
+      "type": "array",
+      "maxItems": 100,
+      "uniqueItems": true,
+      "items": { "$ref": "review-common-v1alpha1.json#/$defs/reviewerIdentity" }
+    },
+    "profiles": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/profile" },
+      "allOf": [
+        {
+          "contains": {
+            "properties": { "profileId": { "const": "standard-v0.2" } },
+            "required": ["profileId"]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "properties": { "profileId": { "const": "trivy-v0.2" } },
+            "required": ["profileId"]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        }
+      ]
+    }
+  },
+  "$defs": {
+    "scopeSet": {
+      "type": "array",
+      "maxItems": 8,
+      "uniqueItems": true,
+      "items": { "$ref": "review-common-v1alpha1.json#/$defs/reviewScope" }
+    },
+    "requiredAnyScopeSet": {
+      "allOf": [
+        { "$ref": "#/$defs/scopeSet" },
+        { "minItems": 2, "maxItems": 2 },
+        { "contains": { "const": "hostile-input-privacy" }, "minContains": 1, "maxContains": 1 },
+        { "contains": { "const": "identity" }, "minContains": 1, "maxContains": 1 }
+      ]
+    },
+    "trivyOutsideScopeSet": {
+      "allOf": [
+        { "$ref": "#/$defs/scopeSet" },
+        { "minItems": 3, "maxItems": 3 },
+        { "contains": { "const": "component-namespace" }, "minContains": 1, "maxContains": 1 },
+        { "contains": { "const": "ioc-extraction" }, "minContains": 1, "maxContains": 1 },
+        { "contains": { "const": "time" }, "minContains": 1, "maxContains": 1 }
+      ]
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profileId",
+        "minimumMaintainers",
+        "minimumOutsideReviewers",
+        "requiredAnyApprovalScopes",
+        "requiredOutsideScopes"
+      ],
+      "properties": {
+        "profileId": { "$ref": "review-common-v1alpha1.json#/$defs/reviewPolicyProfile" },
+        "minimumMaintainers": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 100
+        },
+        "minimumOutsideReviewers": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "requiredAnyApprovalScopes": { "$ref": "#/$defs/requiredAnyScopeSet" },
+        "requiredOutsideScopes": { "$ref": "#/$defs/scopeSet" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "profileId": { "const": "standard-v0.2" } },
+            "required": ["profileId"]
+          },
+          "then": {
+            "properties": {
+              "minimumMaintainers": { "const": 2 },
+              "minimumOutsideReviewers": { "const": 1 },
+              "requiredOutsideScopes": { "maxItems": 0 }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "profileId": { "const": "trivy-v0.2" } },
+            "required": ["profileId"]
+          },
+          "then": {
+            "properties": {
+              "minimumMaintainers": { "const": 2 },
+              "minimumOutsideReviewers": { "const": 2 },
+              "requiredOutsideScopes": { "$ref": "#/$defs/trivyOutsideScopeSet" }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

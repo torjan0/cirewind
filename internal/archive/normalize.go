@@ -13,6 +13,14 @@ import (
 // NormalizeBatch canonicalizes user-visible order, validates the closed
 // snapshot vocabulary, and computes a resumable content-addressed batch ID.
 func NormalizeBatch(input Batch) (Batch, error) {
+	return normalizeBatch(input, false)
+}
+
+func normalizeRetainedBatch(input Batch) (Batch, error) {
+	return normalizeBatch(input, true)
+}
+
+func normalizeBatch(input Batch, allowRetainedLegacyBasis bool) (Batch, error) {
 	batch := input
 	if batch.Collections == nil || batch.Payloads == nil || batch.Evidence == nil || batch.Facts == nil || batch.Capabilities == nil || batch.Checkpoints == nil {
 		return Batch{}, errors.New("archive batch arrays must be explicit")
@@ -106,7 +114,13 @@ func NormalizeBatch(input Batch) (Batch, error) {
 
 	factIDs := make(map[string]struct{}, len(batch.Facts))
 	for index := range batch.Facts {
-		fact, err := NormalizeFact(batch.Facts[index])
+		var fact Fact
+		var err error
+		if allowRetainedLegacyBasis {
+			fact, err = NormalizeRetainedV1Fact(batch.Facts[index])
+		} else {
+			fact, err = NormalizeFact(batch.Facts[index])
+		}
 		if err != nil {
 			return Batch{}, fmt.Errorf("fact %d: %w", index, err)
 		}
@@ -179,17 +193,32 @@ func NormalizeBatch(input Batch) (Batch, error) {
 
 // NormalizeSnapshot validates that a snapshot is self-contained for replay.
 func NormalizeSnapshot(input Snapshot) (Snapshot, error) {
+	return normalizeSnapshot(input, input.retainedLegacyCredentialBasis)
+}
+
+func normalizeRetainedSnapshot(input Snapshot) (Snapshot, error) {
+	return normalizeSnapshot(input, true)
+}
+
+func normalizeSnapshot(input Snapshot, allowRetainedLegacyBasis bool) (Snapshot, error) {
 	if err := input.Metadata.Validate(); err != nil {
 		return Snapshot{}, err
 	}
-	batch, err := NormalizeBatch(Batch{
+	batchInput := Batch{
 		Collections:  input.Collections,
 		Payloads:     input.Payloads,
 		Evidence:     input.Evidence,
 		Facts:        input.Facts,
 		Capabilities: input.Capabilities,
 		Checkpoints:  input.Checkpoints,
-	})
+	}
+	var batch Batch
+	var err error
+	if allowRetainedLegacyBasis {
+		batch, err = normalizeRetainedBatch(batchInput)
+	} else {
+		batch, err = NormalizeBatch(batchInput)
+	}
 	if err != nil {
 		return Snapshot{}, err
 	}
@@ -229,7 +258,7 @@ func NormalizeSnapshot(input Snapshot) (Snapshot, error) {
 		}
 	}
 
-	return Snapshot{
+	result := Snapshot{
 		Metadata:     input.Metadata,
 		Collections:  batch.Collections,
 		Payloads:     batch.Payloads,
@@ -237,7 +266,18 @@ func NormalizeSnapshot(input Snapshot) (Snapshot, error) {
 		Facts:        batch.Facts,
 		Capabilities: batch.Capabilities,
 		Checkpoints:  batch.Checkpoints,
-	}, nil
+	}
+	result.retainedLegacyCredentialBasis = allowRetainedLegacyBasis && hasLegacyCredentialBasis(batch.Facts)
+	return result, nil
+}
+
+func hasLegacyCredentialBasis(facts []Fact) bool {
+	for _, fact := range facts {
+		if fact.Exposure != nil && fact.Exposure.Credential != nil && !fact.Exposure.Credential.Basis.Valid() {
+			return true
+		}
+	}
+	return false
 }
 
 func (m SnapshotMetadata) Validate() error {

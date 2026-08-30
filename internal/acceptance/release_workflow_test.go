@@ -3,6 +3,7 @@ package acceptance_test
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -10,6 +11,7 @@ import (
 	"regexp"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -33,6 +35,7 @@ type actionPin struct {
 type workflowDocument struct {
 	On          map[string]any         `yaml:"on"`
 	Permissions map[string]string      `yaml:"permissions"`
+	Env         map[string]string      `yaml:"env"`
 	Jobs        map[string]workflowJob `yaml:"jobs"`
 }
 
@@ -61,22 +64,59 @@ type workflowMatrixEntry struct {
 }
 
 type workflowStep struct {
-	Name string         `yaml:"name"`
-	ID   string         `yaml:"id"`
-	Uses string         `yaml:"uses"`
-	Run  string         `yaml:"run"`
-	With map[string]any `yaml:"with"`
+	Name  string            `yaml:"name"`
+	ID    string            `yaml:"id"`
+	If    string            `yaml:"if"`
+	Uses  string            `yaml:"uses"`
+	Run   string            `yaml:"run"`
+	Shell string            `yaml:"shell"`
+	Env   map[string]string `yaml:"env"`
+	With  map[string]any    `yaml:"with"`
 }
 
 func decodeWorkflow(t *testing.T, relative string) workflowDocument {
 	t.Helper()
 	data := readRepositoryFile(t, relative)
+	nodeDecoder := yaml.NewDecoder(bytes.NewReader(data))
+	var document yaml.Node
+	if err := nodeDecoder.Decode(&document); err != nil {
+		t.Fatalf("decode %s syntax tree: %v", relative, err)
+	}
+	var extra yaml.Node
+	if err := nodeDecoder.Decode(&extra); err != io.EOF {
+		t.Fatalf("%s must contain exactly one YAML document", relative)
+	}
+	assertNoDuplicateWorkflowKeys(t, &document, relative)
 	decoder := yaml.NewDecoder(bytes.NewReader(data))
 	var workflow workflowDocument
 	if err := decoder.Decode(&workflow); err != nil {
 		t.Fatalf("decode %s: %v", relative, err)
 	}
 	return workflow
+}
+
+func assertNoDuplicateWorkflowKeys(t *testing.T, node *yaml.Node, path string) {
+	t.Helper()
+	switch node.Kind {
+	case yaml.DocumentNode, yaml.SequenceNode:
+		for index, child := range node.Content {
+			assertNoDuplicateWorkflowKeys(t, child, path+"/"+strconv.Itoa(index))
+		}
+	case yaml.MappingNode:
+		seen := make(map[string]struct{}, len(node.Content)/2)
+		for index := 0; index < len(node.Content); index += 2 {
+			key := node.Content[index]
+			if key.Kind != yaml.ScalarNode {
+				t.Fatalf("%s contains a non-scalar workflow mapping key", path)
+			}
+			identity := key.Tag + "\x00" + key.Value
+			if _, duplicate := seen[identity]; duplicate {
+				t.Fatalf("%s contains duplicate YAML key %q at line %d", path, key.Value, key.Line)
+			}
+			seen[identity] = struct{}{}
+			assertNoDuplicateWorkflowKeys(t, node.Content[index+1], path+"/"+key.Value)
+		}
+	}
 }
 
 func TestActionPinsCoverEveryWorkflowAction(t *testing.T) {
@@ -379,6 +419,190 @@ func TestCIUsesExactSixTargetHostedRunnerMatrix(t *testing.T) {
 	}
 	if !reflect.DeepEqual(testJob.Strategy.Matrix.Include, want) {
 		t.Fatalf("CI test matrix = %#v, want exact supported matrix %#v", testJob.Strategy.Matrix.Include, want)
+	}
+}
+
+func TestCIDarwinArm64RunsNativeDemoQualification(t *testing.T) {
+	workflow := decodeWorkflow(t, ".github/workflows/ci.yml")
+	testJob := requiredWorkflowJob(t, workflow, "test")
+	var harnessTest, qualification *workflowStep
+	for index := range testJob.Steps {
+		step := &testJob.Steps[index]
+		switch step.Name {
+		case "Test native demo qualification harness":
+			harnessTest = step
+		case "Qualify native macOS 15 arm64 demo":
+			qualification = step
+		}
+	}
+	if harnessTest == nil {
+		t.Fatal("CI omits the Linux-local demo qualification harness test")
+	}
+	if harnessTest.If != "matrix.name == 'linux-amd64'" || harnessTest.Run != "PYTHONDONTWRITEBYTECODE=1 python3 scripts/qualify_demo_test.py" {
+		t.Fatalf("Linux-local harness test is not narrowly scoped: %+v", *harnessTest)
+	}
+	if qualification == nil {
+		t.Fatal("CI omits native macOS 15 arm64 demo qualification")
+	}
+	if qualification.If != "matrix.name == 'darwin-arm64'" {
+		t.Fatalf("native demo qualification condition = %q", qualification.If)
+	}
+	if strings.Contains(qualification.Run, `--binary "$GITHUB_WORKSPACE`) {
+		t.Fatal("native demo qualification uses a binary inside the checkout")
+	}
+	for _, required := range []string{
+		"python3 scripts/qualify_demo.py",
+		`--source-root "$GITHUB_WORKSPACE"`,
+		`--source-commit "$GITHUB_SHA"`,
+		`--work-root "$RUNNER_TEMP/cirewind-demo-qualification"`,
+		"--require-macos-major 15",
+		"--require-machine arm64",
+		"--require-homebrew",
+	} {
+		if !strings.Contains(qualification.Run, required) {
+			t.Errorf("native demo qualification lacks %q", required)
+		}
+	}
+}
+
+func TestPackReviewSnapshotWorkflowKeepsAcquisitionNarrowAndTraceable(t *testing.T) {
+	const path = ".github/workflows/pack-review-snapshot.yml"
+	workflow := decodeWorkflow(t, path)
+	if got := sortedKeys(workflow.On); !reflect.DeepEqual(got, []string{"workflow_dispatch"}) {
+		t.Fatalf("snapshot workflow trigger = %v, want workflow_dispatch only", got)
+	}
+	if !reflect.DeepEqual(workflow.Permissions, map[string]string{"contents": "read", "pull-requests": "read"}) {
+		t.Fatalf("snapshot workflow permissions are not the closed read-only set: %v", workflow.Permissions)
+	}
+	if workflow.Env["GOFLAGS"] != "-mod=readonly" {
+		t.Fatalf("snapshot workflow must prohibit module-file mutation: %v", workflow.Env)
+	}
+	job := requiredWorkflowJob(t, workflow, "capture")
+	if !strings.Contains(job.If, "github.event.repository.default_branch") {
+		t.Fatalf("snapshot workflow is not gated to the selected default branch: %q", job.If)
+	}
+	buildIndex, captureIndex, normalizeIndex, uploadIndex := -1, -1, -1, -1
+	for index, step := range job.Steps {
+		switch step.Name {
+		case "Check out governance tooling":
+			if step.With["persist-credentials"] != false || step.With["ref"] != "${{ github.sha }}" {
+				t.Fatalf("snapshot checkout is not exact and credential-free: %v", step.With)
+			}
+		case "Build tokenless normalizer before acquisition":
+			buildIndex = index
+			if !strings.Contains(step.Run, "go build -trimpath") {
+				t.Fatalf("normalizer build step is missing the fixed build: %q", step.Run)
+			}
+		case "Verify pull-request head and capture projected review metadata":
+			captureIndex = index
+			if step.Env["GH_TOKEN"] != "${{ github.token }}" || strings.Contains(step.Run, "go run") || strings.Contains(step.Run, "--slurp") || strings.Count(step.Run, "reviews?per_page=100") != 1 || strings.Count(step.Run, "capture_reviews ") != 2 || !strings.Contains(step.Run, "body: .body") || !strings.Contains(step.Run, "head -c 8388609") || !strings.Contains(step.Run, "cmp -s") || strings.Count(step.Run, ".head.sha") != 2 {
+				t.Fatalf("tokenful acquisition step is not the closed double-capture contract: env=%v run=%q", step.Env, step.Run)
+			}
+		case "Normalize without GitHub credentials":
+			normalizeIndex = index
+			if step.Env["GH_TOKEN"] != "" || !strings.Contains(step.Run, "jq -cs 'add'") || !strings.Contains(step.Run, `"$RUNNER_TEMP/cirewind-packreview" normalize-platform-approvals`) || !strings.Contains(step.Run, `--workflow-source-commit "$GITHUB_SHA"`) {
+				t.Fatalf("normalization is not tokenless and source-bound: env=%v run=%q", step.Env, step.Run)
+			}
+		case "Transfer normalized snapshot by immutable artifact ID":
+			uploadIndex = index
+		}
+	}
+	if !(buildIndex >= 0 && buildIndex < captureIndex && captureIndex < normalizeIndex && normalizeIndex < uploadIndex) {
+		t.Fatalf("snapshot workflow sequence build=%d capture=%d normalize=%d upload=%d", buildIndex, captureIndex, normalizeIndex, uploadIndex)
+	}
+}
+
+func TestCIPackReviewContractBindsExternallySuppliedCandidateHead(t *testing.T) {
+	workflow := decodeWorkflow(t, ".github/workflows/ci.yml")
+	job := requiredWorkflowJob(t, workflow, "pack-review-contract")
+	wantHead := "${{ github.event.pull_request.head.sha || github.sha }}"
+	var checkout, contract *workflowStep
+	for index := range job.Steps {
+		step := &job.Steps[index]
+		switch step.Name {
+		case "Check out repository":
+			checkout = step
+		case "Validate synthetic review policy and governance contracts":
+			contract = step
+		}
+	}
+	if checkout == nil || checkout.With["ref"] != wantHead || checkout.With["persist-credentials"] != false {
+		t.Fatalf("pack-review checkout is not exact and credential-free: %+v", checkout)
+	}
+	if contract == nil || contract.Env["PACK_REVIEW_HEAD"] != wantHead || contract.Run != "make pack-review-check" {
+		t.Fatalf("pack-review validation does not bind the checked-out external C: %+v", contract)
+	}
+}
+
+func TestCandidatePolicyUsesTrustedBaseWorkflowAndInertExactHead(t *testing.T) {
+	workflow := decodeWorkflow(t, ".github/workflows/pack-review-candidate-policy.yml")
+	if got := sortedKeys(workflow.On); !reflect.DeepEqual(got, []string{"pull_request_target"}) {
+		t.Fatalf("candidate policy trigger = %v, want pull_request_target only", got)
+	}
+	if !reflect.DeepEqual(workflow.Permissions, map[string]string{"contents": "read"}) {
+		t.Fatalf("candidate policy permissions are not read-only: %v", workflow.Permissions)
+	}
+	job := requiredWorkflowJob(t, workflow, "candidate-change-contract")
+	if job.RunsOn != "ubuntu-24.04" || job.Environment != "" || len(job.Steps) != 3 {
+		t.Fatalf("candidate policy job is outside its fixed ephemeral three-step shape: %+v", job)
+	}
+	for _, required := range []string{
+		"github.event.pull_request.base.repo.full_name == github.repository",
+		"github.event.pull_request.base.ref == github.event.repository.default_branch",
+	} {
+		if !strings.Contains(job.If, required) {
+			t.Fatalf("candidate policy is not restricted to the trusted default branch: %q", job.If)
+		}
+	}
+
+	var trustedCheckout, checkout, guard *workflowStep
+	for index := range job.Steps {
+		step := &job.Steps[index]
+		switch step.Name {
+		case "Check out exact trusted base policy":
+			trustedCheckout = step
+		case "Check out pull-request head as inert Git data":
+			checkout = step
+		case "Enforce trusted candidate change-set policy":
+			guard = step
+		}
+	}
+	if trustedCheckout == nil || trustedCheckout.With["ref"] != "${{ github.event.pull_request.base.sha }}" ||
+		trustedCheckout.With["repository"] != "${{ github.repository }}" || trustedCheckout.With["fetch-depth"] != 1 ||
+		trustedCheckout.With["path"] != "trusted-policy" || trustedCheckout.With["persist-credentials"] != false ||
+		trustedCheckout.With["allow-unsafe-pr-checkout"] != nil {
+		t.Fatalf("candidate guard policy is not loaded from the exact trusted base: %+v", trustedCheckout)
+	}
+	if checkout == nil || checkout.With["ref"] != "refs/pull/${{ github.event.pull_request.number }}/head" ||
+		checkout.With["repository"] != "${{ github.repository }}" || checkout.With["fetch-depth"] != 0 ||
+		checkout.With["path"] != "pull-request" || checkout.With["persist-credentials"] != false ||
+		checkout.With["allow-unsafe-pr-checkout"] != true {
+		t.Fatalf("candidate guard checkout is not exact, complete, and credential-free: %+v", checkout)
+	}
+	if guard == nil || guard.Env["PACK_REVIEW_BASE"] != "${{ github.event.pull_request.base.sha }}" ||
+		guard.Env["PACK_REVIEW_HEAD"] != "${{ github.event.pull_request.head.sha }}" ||
+		guard.Env["PACK_REVIEW_NUMBER"] != "${{ github.event.pull_request.number }}" || guard.Shell != "bash" {
+		t.Fatalf("candidate guard is not bound to exact pull-request endpoints: %+v", guard)
+	}
+	if strings.Count(guard.Run, "git -C pull-request rev-parse --verify") != 2 || strings.Count(guard.Run, "trusted-policy/scripts/pack-review-candidate-change-guard.sh") != 1 {
+		t.Fatalf("candidate policy must perform exactly two inert Git identity reads and one trusted guard invocation: %q", guard.Run)
+	}
+	for _, required := range []string{
+		"actual_head=$(git -C pull-request rev-parse --verify 'HEAD^{commit}')",
+		`actual_base=$(git -C pull-request rev-parse --verify "${PACK_REVIEW_BASE}^{commit}")`,
+		"trusted-policy/scripts/pack-review-candidate-change-guard.sh",
+		"--repository-root pull-request",
+		`--base "$PACK_REVIEW_BASE"`,
+		`--head "$PACK_REVIEW_HEAD"`,
+	} {
+		if !strings.Contains(guard.Run, required) {
+			t.Errorf("candidate guard invocation omits %q", required)
+		}
+	}
+	for _, prohibited := range []string{"pull-request/scripts/", "go run", "go test", "make ", "source pull-request"} {
+		if strings.Contains(guard.Run, prohibited) {
+			t.Errorf("trusted pull_request_target job executes head-controlled content %q", prohibited)
+		}
 	}
 }
 

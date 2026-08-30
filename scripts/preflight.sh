@@ -49,11 +49,15 @@ if [ "$actual_toolchain" != "$GOTOOLCHAIN" ]; then
 fi
 gofmt_bin=$(go env GOROOT)/bin/gofmt
 
-unformatted=$("$gofmt_bin" -l cmd internal third_party)
+unformatted=$("$gofmt_bin" -l cmd internal third_party tools)
 if [ -n "$unformatted" ]; then
   printf '%s\n' "gofmt is required for:" "$unformatted" >&2
   exit 1
 fi
+bash -n scripts/pack-review-git-guard.sh
+sh scripts/test-pack-review-git-guard.sh
+bash -n scripts/pack-review-candidate-change-guard.sh
+sh scripts/test-pack-review-candidate-change-guard.sh
 
 git diff --check
 git diff --cached --check
@@ -70,7 +74,9 @@ if [ "${CIREWIND_PREFLIGHT_REQUIRE_STAGED:-0}" = 1 ]; then
 fi
 go mod tidy -diff
 go mod verify
+PYTHONDONTWRITEBYTECODE=1 python3 scripts/qualify_demo_test.py
 go test ./... -count=1
+go run ./tools/packreview validate-governance --repository-root .
 go vet ./...
 go test -race ./... -count=1
 make vuln

@@ -38,9 +38,11 @@ export GOFLAGS=-mod=readonly
 export CGO_ENABLED=0
 
 cd "$root"
+CIREWIND_BROWSER_INTEGRATION=1 PYTHONDONTWRITEBYTECODE=1 \
+  python3 "$root/scripts/browser_audit_test.py"
 go build -trimpath -o "$work/cirewind" "$root/cmd/cirewind"
 "$root/scripts/demo.sh" "$work/case" "$work/cirewind"
 TMPDIR="$work_root" python3 "$root/scripts/browser_audit.py" \
   "$work/case/report.html" --work-root "$work_root"
 
-printf '%s\n' "offline Chromium report audit passed"
+printf '%s\n' "offline sandboxed Chromium report audit passed"

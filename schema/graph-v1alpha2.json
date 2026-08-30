@@ -1,0 +1,262 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "graph-v1alpha2.json",
+  "title": "CIRewind temporal evidence graph v1alpha2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "caseKind", "nodes", "edges", "findingIndex"],
+  "properties": {
+    "schemaVersion": { "const": "cirewind.graph/v1alpha2" },
+    "caseKind": { "enum": ["synthetic", "collected", "mixed", "unknown"] },
+    "nodes": { "type": "array", "maxItems": 100000, "items": { "$ref": "#/$defs/node" } },
+    "edges": { "type": "array", "maxItems": 250000, "items": { "$ref": "#/$defs/edge" } },
+    "findingIndex": { "type": "array", "maxItems": 100000, "items": { "$ref": "#/$defs/findingIndex" } },
+    "projectionNotices": { "type": "array", "maxItems": 100000, "items": { "$ref": "#/$defs/notice" } }
+  },
+  "$defs": {
+    "evidenceId": { "type": "string", "pattern": "^ev1:[0-9a-f]{64}$" },
+    "findingRevisionId": { "type": "string", "pattern": "^frev1:[0-9a-f]{64}$" },
+    "evidenceIds": {
+      "type": "array",
+      "maxItems": 10000,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/evidenceId" }
+    },
+    "findingRevisionIds": {
+      "type": "array",
+      "maxItems": 10000,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/findingRevisionId" }
+    },
+    "nodeType": {
+      "enum": [
+        "Repository", "WorkflowDefinition", "ReusableWorkflowDefinition",
+        "WorkflowRun", "RunAttempt", "Job", "Step", "ActionRepository",
+        "ActionRef", "ActionCommit", "ImmutableActionPackage",
+        "ActionDefinition", "Runner", "RunnerGroup", "Environment",
+        "TokenCapability", "SecretMetadata", "OIDCProvider", "Artifact",
+        "Package", "Release", "Deployment", "RepositoryResource",
+        "PullRequestChange", "EvidenceObject", "Finding"
+      ]
+    },
+    "edgeType": {
+      "enum": [
+        "RUN_IN_REPOSITORY", "ATTEMPT_OF_RUN", "JOB_EXECUTED_IN_ATTEMPT",
+        "STEP_IN_JOB", "RUN_INSTANTIATED_WORKFLOW", "WORKFLOW_DECLARED_ACTION",
+        "WORKFLOW_CALLED_WORKFLOW", "ACTION_CONTAINS_ACTION",
+        "LOCAL_ACTION_RESOLVED_TO", "REF_RESOLVED_TO",
+        "PACKAGE_SOURCE_COMMIT", "JOB_PREPARED_ACTION",
+        "STEP_DOWNLOADED_ACTION", "STEP_EXECUTED_ACTION",
+        "EXECUTED_ON_RUNNER", "RUNNER_IN_GROUP", "HAD_TOKEN_PERMISSION",
+        "REFERENCED_SECRET", "PASSED_SECRET_TO", "INHERITED_SECRET",
+        "TARGETED_ENVIRONMENT", "CROSSED_ENVIRONMENT_GATE",
+        "ENVIRONMENT_GATE_SATISFIED",
+        "ENVIRONMENT_SECRET_ELIGIBLE", "COULD_MINT_OIDC",
+        "PRODUCED_ARTIFACT", "PUBLISHED_PACKAGE", "CREATED_RELEASE",
+        "CREATED_DEPLOYMENT", "REPOSITORY_WRITE", "PULL_REQUEST_CHANGE",
+        "OBSERVED_AFTER", "FINDING_ABOUT", "SUPPORTED_BY_EVIDENCE",
+        "CONTRADICTS"
+      ]
+    },
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "label"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 2048 },
+        "type": { "$ref": "#/$defs/nodeType" },
+        "label": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "evidenceIds": { "$ref": "#/$defs/evidenceIds" },
+        "focusFindingIds": { "$ref": "#/$defs/findingRevisionIds" }
+      }
+    },
+    "edge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "source", "target", "evidenceIds", "evidenceClass", "focusFindingIds"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^gedge2:[0-9a-f]{64}$" },
+        "type": { "$ref": "#/$defs/edgeType" },
+        "source": { "type": "string", "minLength": 1, "maxLength": 2048 },
+        "target": { "type": "string", "minLength": 1, "maxLength": 2048 },
+        "evidenceIds": { "allOf": [{ "$ref": "#/$defs/evidenceIds" }, { "minItems": 1 }] },
+        "derivationRule": { "type": "string", "minLength": 1, "maxLength": 256, "description": "Required inference rule, or a closed definition-basis marker on an exact dependency relationship." },
+        "eventTime": { "type": "string", "maxLength": 4096 },
+        "evidenceClass": { "enum": ["EXACT_OBSERVATION", "INFERENCE", "TEMPORAL_CORRELATION", "CONTRADICTION"] },
+        "focusFindingIds": { "allOf": [{ "$ref": "#/$defs/findingRevisionIds" }, { "minItems": 1 }] }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "enum": [
+                  "RUN_IN_REPOSITORY", "ATTEMPT_OF_RUN", "JOB_EXECUTED_IN_ATTEMPT",
+                  "RUN_INSTANTIATED_WORKFLOW", "WORKFLOW_CALLED_WORKFLOW",
+                  "ACTION_CONTAINS_ACTION", "LOCAL_ACTION_RESOLVED_TO",
+                  "REF_RESOLVED_TO", "PACKAGE_SOURCE_COMMIT",
+                  "JOB_PREPARED_ACTION", "STEP_DOWNLOADED_ACTION",
+                  "STEP_EXECUTED_ACTION", "EXECUTED_ON_RUNNER", "RUNNER_IN_GROUP",
+                  "PRODUCED_ARTIFACT", "PUBLISHED_PACKAGE",
+                  "CREATED_RELEASE", "CREATED_DEPLOYMENT", "REPOSITORY_WRITE",
+                  "PULL_REQUEST_CHANGE", "SUPPORTED_BY_EVIDENCE"
+                ]
+              }
+            },
+            "required": ["type"]
+          },
+          "then": { "properties": { "evidenceClass": { "const": "EXACT_OBSERVATION" } } }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "enum": ["ENVIRONMENT_SECRET_ELIGIBLE", "COULD_MINT_OIDC", "FINDING_ABOUT"]
+              }
+            },
+            "required": ["type"]
+          },
+          "then": { "properties": { "evidenceClass": { "const": "INFERENCE" } } }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "enum": [
+                  "STEP_IN_JOB", "WORKFLOW_DECLARED_ACTION", "HAD_TOKEN_PERMISSION",
+                  "REFERENCED_SECRET", "PASSED_SECRET_TO", "INHERITED_SECRET",
+                  "TARGETED_ENVIRONMENT", "CROSSED_ENVIRONMENT_GATE"
+                ]
+              }
+            },
+            "required": ["type"]
+          },
+          "then": { "properties": { "evidenceClass": { "enum": ["EXACT_OBSERVATION", "INFERENCE"] } } }
+        },
+        {
+          "if": { "properties": { "evidenceClass": { "const": "INFERENCE" } }, "required": ["evidenceClass"] },
+          "then": { "required": ["derivationRule"] }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": { "const": "ENVIRONMENT_GATE_SATISFIED" }
+            },
+            "required": ["type"]
+          },
+          "then": {
+            "required": ["derivationRule"],
+            "properties": {
+              "evidenceClass": { "const": "INFERENCE" },
+              "derivationRule": {
+                "enum": [
+                  "environment-gate-satisfied/approved/v1",
+                  "environment-gate-satisfied/bypassed/v1",
+                  "environment-gate-satisfied/crossed/v1",
+                  "environment-gate-satisfied/not-required/v1"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": { "const": "ENVIRONMENT_GATE_SATISFIED" },
+              "derivationRule": { "const": "environment-gate-satisfied/not-required/v1" }
+            },
+            "required": ["type", "derivationRule"]
+          },
+          "then": {
+            "required": ["eventTime"],
+            "properties": {
+              "eventTime": {
+                "minLength": 1,
+                "pattern": "^\\S(?:.*\\S)?$",
+                "not": { "pattern": "^[uU][nN][kK][nN][oO][wW][nN]$" }
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "ENVIRONMENT_SECRET_ELIGIBLE" } }, "required": ["type"] },
+          "then": {
+            "required": ["derivationRule"],
+            "properties": { "derivationRule": { "const": "environment-secret-eligibility/v1" } }
+          }
+        },
+        {
+          "if": { "properties": { "evidenceClass": { "const": "TEMPORAL_CORRELATION" } }, "required": ["evidenceClass"] },
+          "then": { "properties": { "type": { "const": "OBSERVED_AFTER" } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "OBSERVED_AFTER" } }, "required": ["type"] },
+          "then": { "properties": { "evidenceClass": { "const": "TEMPORAL_CORRELATION" } } }
+        },
+        {
+          "if": { "properties": { "evidenceClass": { "const": "CONTRADICTION" } }, "required": ["evidenceClass"] },
+          "then": { "properties": { "type": { "const": "CONTRADICTS" } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "CONTRADICTS" } }, "required": ["type"] },
+          "then": { "properties": { "evidenceClass": { "const": "CONTRADICTION" } } }
+        }
+      ]
+    },
+    "findingIndex": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["findingRevisionId", "state", "provenanceLevel", "repository", "workflowPath", "indicatorId"],
+      "properties": {
+        "findingRevisionId": { "$ref": "#/$defs/findingRevisionId" },
+        "state": { "enum": ["CONFIRMED_EXECUTED", "CONFIRMED_DOWNLOADED", "CONFIRMED_CALLED_WORKFLOW", "DECLARED_AT_RUN_SHA", "RUN_IN_WINDOW_MUTABLE_REF", "POTENTIAL_TRANSITIVE", "CURRENT_REFERENCE_ONLY", "NO_MATCH_CONFIRMED", "UNKNOWN_EVIDENCE_GAP", "CONTRADICTORY_EVIDENCE"] },
+        "provenanceLevel": { "enum": ["L4_CERTAIN", "L3_STRONG", "L2_PROBABLE", "L1_POSSIBLE", "L0_UNKNOWN"] },
+        "repository": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "workflowPath": { "type": "string", "maxLength": 4096 },
+        "runId": { "type": "integer", "minimum": 1 },
+        "runAttempt": { "type": "integer", "minimum": 1 },
+        "jobId": { "type": "integer", "minimum": 1 },
+        "stepIdentity": { "type": "string", "maxLength": 4096 },
+        "indicatorId": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "exactIdentityKind": { "enum": ["ACTION_COMMIT_SHA", "IMMUTABLE_PACKAGE_DIGEST", "CALLED_WORKFLOW_SHA"] },
+        "exactIdentity": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "exactKnownGood": { "type": "boolean" },
+        "coverageClosed": { "type": "boolean" },
+        "evidenceGapReason": { "type": "string", "minLength": 1, "maxLength": 4096 }
+      },
+      "dependentRequired": {
+        "runAttempt": ["runId"],
+        "jobId": ["runAttempt"],
+        "stepIdentity": ["jobId"],
+        "exactIdentityKind": ["exactIdentity"],
+        "exactIdentity": ["exactIdentityKind"]
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "state": { "const": "UNKNOWN_EVIDENCE_GAP" } }, "required": ["state"] },
+          "then": { "required": ["evidenceGapReason"] }
+        },
+        {
+          "if": { "properties": { "exactKnownGood": { "const": true } }, "required": ["exactKnownGood"] },
+          "then": { "required": ["exactIdentityKind", "exactIdentity"] }
+        }
+      ]
+    },
+    "notice": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "findingRevisionId", "relationship", "evidenceIds"],
+      "properties": {
+        "code": { "const": "UNCLASSIFIABLE_LEGACY_BASIS" },
+        "findingRevisionId": { "$ref": "#/$defs/findingRevisionId" },
+        "relationship": {
+          "enum": [
+            "HAD_TOKEN_PERMISSION", "REFERENCED_SECRET", "PASSED_SECRET_TO",
+            "INHERITED_SECRET", "COULD_MINT_OIDC"
+          ]
+        },
+        "evidenceIds": { "allOf": [{ "$ref": "#/$defs/evidenceIds" }, { "minItems": 1 }] }
+      }
+    }
+  }
+}

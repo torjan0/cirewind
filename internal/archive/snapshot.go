@@ -54,7 +54,7 @@ func (a *Archive) Snapshot(ctx context.Context) (Snapshot, error) {
 	if snapshot.Checkpoints, err = readCheckpoints(ctx, a.store.DB()); err != nil {
 		return Snapshot{}, err
 	}
-	return NormalizeSnapshot(snapshot)
+	return normalizeRetainedSnapshot(snapshot)
 }
 
 func validatePersistedSnapshotBudgets(ctx context.Context, database *sql.DB) error {
@@ -144,7 +144,7 @@ func DecodeSnapshot(reader io.Reader) (Snapshot, error) {
 		}
 		return Snapshot{}, fmt.Errorf("decode archive snapshot suffix: %w", err)
 	}
-	return NormalizeSnapshot(snapshot)
+	return normalizeRetainedSnapshot(snapshot)
 }
 
 // Import creates an archive from a self-contained snapshot without network
@@ -164,10 +164,15 @@ func Import(ctx context.Context, path string, input Snapshot) (*Archive, error) 
 	if len(snapshot.Collections)+len(snapshot.Payloads)+len(snapshot.Evidence)+len(snapshot.Facts)+len(snapshot.Capabilities)+len(snapshot.Checkpoints) == 0 {
 		return archive, nil
 	}
-	err = archive.Append(ctx, Batch{
+	batch := Batch{
 		Collections: snapshot.Collections, Payloads: snapshot.Payloads, Evidence: snapshot.Evidence,
 		Facts: snapshot.Facts, Capabilities: snapshot.Capabilities, Checkpoints: snapshot.Checkpoints,
-	})
+	}
+	if snapshot.retainedLegacyCredentialBasis {
+		err = archive.appendRetained(ctx, batch)
+	} else {
+		err = archive.Append(ctx, batch)
+	}
 	if err != nil {
 		_ = archive.Close()
 		return nil, err

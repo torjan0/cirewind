@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "review-promotion-v1alpha1.json",
+  "title": "CIRewind deterministic real incident promotion record v1alpha1",
+  "description": "Non-self-referential promotion metadata created only after exact candidate and approval checks. It deliberately contains neither promotion commit P nor a hash of the review-record manifest that includes it.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "incidentId",
+    "packVersion",
+    "status",
+    "candidateCommit",
+    "candidateManifestSha256",
+    "originalPackSha256",
+    "canonicalPackSha256",
+    "reviewedPath",
+    "approvalIds",
+    "platformSnapshotSha256",
+    "reviewPolicyProfile",
+    "reviewPolicySha256",
+    "promotedAt"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "cirewind.review-promotion/v1alpha1" },
+    "incidentId": { "$ref": "review-common-v1alpha1.json#/$defs/pathID" },
+    "packVersion": { "$ref": "review-common-v1alpha1.json#/$defs/semver" },
+    "status": { "const": "reviewed" },
+    "candidateCommit": { "$ref": "review-common-v1alpha1.json#/$defs/gitCommit" },
+    "candidateManifestSha256": { "$ref": "review-common-v1alpha1.json#/$defs/sha256" },
+    "originalPackSha256": { "$ref": "review-common-v1alpha1.json#/$defs/sha256" },
+    "canonicalPackSha256": { "$ref": "review-common-v1alpha1.json#/$defs/sha256" },
+    "reviewedPath": { "$ref": "review-common-v1alpha1.json#/$defs/reviewedPackPath" },
+    "approvalIds": {
+      "allOf": [
+        { "$ref": "review-common-v1alpha1.json#/$defs/nonEmptySafeIDSet" },
+        { "minItems": 3, "maxItems": 100 }
+      ]
+    },
+    "platformSnapshotSha256": { "$ref": "review-common-v1alpha1.json#/$defs/sha256" },
+    "reviewPolicyProfile": { "$ref": "review-common-v1alpha1.json#/$defs/reviewPolicyProfile" },
+    "reviewPolicySha256": { "$ref": "review-common-v1alpha1.json#/$defs/sha256" },
+    "promotedAt": { "$ref": "review-common-v1alpha1.json#/$defs/utcTimestamp" }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "reviewPolicyProfile": { "const": "trivy-v0.2" } },
+        "required": ["reviewPolicyProfile"]
+      },
+      "then": { "properties": { "approvalIds": { "minItems": 4 } } }
+    }
+  ]
+}

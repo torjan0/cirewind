@@ -94,15 +94,11 @@ func PackageTarget(options PackageOptions) (ArtifactDescriptor, error) {
 	}
 	files := []ArchiveFile{
 		{Name: options.Target.BinaryName(), Data: binary, Mode: 0o755},
-		{Name: "README.md", Mode: 0o644},
-		{Name: "LICENSE", Mode: 0o644},
-		{Name: "SECURITY.md", Mode: 0o644},
-		{Name: "THIRD_PARTY_NOTICES.md", Mode: 0o644},
 		{Name: "build-metadata.json", Data: append(buildJSON, '\n'), Mode: 0o644},
-		{Name: "incidents/synthetic/mutable-tag.yaml", Mode: 0o644},
 		{Name: "licenses/index.json", Data: licenses.Index, Mode: 0o644},
 		{Name: "sbom.spdx.json", Data: sbom, Mode: 0o644},
 	}
+	files = append(files, repositoryReleaseFiles()...)
 	for i := range files {
 		if files[i].Data != nil {
 			continue
@@ -137,6 +133,19 @@ func PackageTarget(options PackageOptions) (ArtifactDescriptor, error) {
 		SBOM:          FileRecord{Name: sbomName, SHA256: digestHex(sbom), Bytes: int64(len(sbom))},
 		Build:         options.Build,
 	}, nil
+}
+
+// repositoryReleaseFiles is the closed checked-in distribution allowlist.
+// Candidate packs and review packets are deliberately absent; a reviewed-pack
+// release contract will be added only after the independent-review gate exists.
+func repositoryReleaseFiles() []ArchiveFile {
+	return []ArchiveFile{
+		{Name: "README.md", Mode: 0o644},
+		{Name: "LICENSE", Mode: 0o644},
+		{Name: "SECURITY.md", Mode: 0o644},
+		{Name: "THIRD_PARTY_NOTICES.md", Mode: 0o644},
+		{Name: "incidents/synthetic/mutable-tag.yaml", Mode: 0o644},
+	}
 }
 
 func writeNewRegular(path string, contents []byte, mode os.FileMode) error {

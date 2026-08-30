@@ -47,18 +47,28 @@ export GOTOOLCHAIN="go$go_version"
 export CGO_ENABLED=0
 
 binary="$work/cirewind"
+packreview_binary="$work/packreview"
 archive="$work/archive.db"
 case_dir="$work/case"
+demo_dir="$work/demo"
 pack="$root/incidents/synthetic/mutable-tag.yaml"
 
 cd "$root"
 go build -trimpath -o "$binary" ./cmd/cirewind
+go build -trimpath -o "$packreview_binary" ./tools/packreview
 
 audit_command() {
-  label=$1
-  shift
-  trace="$work/$label.trace"
-  strace -f -qq -e trace=network,execve,execveat -o "$trace" "$binary" "$@"
+	label=$1
+	shift
+	audit_binary "$label" "$binary" "$@"
+}
+
+audit_binary() {
+	label=$1
+	program=$2
+	shift 2
+	trace="$work/$label.trace"
+	strace -f -qq -e trace=network,execve,execveat -o "$trace" "$program" "$@"
 
   exec_count=$(grep -Ec 'execve(at)?\(' "$trace" || true)
   if [ "$exec_count" -ne 1 ]; then
@@ -80,5 +90,7 @@ audit_command replay replay \
   --out "$case_dir" \
   --fixed-collection-time 2026-08-20T00:00:00Z
 audit_command verify verify "$case_dir"
+audit_command demo demo --out "$demo_dir"
+audit_binary pack-review-governance "$packreview_binary" validate-governance --repository-root "$root"
 
 printf '%s\n' "offline syscall safety audit passed"

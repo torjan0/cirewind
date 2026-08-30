@@ -70,7 +70,7 @@
       "executionKeys": ["910005:1:920005", "910005:2:920105"],
       "expectedFindings": [
         {"attempt": 1, "component": "cirewind-fixtures/harmless", "state": "CONFIRMED_EXECUTED", "provenance": "L4_CERTAIN", "sourceSHA": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
-        {"attempt": 2, "component": "cirewind-fixtures/harmless", "state": "NO_MATCH_CONFIRMED", "provenance": "L4_CERTAIN", "sourceSHA": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
+        {"attempt": 2, "jobID": 920105, "component": "cirewind-fixtures/harmless", "state": "NO_MATCH_CONFIRMED", "provenance": "L4_CERTAIN", "sourceSHA": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
       ],
       "attemptsMustRemainSeparate": true
     },
@@ -88,7 +88,7 @@
       "mutableCalledWorkflowTagAfterAttemptOne": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
       "expectedFindings": [
         {"attempt": 1, "component": "cirewind-fixtures/harmless", "state": "CONFIRMED_EXECUTED", "provenance": "L4_CERTAIN"},
-        {"attempt": 2, "component": "cirewind-fixtures/harmless", "state": "NO_MATCH_CONFIRMED", "provenance": "L4_CERTAIN"},
+        {"attempt": 2, "jobID": 920106, "component": "cirewind-fixtures/harmless", "state": "NO_MATCH_CONFIRMED", "provenance": "L4_CERTAIN"},
         {"attempt": 1, "component": "cirewind-fixtures/workflows/.github/workflows/reusable.yml", "state": "CONFIRMED_CALLED_WORKFLOW", "provenance": "L4_CERTAIN"},
         {"attempt": 2, "component": "cirewind-fixtures/workflows/.github/workflows/reusable.yml", "state": "CONFIRMED_CALLED_WORKFLOW", "provenance": "L4_CERTAIN"}
       ],
@@ -211,7 +211,7 @@
       "declaredSHA": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "runtimeSHA": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "expectedFindings": [
-        {"component": "cirewind-fixtures/harmless", "state": "CONTRADICTORY_EVIDENCE", "provenance": "L4_CERTAIN"}
+        {"attempt": 1, "jobID": 920017, "component": "cirewind-fixtures/harmless", "state": "CONTRADICTORY_EVIDENCE", "provenance": "L4_CERTAIN"}
       ],
       "contradictionMustPreserveBothValues": true
     },

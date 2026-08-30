@@ -304,6 +304,16 @@ func boundedText(value string, max int, emptyOK bool) error {
 	return nil
 }
 
+// boundedRetainedText accepts hostile-but-valid text for a machine-readable
+// retained field. Every terminal, HTML, and SVG sink must still apply its own
+// presentation sanitizer before display.
+func boundedRetainedText(value string, max int, emptyOK bool) error {
+	if (!emptyOK && value == "") || len(value) > max || !utf8.ValidString(value) {
+		return errors.New("text is empty, invalid UTF-8, or exceeds its limit")
+	}
+	return nil
+}
+
 func sortedUnique(values []string) []string {
 	result := append([]string(nil), values...)
 	sort.Strings(result)
