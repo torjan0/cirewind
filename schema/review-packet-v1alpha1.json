@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "review-packet-v1alpha1.json",
+  "title": "CIRewind immutable real incident review packet v1alpha1",
+  "description": "Author-side metadata for immutable candidate content. This document deliberately contains no candidate commit, approval, promotion path, review status, or self-hash and cannot declare itself reviewed.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "incidentId",
+    "packVersion",
+    "reviewUnitPackPath",
+    "originalPackSha256",
+    "canonicalPackSha256",
+    "packSchemaVersion",
+    "validatorVersion",
+    "validatorPolicySha256",
+    "claimsSha256",
+    "sourcesSha256",
+    "conflictsSha256",
+    "expectedFindingsSha256",
+    "fixtureManifestSha256",
+    "conflictIds",
+    "reviewPolicyProfile",
+    "reviewPolicySha256",
+    "preparation"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "cirewind.review-packet/v1alpha1" },
+    "incidentId": { "$ref": "review-common-v1alpha1.json#/$defs/pathID" },
+    "packVersion": { "$ref": "review-common-v1alpha1.json#/$defs/semver" },
+    "reviewUnitPackPath": { "const": "pack.yaml" },
+    "originalPackSha256": { "$ref": "review-common-v1alpha1.json#/$defs/sha256" },
+    "canonicalPackSha256": { "$ref": "review-common-v1alpha1.json#/$defs/sha256" },
+    "packSchemaVersion": { "const": "cirewind.dev/v1alpha1" },
+    "validatorVersion": {
+      "allOf": [
+        { "$ref": "review-common-v1alpha1.json#/$defs/nonEmptySingleLineSafeText" },
+        { "maxLength": 200 }
+      ]
+    },
+    "validatorPolicySha256": { "$ref": "review-common-v1alpha1.json#/$defs/sha256" },
+    "claimsSha256": { "$ref": "review-common-v1alpha1.json#/$defs/sha256" },
+    "sourcesSha256": { "$ref": "review-common-v1alpha1.json#/$defs/sha256" },
+    "conflictsSha256": { "$ref": "review-common-v1alpha1.json#/$defs/sha256" },
+    "expectedFindingsSha256": { "$ref": "review-common-v1alpha1.json#/$defs/sha256" },
+    "fixtureManifestSha256": { "$ref": "review-common-v1alpha1.json#/$defs/sha256" },
+    "conflictIds": { "$ref": "review-common-v1alpha1.json#/$defs/safeIDSet" },
+    "reviewPolicyProfile": { "$ref": "review-common-v1alpha1.json#/$defs/reviewPolicyProfile" },
+    "reviewPolicySha256": { "$ref": "review-common-v1alpha1.json#/$defs/sha256" },
+    "preparation": { "$ref": "#/$defs/preparation" }
+  },
+  "$defs": {
+    "identitySet": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "uniqueItems": true,
+      "items": { "$ref": "review-common-v1alpha1.json#/$defs/reviewerIdentity" }
+    },
+    "preparation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["preparer", "authors", "sourceTranscribers"],
+      "properties": {
+        "preparer": { "$ref": "review-common-v1alpha1.json#/$defs/reviewerIdentity" },
+        "authors": { "$ref": "#/$defs/identitySet" },
+        "sourceTranscribers": { "$ref": "#/$defs/identitySet" }
+      }
+    }
+  }
+}

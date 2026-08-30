@@ -2,6 +2,7 @@ GO ?= go
 GO_VERSION := $(shell awk '/^go / { print $$2; exit }' go.mod)
 GO_TOOLCHAIN ?= go$(GO_VERSION)
 GO_EXACT = GOTOOLCHAIN="$(GO_TOOLCHAIN)" $(GO)
+PACK_REVIEW_HEAD ?= $(shell git rev-parse --verify HEAD)
 BINARY ?= bin/cirewind
 DEMO_OUT ?= demo-case
 RELEASE_OUT ?=
@@ -10,7 +11,7 @@ RELEASE_WORK_ROOT ?=
 SPDX_VALIDATOR ?=
 SPDX_TOOLS_VERSION ?=
 
-.PHONY: build test vet race vuln licenses demo browser-audit safety-audit release release-test release-verify release-spdx release-workflow-audit preflight clean
+.PHONY: build test vet race vuln licenses demo browser-audit safety-audit pack-review-check pack-review-clean release release-test release-verify release-spdx release-workflow-audit preflight clean
 
 build:
 	mkdir -p "$(dir $(BINARY))"
@@ -39,6 +40,20 @@ browser-audit:
 
 safety-audit:
 	sh ./scripts/offline-safety-audit.sh
+
+pack-review-check:
+	bash -n scripts/pack-review-git-guard.sh
+	sh scripts/test-pack-review-git-guard.sh
+	bash -n scripts/pack-review-candidate-change-guard.sh
+	sh scripts/test-pack-review-candidate-change-guard.sh
+	$(GO_EXACT) test ./internal/packreview ./tools/packreview ./internal/releaseartifact
+	$(GO_EXACT) run ./tools/packreview validate-governance --repository-root .
+	scripts/pack-review-git-guard.sh --repository-root . --expected-head "$(PACK_REVIEW_HEAD)" -- env GOTOOLCHAIN="$(GO_TOOLCHAIN)" $(GO) run ./tools/packreview validate-candidate-tree --repository-root . --candidate-commit "$(PACK_REVIEW_HEAD)"
+
+pack-review-clean:
+	git diff --exit-code
+	git diff --cached --exit-code
+	@test -z "$$(git ls-files --others --exclude-standard)" || { echo "untracked files are outside the reviewed Git state" >&2; exit 1; }
 
 release:
 	@test -n "$(RELEASE_OUT)" || { echo "RELEASE_OUT is required" >&2; exit 2; }

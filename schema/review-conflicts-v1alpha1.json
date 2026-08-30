@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "review-conflicts-v1alpha1.json",
+  "title": "CIRewind real incident structured conflict ledger v1alpha1",
+  "description": "Authoritative structured conflict records. Explanatory Markdown cannot alter these dispositions.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "conflicts"],
+  "properties": {
+    "schemaVersion": { "const": "cirewind.review-conflicts/v1alpha1" },
+    "conflicts": {
+      "type": "array",
+      "maxItems": 2000,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/conflict" }
+    }
+  },
+  "$defs": {
+    "conflict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "conflictId",
+        "claimIds",
+        "competingSourceIds",
+        "description",
+        "materiality",
+        "disposition",
+        "rationale"
+      ],
+      "properties": {
+        "conflictId": { "$ref": "review-common-v1alpha1.json#/$defs/stableID" },
+        "claimIds": {
+          "allOf": [
+            { "$ref": "review-common-v1alpha1.json#/$defs/nonEmptySafeIDSet" },
+            { "maxItems": 2000 }
+          ]
+        },
+        "competingSourceIds": {
+          "allOf": [
+            { "$ref": "review-common-v1alpha1.json#/$defs/nonEmptySafeIDSet" },
+            { "minItems": 2, "maxItems": 2000 }
+          ]
+        },
+        "description": { "$ref": "review-common-v1alpha1.json#/$defs/nonEmptySafeText" },
+        "materiality": {
+          "enum": ["matching-scope", "identity", "time", "remediation", "context-only"]
+        },
+        "disposition": { "enum": ["excluded", "encoded-uncertain", "resolved", "blocking"] },
+        "selectedClaimId": { "$ref": "review-common-v1alpha1.json#/$defs/stableID" },
+        "selectedSourceIds": {
+          "$comment": "Canonical instances sort selected source IDs lexicographically; JSON Schema enforces uniqueness and the semantic validator enforces ordering.",
+          "$ref": "review-common-v1alpha1.json#/$defs/nonEmptySafeIDSet"
+        },
+        "rationale": { "$ref": "review-common-v1alpha1.json#/$defs/nonEmptySafeText" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "disposition": { "const": "resolved" } },
+            "required": ["disposition"]
+          },
+          "then": { "required": ["selectedClaimId", "selectedSourceIds"] },
+          "else": {
+            "not": {
+              "anyOf": [
+                { "required": ["selectedClaimId"] },
+                { "required": ["selectedSourceIds"] }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  }
+}

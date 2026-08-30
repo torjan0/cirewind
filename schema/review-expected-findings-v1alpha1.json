@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "review-expected-findings-v1alpha1.json",
+  "title": "CIRewind deterministic candidate expected-findings oracle v1alpha1",
+  "description": "A bounded synthetic-fixture oracle for expected and forbidden finding states. It records test expectations only and does not claim that fixtures were run, that a workflow executed an Action, or that incident facts are true or reviewed.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "findings", "forbidden"],
+  "properties": {
+    "schemaVersion": { "const": "cirewind.review-expected-findings/v1alpha1" },
+    "findings": {
+      "$comment": "Canonical instances sort rows strictly by scenarioId, indicatorId, repository, workflow, runId, runAttempt, jobId, stepIdentity, and state; semantic validation enforces this cross-item ordering.",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 20000,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/expectedFinding" }
+    },
+    "forbidden": {
+      "$comment": "Canonical instances sort rows strictly by scenarioId and state; semantic validation also rejects a scenario/state pair present in both arrays.",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 20000,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/forbiddenFinding" }
+    }
+  },
+  "$defs": {
+    "expectedFinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scenarioId",
+        "indicatorId",
+        "repository",
+        "state",
+        "provenance",
+        "evidenceIds",
+        "coverageAssessmentIds",
+        "evidenceGapCodes"
+      ],
+      "properties": {
+        "scenarioId": { "$ref": "review-common-v1alpha1.json#/$defs/stableID" },
+        "indicatorId": { "$ref": "review-common-v1alpha1.json#/$defs/stableID" },
+        "repository": { "$ref": "review-common-v1alpha1.json#/$defs/githubRepository" },
+        "workflow": {
+          "type": "string",
+          "minLength": 23,
+          "maxLength": 4096,
+          "pattern": "^\\.github/workflows/[A-Za-z0-9][A-Za-z0-9._+/-]*\\.ya?ml$",
+          "allOf": [
+            { "not": { "pattern": "(^|/)\\.\\.?(/|$)" } },
+            { "not": { "pattern": "//" } },
+            { "not": { "pattern": "\\\\" } }
+          ]
+        },
+        "runId": { "$ref": "#/$defs/positiveID" },
+        "runAttempt": { "$ref": "#/$defs/positiveID" },
+        "jobId": { "$ref": "#/$defs/positiveID" },
+        "stepIdentity": {
+          "allOf": [
+            { "$ref": "review-common-v1alpha1.json#/$defs/nonEmptySingleLineSafeText" },
+            { "maxLength": 4096 }
+          ]
+        },
+        "state": { "$ref": "review-common-v1alpha1.json#/$defs/findingState" },
+        "provenance": { "$ref": "review-common-v1alpha1.json#/$defs/provenanceLevel" },
+        "evidenceIds": {
+          "$comment": "Canonical instances sort evidence IDs lexicographically; JSON Schema enforces uniqueness and the semantic validator enforces ordering.",
+          "type": "array",
+          "maxItems": 2000,
+          "uniqueItems": true,
+          "items": { "$ref": "review-common-v1alpha1.json#/$defs/evidenceID" }
+        },
+        "coverageAssessmentIds": {
+          "$comment": "Canonical instances freeze and sort every closed-coverage or gap assessment ID used by the finding.",
+          "type": "array",
+          "maxItems": 2000,
+          "uniqueItems": true,
+          "items": { "$ref": "review-common-v1alpha1.json#/$defs/coverageAssessmentID" }
+        },
+        "evidenceGapCodes": {
+          "$comment": "Canonical instances sort gap codes lexicographically; JSON Schema enforces uniqueness and the semantic validator enforces ordering.",
+          "type": "array",
+          "maxItems": 2000,
+          "uniqueItems": true,
+          "items": { "$ref": "review-common-v1alpha1.json#/$defs/stableID" }
+        }
+      },
+      "dependentRequired": {
+        "runAttempt": ["runId"],
+        "jobId": ["runId", "runAttempt"],
+        "stepIdentity": ["runId", "runAttempt", "jobId"]
+      },
+      "allOf": [
+        {
+          "anyOf": [
+            { "properties": { "evidenceIds": { "minItems": 1 } } },
+            { "properties": { "evidenceGapCodes": { "minItems": 1 } } }
+          ]
+        },
+        {
+          "if": { "properties": { "state": { "const": "UNKNOWN_EVIDENCE_GAP" } }, "required": ["state"] },
+          "then": { "properties": { "evidenceGapCodes": { "minItems": 1 } } }
+        },
+        {
+          "if": { "properties": { "state": { "const": "NO_MATCH_CONFIRMED" } }, "required": ["state"] },
+          "then": {
+            "properties": {
+              "evidenceIds": { "minItems": 1 },
+              "coverageAssessmentIds": { "minItems": 1 },
+              "evidenceGapCodes": { "maxItems": 0 }
+            }
+          }
+        }
+      ]
+    },
+    "forbiddenFinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scenarioId", "state", "rationale"],
+      "properties": {
+        "scenarioId": { "$ref": "review-common-v1alpha1.json#/$defs/stableID" },
+        "state": { "$ref": "review-common-v1alpha1.json#/$defs/findingState" },
+        "rationale": { "$ref": "review-common-v1alpha1.json#/$defs/nonEmptySafeText" }
+      }
+    },
+    "positiveID": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    }
+  }
+}

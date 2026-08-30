@@ -72,10 +72,10 @@ review-packets/
       candidate-content/
         pack.yaml
         packet.json
+        review-policy.json
         claims.json
         sources.json
         conflicts.json
-        conflicts.md              # optional generated explanation
         expected-findings.json
         validation.json
         fixtures/
@@ -84,8 +84,10 @@ review-packets/
         REVIEW_ID/
           review.json            # canonical machine-readable record
           REVIEW.md              # deterministic rendering of review.json
+      platform-approvals.json    # normalized external GitHub observation
       promotion-record.json       # created only during promotion
       review-record-manifest.sha256
+pack-review-policy.json
 review-registry.json
 ```
 
@@ -94,11 +96,15 @@ titles, repository names, URLs, or arbitrary pack fields. Candidate and reviewed
 directories are physically separate. Promotion copies the exact approved bytes;
 it does not regenerate or normalize YAML.
 
-`packet.json`, `claims.json`, `sources.json`, `conflicts.json`, approval records,
-the promotion record, and the registry use strict versioned JSON schemas,
-duplicate-key rejection, size/count limits, canonical ordering, and safe text
-rules. Markdown is explanatory only and cannot override JSON status, conflicts,
-or claims.
+The packet, retained policy, source, claim, conflict, pre-review assertion,
+approval, normalized platform snapshot, promotion, and registry records have
+closed versioned JSON schemas in
+`schema/`, backed by strict typed decoding. Unknown and duplicate keys, trailing
+values, unsafe text, unsafe paths, and over-limit content are rejected. JSON
+records used as hash inputs must be in deterministic canonical form. The typed
+candidate validation record and expected-finding oracle are strictly decoded
+against closed schemas and must use canonical JSON. Markdown is explanatory only
+and cannot override JSON status, conflicts, or claims.
 
 No packet contains executable scripts, payload code, arbitrary regular
 expressions, secret values, customer evidence, authentication material, embedded
@@ -119,18 +125,66 @@ The tool has these closed operations:
 |---|---|---|
 | `validate-unit` | review-unit root and expected candidate commit C | Canonical validation JSON on stdout; no writes. |
 | `build-candidate-manifest` | immutable `candidate-content/` root and explicit output path inside it | Atomically creates/replaces only `candidate-content-manifest.sha256`; never edits reviewed content. |
-| `check-approvals` | review-unit root, C, and candidate-manifest hash | Canonical policy result on stdout; no approval creation and no writes. |
-| `promote` | clean promotion worktree rooted at C, exact approval files, explicit promotion time, and explicit output root | Copies byte-identical approved pack, writes promotion record and review-record manifest; never commits, pushes, tags, or edits the registry. |
+| `build-fixture-manifest` | immutable `candidate-content/fixtures/` root and its fixed manifest path | Atomically creates/replaces only `fixtures/manifest.sha256`; never executes or retrieves fixture content. |
+| `render-review` | canonical human-supplied `review.json` and fixed sibling output path | Atomically renders only `REVIEW.md`; it does not create or change an approval decision. |
+| `render-review-body` | canonical human-authored pre-review assertion | Emits only the exact fixed ASCII body that the human may submit with a GitHub review; it does not synthesize assertion fields, create a review, or write a file. |
+| `normalize-platform-approvals` | bounded local JSON projected from GitHub's list-reviews endpoint plus caller-supplied exact C, workflow-source commit, and run context | Atomically writes only fixed-name `platform-approvals.json`; accepts no credential, performs no network request, and creates no approval. |
+| `check-approvals` | review-unit root, C, candidate-manifest hash, and normalized platform snapshot | Canonical policy result on stdout; no approval creation and no writes. |
+| `promote` | caller/CI-verified worktree with `HEAD == C`, only explicitly allowlisted post-approval review inputs, exact current root review policy, exact approval files and normalized platform snapshot, and explicit promotion time | Rejects a candidate whose retained policy is stale, then copies the byte-identical approved pack and writes the promotion record/review-record manifest; never commits, pushes, tags, or edits the registry. |
+| `validate-candidate-tree` | repository root plus externally supplied exact `HEAD` C | Validates all retained review units: registered history uses its recorded C, unregistered content uses supplied C, active unpromoted content must match current policy, and completed history retains its recorded policy; no writes or factual-review claim. |
+| `validate-governance` | repository root | Validates the canonical review policy, append-only registry, reviewed-tree closure, and retained review units named by registry history; permits honestly empty pre-review state and unregistered candidate-C content awaiting later registry history, and makes no factual-review claim. |
 | `verify-registry` | repository root and registry entry/commit P being checked | Canonical verification result on stdout; no writes. |
 
-Every operation rejects unknown flags, paths outside the repository, symlinks,
-dirty/unexpected inputs, hash drift, unsafe IDs, and unbounded fields. It performs
-no network request, process execution, Git credential lookup, commit, push, or
-approval generation. Exit status `0` means the requested deterministic operation
-succeeded, `2` means bounded validation/policy failure, and `1` means a sanitized
-operational failure. Diagnostics identify JSON-pointer/file paths without source
-contents or host secrets. Make targets are aliases only; JSON schemas and this
-table are the contract.
+Every operation rejects unknown flags, unexpected files, symlinks and special
+files in bounded trees, hash drift, unsafe IDs and paths, and over-limit fields.
+It performs no network request, process execution, Git credential lookup,
+commit, push, or approval generation. Exit status `0` means the requested
+deterministic operation succeeded, `2` means bounded validation/policy failure,
+`1` means a sanitized operational failure, and cancellation maps to `130`.
+Diagnostics identify JSON-pointer/file paths without source contents or host
+secrets. Make targets are aliases only; JSON schemas and this table are the
+contract.
+
+Git state is deliberately outside the core tool's trust boundary. The tool
+accepts C and P as externally supplied full commit identities and checks the
+content and records bound to them, but it does not invoke Git and cannot prove
+that `HEAD` equals either identity or that protected history has not moved. The
+fixed `scripts/pack-review-git-guard.sh` wrapper verifies the exact worktree
+root and full expected `HEAD`, then rejects every staged, unstaged, and untracked
+path outside an explicit maintainer-controlled allowlist. With no allowlist the
+worktree must be clean. Rename detection is disabled so both delete and add
+paths remain visible; ignored untracked material and gitlink/submodule changes
+are included rather than silently disappearing. Arguments derived from a pack,
+log, fixture, or other hostile input must never control that allowlist.
+
+The lifecycle necessarily has two different Git-state checks. Candidate
+validation and human review operate on clean exact commit C. Candidate CI must
+run `validate-candidate-tree` with externally supplied exact `HEAD` C. It
+validates every retained review unit, using registry-bound C for existing history
+and the supplied `HEAD` for unregistered candidate content. An unregistered
+candidate is valid at C: requiring the registry in C to name C would create an
+impossible commit self-reference. The append-only registry may first record C
+only in a later commit.
+
+After qualifying humans approve C on GitHub, the normalized platform snapshot
+and human review records are materialized on a promotion branch whose `HEAD` is
+still C; only their fixed review-record destinations may be allowlisted as dirty
+inputs. The promotion output is then committed as P. A later clean registry
+commit names P without naming itself and revalidates the retained snapshot,
+approval policy, review-unit identity, reviewed bytes, and manifests. A
+successful core-tool or Git-guard result is structural evidence only, not
+promotion authorization or a claim that the incident facts are true.
+
+The limits are intentionally narrower than the general case format: individual
+review JSON files are bounded to 16 MiB with JSON depth at most 64; manifested
+regular files are bounded to 64 MiB each, 256 MiB total, 2,000 files, and 16
+path components; approval directories are bounded to 100. Repository-level
+governance walks also impose global entry, file, incident, version, and depth
+bounds and reject empty or symlinked tree shapes. The fixed file and
+path allowlists reject archive-like expansion, links, device files, active
+fixture content, credential-like material, and case-folded path collisions.
+Crossing a limit is a recorded validation failure, not permission to truncate or
+silently omit review material.
 
 ## Immutable candidate content and manifests
 
@@ -147,8 +201,9 @@ content:
 | `originalPackSha256` | SHA-256 of exact YAML bytes. |
 | `canonicalPackSha256` | Validator-produced canonical JSON SHA-256. |
 | `packSchemaVersion` | Exact `apiVersion`. |
-| `validatorVersion` | CIRewind version/revision used. |
+| `validatorVersion` | Closed incident-validator policy version; unsupported retained versions fail rather than silently using current rules. |
 | `validatorPolicySha256` | Hash identifying safety/semantic limits. |
+| `reviewPolicySha256` | Hash of the canonical `review-policy.json` retained inside candidate content. |
 | `claimsSha256` | Hash of canonical claims file. |
 | `sourcesSha256` | Hash of canonical source ledger. |
 | `conflictsSha256` | Hash of the authoritative structured conflict ledger. |
@@ -161,7 +216,8 @@ approval list, reviewer decision, or self-hash. This avoids data that would have
 to change after review or depend on the Git commit containing itself.
 
 `candidate-content-manifest.sha256` covers every regular material file below
-`candidate-content/` except itself, with canonical sorted relative paths. The
+`candidate-content/` except itself, including its retained
+`review-policy.json`, with canonical sorted relative paths. The
 candidate is frozen in Git commit C after this manifest is generated. Human
 approvals created in later commits bind both C and the SHA-256 of the exact
 candidate-content manifest bytes. Nothing below `candidate-content/` may change
@@ -170,16 +226,18 @@ inapplicable.
 
 Approvals are deliberately outside the candidate-content manifest so there is
 no approval/manifest hash cycle. At promotion,
-`review-record-manifest.sha256` covers the finalized approval records and
-`promotion-record.json`, excluding itself. The promotion record binds C, the
-candidate-content manifest hash, exact pack hashes, reviewed destination,
+`review-record-manifest.sha256` covers the finalized approval records, retained
+`platform-approvals.json`, and `promotion-record.json`, excluding itself. The
+promotion record binds C, the candidate-content manifest hash, exact pack hashes,
+the SHA-256 of the retained normalized platform snapshot, reviewed destination,
 approval IDs, promotion time, and resulting status; it does not contain the hash
 of the Git commit that contains it. A later append-only registry commit records
 the prior promotion content commit P and references that review-record manifest.
-The registry never records its own containing commit. Neither approvals nor
-candidate content recursively hash the registry or a manifest that includes
-them. These manifests provide integrity support, not signatures or independent
-factual review.
+Registry verification reruns approval-policy checks against the retained
+snapshot rather than trusting the promotion record's approval list. The registry
+never records its own containing commit. Neither approvals nor candidate content
+recursively hash the registry or a manifest that includes them. These manifests
+provide integrity support, not signatures or independent factual review.
 
 ## Primary-source requirements
 
@@ -258,6 +316,25 @@ excluded because primary sources disagree.” This prevents a later contributor
 from treating absence as an overlooked field. Reviewer decisions never mutate
 `claims.json`; they live only in approval and promotion records.
 
+Validation derives a typed material inventory from the canonical incident pack
+instead of trusting the author to declare what is material. The inventory
+includes matching identities and namespaces, component repositories and
+subpaths, window endpoints and precision, mutable refs, full Git objects,
+immutable package digests, known-good identities, literal/contextual IOCs,
+remediation guidance, and credential-rotation triggers. Every present material
+scalar must have exactly one correctly value-bound claim row; each supported
+omission must use a closed omission slot whose selector resolves to a semantic
+slot that is actually absent from that exact pack. Component subpath, affected
+ref, known-good identity, immutable package digest, window endpoint, IOC,
+remediation-guidance, and credential-rotation omissions are the only supported
+classes. A role/slot mismatch, an omission selector for a present value, or an
+absent window endpoint whose source precision/approximation is strengthened is
+rejected. Source references and source locations must close in both directions,
+conflict links must be symmetric, orphan sources are rejected, and a critical
+matching claim cannot rely only on a secondary lead. This structural closure
+establishes traceability, not the truth of the underlying source or the soundness
+of a human interpretation.
+
 ## Identity and time rules
 
 - A Git commit indicator states its algorithm and uses the complete lowercase
@@ -311,8 +388,19 @@ disagreement, but prose never causes matching.
    or download-only evidence.
 9. Produce the fixture and candidate-content manifests and exact hashes.
 10. Freeze candidate content in commit C, record C outside the immutable review
-    unit, and request the required human reviews against C plus the
-    candidate-content manifest hash.
+    unit, have each reviewer author and inspect their bounded pre-review
+    assertion, render its exact fixed review body, and request the required
+    human reviews against C plus the candidate-content manifest hash.
+11. After the required GitHub approvals exist on exact C, run the repository-
+    controlled snapshot workflow to verify the pull-request head and normalize
+    the bounded list-reviews response. Retain the resulting
+    `platform-approvals.json` and its artifact identity; do not retain review
+    bodies or credentials. The normalized record retains only each review
+    body's SHA-256 so a referenced approval can be compared to the reviewer's
+    fixed assertion body.
+12. On a promotion branch still rooted at C, materialize only the fixed approval,
+    snapshot, promotion, reviewed-copy, and manifest paths. Commit the resulting
+    content as P only after offline policy and identity checks pass.
 
 The candidate author may respond to review with a new commit, but every prior
 approval becomes stale after any material change. Do not amend or force-move a
@@ -409,6 +497,25 @@ records:
 - UTC review time and bounded rationale;
 - known limitations accepted without resolving them.
 
+Before submitting a GitHub review, the reviewer writes the closed canonical
+`cirewind.review-assertion/v1alpha1` record containing all material fields known
+before submission. `packreview render-review-body --review FILE` validates that
+human-authored record and emits the exact fixed ASCII review body:
+
+```text
+CIRewind review assertion v1 sha256:<canonical-assertion-sha256>
+```
+
+The assertion binds the official repository and pull-request number as well as
+C, content/policy hashes, reviewer identity and role, independence/conflict
+declaration, scopes, reproduction commands, exact checked source objects,
+decision, rationale, and limitations. Only GitHub-assigned review URL/database
+ID and the post-submission record time are outside that pre-review assertion.
+The final `review.json` records both the assertion hash and exact body hash.
+Changing any material assertion field after the GitHub review therefore makes
+the platform body hash disagree and fails approval. The tool does not create an
+approval or populate any reviewer assertion.
+
 An approval record is a transparent provenance record, not a cryptographic
 signature unless a future signing ADR adds that claim. CI can verify structure,
 hash binding, review identity uniqueness, and that required records exist. CI
@@ -425,6 +532,86 @@ administrators may have override powers. Source retrieved 2026-08-22:
 
 - [GitHub Docs — About protected branches](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches)
 - [GitHub Docs — About pull request reviews](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/reviewing-changes-in-pull-requests/about-pull-request-reviews)
+
+### External platform-observation boundary
+
+`platform-approvals.json` is a bounded, normalized observation of the GitHub PR
+review surface. It binds the repository, pull request, candidate head C,
+observation time, exact workflow-source commit, identified workflow run/attempt,
+hash of the exact projected response supplied to the normalizer, and each
+observed review database ID, reviewer database identity, account type, state,
+commit, submission time, dismissal state, and SHA-256 of the exact review body.
+The body itself is discarded. The offline tool requires the
+human `review.json` reference and this normalized observation to agree exactly.
+It rejects a non-`User` account, a missing or dismissed review, a review on
+another commit, a stale prior approval when a later captured review changes the
+effective state, a mismatched PR, and a preparer/author/source-transcriber
+self-review. It also requires every recorded checked-source ID and hash to agree
+with the exact retained `sources.json`; an identity-scope reviewer must cover
+every source object behind the closed identity-role claim set. Maintainer
+eligibility, the only official repository from which reviews may qualify, and
+minimum role/scope counts come from the review policy retained inside immutable
+candidate content. A new or actively unpromoted candidate must retain the exact
+current repository policy, while already promoted history is reverified against
+its retained policy. The Trivy profile retains its higher outside-reviewer
+floor.
+
+The local `normalize-platform-approvals` adapter accepts either one review array
+or a bounded outer array of review-page arrays. Input is limited to 8 MiB and
+2,000 observations before the final normalized-record limit of 100; parsing
+stops at the count bound. The adapter rejects duplicate JSON keys,
+mixed/malformed page shapes, unsupported review states, and unsafe identities;
+it drops pending reviews and ignores fields outside the closed projection. It
+accepts ordinary or empty review bodies, hashes their exact UTF-8 bytes, and
+discards the text; only a review later referenced by `review.json` must match a
+fixed CIRewind assertion body. It
+normalizes reviewer logins and commit IDs to lowercase, sorts the bounded
+submitted observations by review database ID, records the SHA-256 of the exact
+projected input, and writes canonical JSON with restrictive permissions.
+
+The manually dispatched `.github/workflows/pack-review-snapshot.yml` adapter
+uses only `contents: read` and `pull-requests: read`, and its job runs only when
+the selected dispatch ref is the repository's default branch. It checks out
+exact `github.sha` and builds the normalizer before any step receives
+`GH_TOKEN`. The token-bearing step validates C and the pull-request number,
+requires `head.sha == C`, projects only the required review fields, captures the
+projection twice and requires byte equality, caps each transient capture at
+8 MiB while it is written, then
+rechecks the pull-request head. `gh api --paginate --jq` emits one projected
+array per page. Current GitHub CLI rejects combining `--slurp` with `--jq`, so
+the workflow does not request that unsupported flag combination. A later
+credential-free step uses `jq -cs 'add'` to combine the bounded page stream into
+one array, invokes the prebuilt normalizer with
+`workflowSourceCommit == github.sha`, hashes the result, and transfers only
+`platform-approvals.json` and its manifest while recording the artifact ID. The
+projected response—including transient review-body text—and prebuilt helper are
+removed in an always-run cleanup step.
+
+This workflow output is point-in-time process evidence, not platform attestation
+or proof of factual review, human independence, or pack truth. Before promotion,
+a human must inspect the exact run URL/ID/attempt, selected default-branch ref,
+workflow-source commit, pull-request approval on C, artifact identity, and
+hashes. Detached local JSON can be fabricated and is never sufficient. Promotion
+records require `promotedAt` to be no earlier than `observedAt` and no more than
+15 minutes later. Both values are retained record fields: that interval is a
+structural chronology check, not authenticated wall-clock freshness. The
+offline verifier cannot detect a dismissal or new review created after the
+captured response. A later discovered revocation or conflict therefore requires
+the append-only withdrawal/correction process. Primary behavior references,
+retrieved 2026-08-30:
+
+- [GitHub CLI manual — `gh api` pagination and jq behavior](https://cli.github.com/manual/gh_api)
+- [GitHub CLI source — `gh api` flag constraints at revision `40b742f`](https://github.com/cli/cli/blob/40b742f76d68e6b1f472942a6368db4b5d765641/pkg/cmd/api/api.go)
+- [GitHub REST API — list reviews for a pull request](https://docs.github.com/en/rest/pulls/reviews?apiVersion=2022-11-28#list-reviews-for-a-pull-request)
+
+The core tool neither calls GitHub nor authenticates the observation. A checked-
+in snapshot, its response hash, `review.json`, and generated `REVIEW.md` are not
+signatures and cannot prove that the account belongs to the represented human,
+that the reviewer is independent, or that the reviewer performed the stated
+work. The repository-controlled read-only CI adapter that acquires the GitHub
+response, the exact PR approval on C, repository governance, and human conflict
+disclosure are the external evidence boundary. No local record may describe that
+boundary as self-certified approval.
 
 ## Rules preventing self-approval
 
@@ -452,13 +639,17 @@ Promotion to `reviewed` is deterministic and human-triggered:
 
 1. Revalidate the exact candidate bytes and immutable candidate content at C.
 2. Confirm every approval binds C and the exact candidate-content manifest hash
-   and that no approval is stale.
+   and that no approval is stale; require the recorded promotion time to fall
+   within the retained platform snapshot's inclusive 15-minute chronology
+   interval, without treating that unauthenticated interval as proof of current
+   wall-clock freshness.
 3. Confirm required reviewer counts/roles and no unresolved blocking conflict.
 4. Copy exact YAML bytes to `incidents/reviewed/INCIDENT_ID/PACK_VERSION.yaml`.
-5. On a promotion branch based on C, materialize approvals, create
-   `promotion-record.json`, copy the reviewed bytes, and generate the
-   non-self-referential review-record manifest. Commit this content as P; the
-   record itself does not predict P.
+5. On a promotion branch based on C, materialize approvals and the retained
+   normalized platform snapshot, create `promotion-record.json` with the
+   snapshot hash, copy the reviewed bytes, and generate the non-self-referential
+   review-record manifest covering all of those records. Commit this content as
+   P; the record itself does not predict P.
 6. In a later append-only registry commit, add an entry binding reviewed path,
    pack/review-unit/review-record hashes, C, P, approval IDs,
    schema/validator version, and promotion time. The registry entry does not
@@ -474,6 +665,17 @@ new file.
 
 Candidate branches must not be squashed/rebased after exact-hash approval unless
 all reviewers reapprove the resulting commit and bytes.
+
+The promotion operation is idempotent only when all existing destination bytes
+are already exact. It fails closed rather than overwriting a different reviewed
+pack, promotion record, or review manifest, and it rolls back files newly
+created by a failed operation. It never edits `review-registry.json`. Registry
+history is a separate, later append-only human-authored change: the verifier
+checks allowed status transitions, immutable candidate/promotion identity,
+supersession closure, exact reviewed-tree registration, byte identity with the
+candidate, manifests, pack hashes, policy hash, and the supplied promotion
+content commit P. It does not prove Git history append-only by itself; protected
+branch policy and the caller/CI Git precondition remain necessary.
 
 ## Required test matrix
 
@@ -497,6 +699,13 @@ Every candidate includes:
 - transitive wrapper test that does not relabel the wrapper commit compromised;
 - hostile title, source, remediation, literal, repository, and IOC text;
 - deterministic replay and finding revision IDs;
+- a closed `fixtures/index.json` whose safe scenario-ID-derived paths reference
+  canonical compact archive snapshots; validation replays each snapshot through
+  the production offline derivation path and compares exact finding identity,
+  state, provenance, supporting evidence or explicit gap, and coverage
+  assessment IDs against `expected-findings.json`;
+- explicit forbidden-state rows, including downloaded-only scenarios that must
+  never derive `CONFIRMED_EXECUTED`, and rejection of unindexed scenario files;
 - source-to-field coverage test: every material canonical path has at least one
   claim row and every referenced source/conflict exists;
 - review-policy test that candidates cannot enter reviewed index without exact
@@ -593,3 +802,56 @@ The maintainer may release product-owned adoption functionality under a
 different version/scope if external gates cannot be met, but it must not label
 that release as satisfying this coordinated v0.2.0 plan without a new explicit
 decision record.
+
+## Current implementation and review state
+
+The v0.2 worktree contains the offline schemas, strict typed validators,
+maintainer tool, Git precondition guard, read-only platform-snapshot workflow,
+snapshot retention/revalidation, registered-history closure, and production-path
+fixture replay described above. Candidate-C CI discovery/validation must remain
+separate from registry-history validation so C never has to contain its own
+commit identity. The checked-in review policy deliberately has no fabricated
+eligible-maintainer identities, and the registry is honestly empty. The complete
+synthetic machine fixture now exercises all ten finding states, inclusive-start
+and exclusive-end boundaries, contradiction and evidence-gap conclusions, exact
+coverage/gap oracle checks, and an isolated downloaded-only scenario that
+forbids `CONFIRMED_EXECUTED`. This does not satisfy a real candidate's factual
+fixtures or the human/topology gates.
+
+Candidate change-set separation is the separate default-branch
+`.github/workflows/pack-review-candidate-policy.yml` `pull_request_target`
+workflow, not a job whose definition can be replaced by the candidate under
+test. It checks out the exact base commit containing the
+trusted guard, materializes the exact pull-request head only as inert Git data,
+verifies both event commit identities, and runs only the trusted-base guard with
+`contents: read`. It never builds, tests, sources, imports, or otherwise
+executes the head tree. The explicit checkout-v7 unsafe-PR opt-in is therefore
+limited to data inspection and is guarded by acceptance tests that prohibit
+head-controlled command paths. GitHub documents both the elevated trust of
+[`pull_request_target`](https://docs.github.com/en/actions/reference/security/securely-using-pull_request_target)
+and the requirement that its workflow file exist on the
+[default branch](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#pull_request_target);
+retrieved 2026-08-30. A force-push race fails the exact-head comparison and
+requires the subsequent synchronization event to rerun the policy. This gate
+begins governing later PR events only after its trusted workflow and guard land
+on the default branch; the bootstrap infrastructure PR remains subject to the
+ordinary reviewed CI path.
+
+A candidate-stage review unit may omit `approvals/` because Git cannot retain
+an empty directory. That exception ends as soon as review begins or any review
+or promotion material exists. Every present approvals directory remains a real,
+non-link, closed tree, and approval checking or promotion still requires actual
+policy-satisfying review records.
+
+That implementation is governance infrastructure, not a real incident-content
+review. As of 2026-08-30, no Reviewdog, tj-actions, Trivy, or Xygeni candidate in
+this repository has completed the required independent human review, no
+automated session has authority to populate an independent approval, and no real
+pack is eligible to be described as `reviewed`. Tooling tests can use
+unmistakably synthetic people, source records, packs, and platform observations
+to prove policy mechanics; those fixtures are never evidence of an external
+approval. `PACK-022` remains open until an actual qualifying human GitHub review
+of exact C exists; `PACK-023` remains open until a real C-to-P-to-later-registry
+history passes the accepted topology; and `PACK-024` remains open pending the
+`PACK-023` dependency plus the complete CI/governance qualification and final
+workflow security audit.

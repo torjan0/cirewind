@@ -1,0 +1,148 @@
+name: Capture incident-pack review snapshot
+
+on:
+  workflow_dispatch:
+    inputs:
+      pull_request_number:
+        description: Pull request whose exact head C received human reviews
+        required: true
+        type: string
+      candidate_commit:
+        description: Full candidate commit C expected at the pull request head
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  pull-requests: read
+
+env:
+  GOFLAGS: -mod=readonly
+
+concurrency:
+  group: pack-review-snapshot-${{ github.event.inputs.pull_request_number }}-${{ github.event.inputs.candidate_commit }}
+  cancel-in-progress: false
+
+jobs:
+  capture:
+    name: Normalize exact GitHub review observations
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out governance tooling
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Build tokenless normalizer before acquisition
+        run: go build -trimpath -o "$RUNNER_TEMP/cirewind-packreview" ./tools/packreview
+      - name: Verify pull-request head and capture projected review metadata
+        id: capture-reviews
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_CANDIDATE: ${{ github.event.inputs.candidate_commit }}
+          PULL_REQUEST_NUMBER: ${{ github.event.inputs.pull_request_number }}
+          GH_PROMPT_DISABLED: "1"
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! "$EXPECTED_CANDIDATE" =~ ^([0-9a-f]{40}|[0-9a-f]{64})$ || ! "$PULL_REQUEST_NUMBER" =~ ^[1-9][0-9]*$ ]]; then
+            echo 'candidate commit or pull-request number is malformed' >&2
+            exit 2
+          fi
+          source_dir="$RUNNER_TEMP/cirewind-pack-review-source"
+          output_dir="$RUNNER_TEMP/cirewind-pack-review-snapshot"
+          mkdir -p "$source_dir" "$output_dir"
+          actual_head=$(gh api \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "/repos/$GITHUB_REPOSITORY/pulls/$PULL_REQUEST_NUMBER" \
+            --jq '.head.sha')
+          if [[ "$actual_head" != "$EXPECTED_CANDIDATE" ]]; then
+            echo 'pull-request head does not equal candidate commit C' >&2
+            exit 2
+          fi
+          capture_reviews() {
+            local output=$1
+            if ! gh api --paginate \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "/repos/$GITHUB_REPOSITORY/pulls/$PULL_REQUEST_NUMBER/reviews?per_page=100" \
+              --jq '[.[] | {id: .id, html_url: .html_url, user: (if .user == null then null else {login: .user.login, id: .user.id, type: .user.type} end), state: .state, commit_id: .commit_id, submitted_at: .submitted_at, body: .body}]' \
+              | head -c 8388609 >"$output"; then
+              if (( $(wc -c <"$output") > 8388608 )); then
+                echo 'projected pull-request review metadata exceeds the 8 MiB bound' >&2
+              else
+                echo 'pull-request review metadata acquisition failed' >&2
+              fi
+              exit 2
+            fi
+            if (( $(wc -c <"$output") > 8388608 )); then
+              echo 'projected pull-request review metadata exceeds the 8 MiB bound' >&2
+              exit 2
+            fi
+          }
+          capture_reviews "$source_dir/review-pages.json"
+          capture_reviews "$source_dir/review-pages-confirmation.json"
+          if ! cmp -s "$source_dir/review-pages.json" "$source_dir/review-pages-confirmation.json"; then
+            echo 'pull-request review metadata changed during capture' >&2
+            exit 2
+          fi
+          actual_head=$(gh api \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "/repos/$GITHUB_REPOSITORY/pulls/$PULL_REQUEST_NUMBER" \
+            --jq '.head.sha')
+          if [[ "$actual_head" != "$EXPECTED_CANDIDATE" ]]; then
+            echo 'pull-request head changed during review capture' >&2
+            exit 2
+          fi
+          observed_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          echo "observed_at=$observed_at" >>"$GITHUB_OUTPUT"
+      - name: Normalize without GitHub credentials
+        env:
+          EXPECTED_CANDIDATE: ${{ github.event.inputs.candidate_commit }}
+          PULL_REQUEST_NUMBER: ${{ github.event.inputs.pull_request_number }}
+          OBSERVED_AT: ${{ steps.capture-reviews.outputs.observed_at }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          source_dir="$RUNNER_TEMP/cirewind-pack-review-source"
+          output_dir="$RUNNER_TEMP/cirewind-pack-review-snapshot"
+          jq -cs 'add' "$source_dir/review-pages.json" >"$source_dir/reviews.json"
+          "$RUNNER_TEMP/cirewind-packreview" normalize-platform-approvals \
+            --source "$source_dir/reviews.json" \
+            --out "$output_dir/platform-approvals.json" \
+            --repository "$GITHUB_REPOSITORY" \
+            --pull-request "$PULL_REQUEST_NUMBER" \
+            --candidate-commit "$EXPECTED_CANDIDATE" \
+            --observed-at "$OBSERVED_AT" \
+            --workflow-source-commit "$GITHUB_SHA" \
+            --workflow-run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            --workflow-run-id "$GITHUB_RUN_ID" \
+            --workflow-run-attempt "$GITHUB_RUN_ATTEMPT"
+          (cd "$output_dir" && sha256sum platform-approvals.json >manifest.sha256)
+      - name: Transfer normalized snapshot by immutable artifact ID
+        id: snapshot-artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: pack-review-snapshot-pr-${{ github.event.inputs.pull_request_number }}
+          path: ${{ runner.temp }}/cirewind-pack-review-snapshot/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Record artifact identity
+        env:
+          ARTIFACT_ID: ${{ steps.snapshot-artifact.outputs.artifact-id }}
+        run: |
+          test -n "$ARTIFACT_ID"
+          echo "normalized snapshot artifact ID: $ARTIFACT_ID"
+      - name: Remove transient review response
+        if: always()
+        shell: bash
+        run: rm -rf -- "$RUNNER_TEMP/cirewind-pack-review-source" "$RUNNER_TEMP/cirewind-packreview"

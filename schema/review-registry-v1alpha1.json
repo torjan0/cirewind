@@ -1,0 +1,247 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "review-registry-v1alpha1.json",
+  "title": "CIRewind append-only real incident review registry v1alpha1",
+  "description": "Append-only governance history outside incident-pack data. Reviewed entries bind prior candidate commit C and promotion content commit P; no entry records the registry commit that contains itself.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "records"],
+  "properties": {
+    "schemaVersion": { "const": "cirewind.review-registry/v1alpha1" },
+    "records": {
+      "type": "array",
+      "maxItems": 10000,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/record" }
+    }
+  },
+  "$defs": {
+    "record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "recordId",
+        "incidentId",
+        "packVersion",
+        "status",
+        "approvalIds",
+        "recordedAt"
+      ],
+      "properties": {
+        "recordId": { "$ref": "review-common-v1alpha1.json#/$defs/stableID" },
+        "incidentId": { "$ref": "review-common-v1alpha1.json#/$defs/pathID" },
+        "packVersion": { "$ref": "review-common-v1alpha1.json#/$defs/semver" },
+        "status": {
+          "enum": ["research", "candidate", "review_in_progress", "reviewed", "superseded", "withdrawn"]
+        },
+        "previousRecordId": {
+          "$ref": "review-common-v1alpha1.json#/$defs/stableID"
+        },
+        "candidateCommit": { "$ref": "review-common-v1alpha1.json#/$defs/gitCommit" },
+        "promotionContentCommit": { "$ref": "review-common-v1alpha1.json#/$defs/gitCommit" },
+        "reviewedPath": { "$ref": "review-common-v1alpha1.json#/$defs/reviewedPackPath" },
+        "originalPackSha256": { "$ref": "review-common-v1alpha1.json#/$defs/sha256" },
+        "canonicalPackSha256": { "$ref": "review-common-v1alpha1.json#/$defs/sha256" },
+        "candidateManifestSha256": { "$ref": "review-common-v1alpha1.json#/$defs/sha256" },
+        "reviewRecordManifestSha256": { "$ref": "review-common-v1alpha1.json#/$defs/sha256" },
+        "approvalIds": {
+          "type": "array",
+          "maxItems": 100,
+          "uniqueItems": true,
+          "items": { "$ref": "review-common-v1alpha1.json#/$defs/stableID" }
+        },
+        "reviewPolicyProfile": { "$ref": "review-common-v1alpha1.json#/$defs/reviewPolicyProfile" },
+        "reviewPolicySha256": { "$ref": "review-common-v1alpha1.json#/$defs/sha256" },
+        "recordedAt": { "$ref": "review-common-v1alpha1.json#/$defs/utcTimestamp" },
+        "supersedesPackVersion": { "$ref": "review-common-v1alpha1.json#/$defs/semver" },
+        "supersededByPackVersion": { "$ref": "review-common-v1alpha1.json#/$defs/semver" },
+        "withdrawalReason": { "$ref": "review-common-v1alpha1.json#/$defs/nonEmptySafeText" }
+      },
+      "dependentRequired": {
+        "candidateCommit": [
+          "candidateManifestSha256",
+          "originalPackSha256",
+          "canonicalPackSha256",
+          "reviewPolicyProfile"
+        ],
+        "candidateManifestSha256": [
+          "candidateCommit",
+          "originalPackSha256",
+          "canonicalPackSha256",
+          "reviewPolicyProfile"
+        ],
+        "promotionContentCommit": [
+          "candidateCommit",
+          "reviewedPath",
+          "reviewRecordManifestSha256",
+          "approvalIds"
+        ],
+        "reviewedPath": [
+          "promotionContentCommit",
+          "reviewRecordManifestSha256",
+          "approvalIds"
+        ],
+        "reviewRecordManifestSha256": [
+          "promotionContentCommit",
+          "reviewedPath",
+          "approvalIds"
+        ]
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "status": { "const": "research" } },
+            "required": ["status"]
+          },
+          "then": {
+            "not": {
+              "anyOf": [
+                { "required": ["candidateCommit"] },
+                { "required": ["candidateManifestSha256"] },
+                { "required": ["originalPackSha256"] },
+                { "required": ["canonicalPackSha256"] },
+                { "required": ["promotionContentCommit"] },
+                { "required": ["reviewedPath"] },
+                { "required": ["reviewRecordManifestSha256"] },
+                { "required": ["reviewPolicyProfile"] },
+                { "required": ["reviewPolicySha256"] },
+                { "required": ["previousRecordId"] },
+                { "required": ["supersedesPackVersion"] },
+                { "required": ["supersededByPackVersion"] },
+                { "required": ["withdrawalReason"] }
+              ]
+            },
+            "properties": { "approvalIds": { "maxItems": 0 } }
+          }
+        },
+        {
+          "if": {
+            "properties": { "status": { "enum": ["candidate", "review_in_progress"] } },
+            "required": ["status"]
+          },
+          "then": {
+            "required": [
+              "candidateCommit",
+              "candidateManifestSha256",
+              "originalPackSha256",
+              "canonicalPackSha256",
+              "reviewPolicyProfile",
+              "reviewPolicySha256"
+            ],
+            "not": {
+              "anyOf": [
+                { "required": ["promotionContentCommit"] },
+                { "required": ["reviewedPath"] },
+                { "required": ["reviewRecordManifestSha256"] },
+                { "required": ["supersedesPackVersion"] },
+                { "required": ["supersededByPackVersion"] },
+                { "required": ["withdrawalReason"] }
+              ]
+            },
+            "properties": { "approvalIds": { "maxItems": 0 } }
+          }
+        },
+        {
+          "if": {
+            "properties": { "status": { "enum": ["reviewed", "superseded"] } },
+            "required": ["status"]
+          },
+          "then": {
+            "required": [
+              "candidateCommit",
+              "promotionContentCommit",
+              "reviewedPath",
+              "originalPackSha256",
+              "canonicalPackSha256",
+              "candidateManifestSha256",
+              "reviewRecordManifestSha256",
+              "approvalIds",
+              "reviewPolicyProfile",
+              "reviewPolicySha256",
+              "previousRecordId"
+            ],
+            "properties": {
+              "previousRecordId": { "$ref": "review-common-v1alpha1.json#/$defs/stableID" },
+              "approvalIds": { "minItems": 3 }
+            },
+            "not": { "required": ["withdrawalReason"] }
+          }
+        },
+        {
+          "if": { "required": ["promotionContentCommit"] },
+          "then": { "properties": { "approvalIds": { "minItems": 3 } } }
+        },
+        {
+          "if": {
+            "properties": { "approvalIds": { "minItems": 1 } },
+            "required": ["approvalIds"]
+          },
+          "then": {
+            "required": ["promotionContentCommit", "reviewedPath", "reviewRecordManifestSha256"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "reviewPolicyProfile": { "const": "trivy-v0.2" },
+              "status": { "enum": ["reviewed", "superseded", "withdrawn"] }
+            },
+            "required": ["reviewPolicyProfile", "status", "promotionContentCommit"]
+          },
+          "then": { "properties": { "approvalIds": { "minItems": 4 } } }
+        },
+        {
+          "if": {
+            "properties": { "status": { "const": "reviewed" } },
+            "required": ["status"]
+          },
+          "then": { "not": { "required": ["supersededByPackVersion"] } }
+        },
+        {
+          "if": {
+            "properties": { "status": { "const": "superseded" } },
+            "required": ["status"]
+          },
+          "then": { "required": ["supersededByPackVersion"] }
+        },
+        {
+          "if": {
+            "properties": { "status": { "const": "withdrawn" } },
+            "required": ["status"]
+          },
+          "then": {
+            "required": [
+              "previousRecordId",
+              "candidateCommit",
+              "candidateManifestSha256",
+              "originalPackSha256",
+              "canonicalPackSha256",
+              "reviewPolicyProfile",
+              "reviewPolicySha256",
+              "withdrawalReason"
+            ],
+            "properties": {
+              "previousRecordId": { "$ref": "review-common-v1alpha1.json#/$defs/stableID" }
+            },
+            "allOf": [
+              {
+                "if": { "not": { "required": ["promotionContentCommit"] } },
+                "then": {
+                  "properties": { "approvalIds": { "maxItems": 0 } },
+                  "not": {
+                    "anyOf": [
+                      { "required": ["reviewedPath"] },
+                      { "required": ["reviewRecordManifestSha256"] },
+                      { "required": ["supersedesPackVersion"] },
+                      { "required": ["supersededByPackVersion"] }
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

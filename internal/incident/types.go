@@ -2,7 +2,12 @@
 // packs. It has no network, process, template, or filesystem side effects.
 package incident
 
-import "github.com/torjan0/cirewind/internal/model"
+import (
+	"crypto/sha256"
+	"encoding/hex"
+
+	"github.com/torjan0/cirewind/internal/model"
+)
 
 const (
 	APIVersion     = "cirewind.dev/v1alpha1"
@@ -15,6 +20,38 @@ const (
 	MaxSeqEntries  = 5_000
 	MaxScalarBytes = 64 << 10
 )
+
+// ValidatorPolicySHA256 identifies the closed incident-parser policy used by
+// review packets. It is a domain-separated policy identifier, not a hash of the
+// executable and not a signature. PolicyVersion must change when these limits
+// or semantic rules change.
+func ValidatorPolicySHA256() string {
+	const descriptor = "cirewind.incident-validator-policy\x00" + PolicyVersion +
+		"\x00max-pack=2097152\x00max-yaml-nodes=20000\x00max-yaml-depth=32" +
+		"\x00max-map-entries=5000\x00max-seq-entries=5000\x00max-scalar=65536"
+	digest := sha256.Sum256([]byte(descriptor))
+	return hex.EncodeToString(digest[:])
+}
+
+// ValidatorPolicyIdentity binds a review record to one explicitly supported
+// incident-validator rule set. Historical versions must remain listed here
+// only while this binary still implements their exact validation semantics.
+type ValidatorPolicyIdentity struct {
+	Version string
+	SHA256  string
+}
+
+// ResolveValidatorPolicy performs the closed version-to-policy compatibility
+// selection used by retained review packets. It must never silently substitute
+// the current validator for an unknown historical version.
+func ResolveValidatorPolicy(version string) (ValidatorPolicyIdentity, bool) {
+	switch version {
+	case PolicyVersion:
+		return ValidatorPolicyIdentity{Version: PolicyVersion, SHA256: ValidatorPolicySHA256()}, true
+	default:
+		return ValidatorPolicyIdentity{}, false
+	}
+}
 
 type Pack struct {
 	APIVersion string   `json:"apiVersion" yaml:"apiVersion"`

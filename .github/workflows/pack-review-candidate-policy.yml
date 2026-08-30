@@ -1,0 +1,69 @@
+name: Incident-pack candidate change policy
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pack-review-candidate-policy-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  candidate-change-contract:
+    name: Candidate change-set separation
+    if: >-
+      github.event.pull_request.base.repo.full_name == github.repository &&
+      github.event.pull_request.base.ref == github.event.repository.default_branch
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out exact trusted base policy
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          path: trusted-policy
+          persist-credentials: false
+          repository: ${{ github.repository }}
+          ref: ${{ github.event.pull_request.base.sha }}
+      - name: Check out pull-request head as inert Git data
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          path: pull-request
+          persist-credentials: false
+          repository: ${{ github.repository }}
+          ref: refs/pull/${{ github.event.pull_request.number }}/head
+          # The head is inspected only as inert Git metadata by the trusted
+          # base-commit guard below; no file, build, test, or hook from it runs.
+          allow-unsafe-pr-checkout: true
+      - name: Enforce trusted candidate change-set policy
+        env:
+          PACK_REVIEW_BASE: ${{ github.event.pull_request.base.sha }}
+          PACK_REVIEW_HEAD: ${{ github.event.pull_request.head.sha }}
+          PACK_REVIEW_NUMBER: ${{ github.event.pull_request.number }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! "$PACK_REVIEW_BASE" =~ ^([0-9a-f]{40}|[0-9a-f]{64})$ ||
+                ! "$PACK_REVIEW_HEAD" =~ ^([0-9a-f]{40}|[0-9a-f]{64})$ ||
+                ! "$PACK_REVIEW_NUMBER" =~ ^[1-9][0-9]*$ ]]; then
+            echo 'pull-request policy inputs are malformed' >&2
+            exit 2
+          fi
+          actual_head=$(git -C pull-request rev-parse --verify 'HEAD^{commit}')
+          actual_base=$(git -C pull-request rev-parse --verify "${PACK_REVIEW_BASE}^{commit}")
+          if [[ "$actual_head" != "$PACK_REVIEW_HEAD" || "$actual_base" != "$PACK_REVIEW_BASE" ]]; then
+            echo 'pull-request policy checkout does not match the exact event commits' >&2
+            exit 2
+          fi
+          trusted-policy/scripts/pack-review-candidate-change-guard.sh \
+            --repository-root pull-request \
+            --base "$PACK_REVIEW_BASE" \
+            --head "$PACK_REVIEW_HEAD"

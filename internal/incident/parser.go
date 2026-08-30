@@ -40,9 +40,26 @@ func ValidateReader(ctx context.Context, r io.Reader) (*ValidatedPack, error) {
 // Validate performs strict structural and semantic validation and returns a
 // normalized pack plus deterministic canonical JSON and hashes.
 func Validate(ctx context.Context, data []byte) (*ValidatedPack, error) {
+	return ValidateForPolicy(ctx, data, PolicyVersion)
+}
+
+// ValidateForPolicy validates with an explicitly selected compatible policy.
+// An unknown version fails closed rather than being interpreted under the
+// current rules.
+func ValidateForPolicy(ctx context.Context, data []byte, version string) (*ValidatedPack, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
+	policy, supported := ResolveValidatorPolicy(version)
+	if !supported {
+		return nil, &ValidationError{Diagnostics: []Diagnostic{{
+			Code: "UNSUPPORTED_VALIDATOR_POLICY", Path: "$", Message: "requested incident validator policy is not supported",
+		}}}
+	}
+	return validateForResolvedPolicy(ctx, data, policy)
+}
+
+func validateForResolvedPolicy(ctx context.Context, data []byte, policy ValidatorPolicyIdentity) (*ValidatedPack, error) {
 	original := sha256.Sum256(data)
 	if len(data) > MaxPackBytes {
 		return nil, errPackTooLarge
@@ -98,7 +115,7 @@ func Validate(ctx context.Context, data []byte) (*ValidatedPack, error) {
 		OriginalSHA256:  hex.EncodeToString(original[:]),
 		CanonicalJSON:   canonical,
 		CanonicalSHA256: hex.EncodeToString(canonicalHash[:]),
-		ValidatorPolicy: PolicyVersion,
+		ValidatorPolicy: policy.Version,
 	}, nil
 }
 

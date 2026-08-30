@@ -1,0 +1,172 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "review-claims-v1alpha1.json",
+  "title": "CIRewind real incident source-to-field claim matrix v1alpha1",
+  "description": "One bounded row per material canonical value, list member, structured indicator, window endpoint, or deliberate omission.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "claims"],
+  "properties": {
+    "schemaVersion": { "const": "cirewind.review-claims/v1alpha1" },
+    "claims": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 20000,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/claim" }
+    }
+  },
+  "$defs": {
+    "claim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "claimId",
+        "canonicalPointer",
+        "semanticSelector",
+        "semanticRole",
+        "sourceIds",
+        "sourceLocations",
+        "transformation",
+        "conflictIds",
+        "authorAssessment"
+      ],
+      "properties": {
+        "claimId": { "$ref": "review-common-v1alpha1.json#/$defs/stableID" },
+        "canonicalPointer": {
+          "oneOf": [
+            { "$ref": "review-common-v1alpha1.json#/$defs/rfc6901Pointer" },
+            { "type": "null" }
+          ]
+        },
+        "semanticSelector": { "$ref": "review-common-v1alpha1.json#/$defs/semanticSelector" },
+        "omittedSlot": {
+          "enum": [
+            "component-subpath",
+            "affected-ref",
+            "known-good-identity",
+            "immutable-package-digest",
+            "window-start",
+            "window-end",
+            "ioc",
+            "remediation-guidance",
+            "credential-rotation-trigger"
+          ]
+        },
+        "normalizedValue": { "$ref": "review-common-v1alpha1.json#/$defs/normalizedScalar" },
+        "valueSha256": { "$ref": "review-common-v1alpha1.json#/$defs/sha256" },
+        "semanticRole": {
+          "enum": [
+            "component",
+            "subpath",
+            "ref",
+            "compromised-sha",
+            "package-digest",
+            "known-good-sha",
+            "window",
+            "literal",
+            "ioc",
+            "remediation",
+            "rotation-trigger",
+            "other"
+          ]
+        },
+        "sourceIds": {
+          "allOf": [
+            { "$ref": "review-common-v1alpha1.json#/$defs/nonEmptySafeIDSet" },
+            { "maxItems": 2000 }
+          ]
+        },
+        "sourceLocations": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2000,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/sourceLocation" }
+        },
+        "transformation": {
+          "enum": ["verbatim", "normalized", "mechanically-extracted", "reviewer-derived"]
+        },
+        "sourcePrecision": { "enum": ["second", "minute", "hour", "day", "unknown"] },
+        "approximation": { "enum": ["exact", "source-rounded", "conservative-expanded", "unknown"] },
+        "derivation": { "$ref": "review-common-v1alpha1.json#/$defs/nonEmptySafeText" },
+        "conflictIds": { "$ref": "review-common-v1alpha1.json#/$defs/safeIDSet" },
+        "authorAssessment": { "$ref": "#/$defs/authorAssessment" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "canonicalPointer": { "type": "null" } },
+            "required": ["canonicalPointer"]
+          },
+          "then": {
+            "required": ["omittedSlot"],
+            "not": {
+              "anyOf": [
+                { "required": ["normalizedValue"] },
+                { "required": ["valueSha256"] }
+              ]
+            },
+            "properties": {
+              "authorAssessment": {
+                "allOf": [
+                  { "$ref": "#/$defs/authorAssessment" },
+                  {
+                    "properties": { "decision": { "enum": ["omission", "blocked"] } }
+                  }
+                ]
+              }
+            }
+          },
+          "else": {
+            "not": { "required": ["omittedSlot"] },
+            "oneOf": [
+              {
+                "required": ["normalizedValue"],
+                "not": { "required": ["valueSha256"] }
+              },
+              {
+                "required": ["valueSha256"],
+                "not": { "required": ["normalizedValue"] }
+              }
+            ],
+            "properties": {
+              "authorAssessment": {
+                "allOf": [
+                  { "$ref": "#/$defs/authorAssessment" },
+                  { "properties": { "decision": { "const": "inclusion" } } }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "transformation": { "not": { "const": "verbatim" } } },
+            "required": ["transformation"]
+          },
+          "then": { "required": ["derivation"] },
+          "else": { "not": { "required": ["derivation"] } }
+        }
+      ]
+    },
+    "sourceLocation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceId", "location"],
+      "properties": {
+        "sourceId": { "$ref": "review-common-v1alpha1.json#/$defs/stableID" },
+        "location": { "$ref": "review-common-v1alpha1.json#/$defs/sourceLocation" }
+      }
+    },
+    "authorAssessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decision", "rationale"],
+      "properties": {
+        "decision": { "enum": ["inclusion", "omission", "blocked"] },
+        "rationale": { "$ref": "review-common-v1alpha1.json#/$defs/nonEmptySafeText" }
+      }
+    }
+  }
+}

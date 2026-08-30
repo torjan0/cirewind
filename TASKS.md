@@ -247,6 +247,72 @@ local automated evidence only; no external review or reproduction is claimed.
 
 ### Real incident-pack governance and candidates
 
+Governance engineering checkpoint (2026-08-30): the worktree now contains the
+closed review-record schemas, strict typed decoders, content/fixture/review
+manifests, deterministic `REVIEW.md` rendering, pack-derived material and actual-
+absence omission validation, offline production-path fixture replay, approval
+policy engine, bounded GitHub review-snapshot normalizer and read-only capture
+workflow, material-assertion-to-review-body hash binding, official-repository
+and exact checked-source closure, retained review/validator policies, bounded
+closed governance-tree traversal, fail-closed exact-C Git guards, no-overwrite
+promotion with a 15-minute recorded
+timestamp chronology interval (not authenticated wall-clock freshness),
+retained-snapshot hashing, and append-only registered-history
+verification. The capture workflow is default-branch-gated, builds the
+normalizer before token use, byte-compares two projected review captures,
+rechecks C, and performs normalization without a credential; the snapshot still
+requires human verification of its run/ref/source/artifact identity and is not
+platform attestation. The empty eligible-maintainer policy and registry remain
+honest fail-closed inputs; they do not stand in for human identities or reviewed
+content.
+
+A pre-commit hostile-input review also closed an accumulate-then-dereference
+path-validation family before publication and found no active repository-wide
+variant. Retained JSON now enforces missing required fields and rejects explicit
+nulls before typed decoding across every current governance document type;
+`Claim.canonicalPointer` is the sole schema-authorized nullable value. The
+method, boundaries, and residual process constraints are recorded in
+[`2026-08-30-pack-review-path-variant-audit.md`](docs/validation/2026-08-30-pack-review-path-variant-audit.md).
+
+The clean-checkout contract permits an absent empty `approvals/` directory only
+for candidate-stage material and requires it once review begins. Candidate
+change-set separation now lives in a dedicated default-branch
+`pull_request_target` workflow: it executes only the exact trusted-base guard,
+treats the exact PR head as inert Git data under read-only permissions, and
+fails on event/checkout identity drift. This avoids both the initial-workflow
+bootstrap failure and an in-band policy definition controlled by the candidate.
+
+Final local governance qualification (2026-08-30): normal and race suites,
+whole-repository vet, module/diff/format checks, Action and shell linting,
+reachable-vulnerability and license checks, current-tree and 13-commit history
+secret scans, the no-network/no-child-process syscall audit, six-target
+cross-build, the complete 11-finding demo, and manifest verification passed. A
+disposable clean Git snapshot also passed `make pack-review-check` and exact-HEAD
+candidate-tree validation. The command record and scope are retained in
+[`2026-08-30-pack-review-governance-qualification.md`](docs/validation/2026-08-30-pack-review-governance-qualification.md).
+These are local pre-commit results only: `PACK-020`–`PACK-024` remain open for
+their exact-commit hosted, human, and topology criteria.
+
+The Git topology is intentionally non-self-referential: candidate CI validates
+the retained candidate tree against externally supplied exact `HEAD` C, later
+human approval and review records bind C, promotion content is committed as P,
+and a subsequent registry commit may name C/P without naming itself. Registered
+history retains its recorded identity; unregistered candidate content binds to
+the supplied C. Registry-history validation cannot require C to contain its own
+commit identity. `PACK-020` and `PACK-021` remain open until the corrective
+candidate-C boundary and the full repository qualification pass are complete.
+`PACK-022` and `PACK-023`
+remain open regardless of machine-test coverage because their accepted criteria
+require an actual qualifying human GitHub approval and an exercised real
+C-to-P-to-later-registry history. `PACK-024` remains open pending the complete
+CI/governance pass, its `PACK-023` dependency, and the final read-only workflow
+security audit. Its machine fixture matrix now covers all ten states,
+inclusive-start/exclusive-end boundaries, contradiction, evidence gaps, exact
+coverage/gap oracle checks, and a downloaded-only scenario that forbids
+`CONFIRMED_EXECUTED`; that targeted pass is not a human or real-candidate gate.
+No real candidate, independent approval, promotion, or external review is
+claimed.
+
 - [ ] **PACK-019 — Staff the eligible non-author maintainer approval pool.** For each required pack, assign a human preparer-of-record who owns source transcription/DCO responsibility, then ensure two other distinct project maintainers are eligible to approve that candidate; if Maksim is the preparer, this requires two additional maintainers, otherwise Maksim may be one of the two. Grant only documented review authority and record role/conflict disclosures. One human may fill another external review role across the release only when they did not author or transcribe the material they independently review; this does not reduce any per-pack distinct-reviewer count. **Done when:** every required candidate has two identified non-author/non-transcriber maintainer approvers, and no bot, alternate account, or automated session substitutes for a human; Reviewdog and tj-actions each have at least one eligible outside reviewer and Trivy has two distinct eligible outside reviewers. **This task requires Maksim and the identified humans and cannot be completed by automation.** *(Dependencies: `ADO-001`; blocking governance gate for promotion, not candidate tooling.)*
 
 - [ ] **PACK-020 — Define strict review-unit, approval, promotion, and registry schemas.** Add versioned bounded schemas for immutable packet/sources/claims/structured conflicts, promotion records, status registry, and safe identifier-derived paths outside the incident schema. Define canonical `review.json` as the machine-readable review-record source of truth and deterministically generate `REVIEW.md` from it; neither file can certify independent approval. Define `candidate-content-manifest.sha256` over immutable candidate content and a separate `review-record-manifest.sha256` over review/promotion records, each excluding itself. **Done when:** duplicate/unknown fields and unsafe paths fail; generated `REVIEW.md` is byte-deterministic and cannot disagree with `review.json`; no manifest/commit/status field is self-referential; allowed status transitions are deterministic; candidates cannot self-declare reviewed; and fixtures contain no executable/sensitive content. *(Tests: JSON/Markdown equivalence golden, schema/hash-cycle goldens, hostile inputs, transition property tests, fuzz seeds; dependencies: `ADO-001`.)*

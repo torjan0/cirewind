@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
 	"testing"
@@ -406,4 +407,38 @@ func renderValueYAML(value map[string]any, indent int) string {
 		}
 	}
 	return out.String()
+}
+
+func TestValidatorPolicySHA256Golden(t *testing.T) {
+	const want = "ddb2aff301c8d55ad8383701ddf4cb7961973689fe1413a19f127b2f7faf47aa"
+	if got := ValidatorPolicySHA256(); got != want {
+		t.Fatalf("ValidatorPolicySHA256() = %q, want %q; change PolicyVersion and review-packet policy bindings when changing validator policy", got, want)
+	}
+}
+
+func TestValidatorPolicyCompatibilitySelection(t *testing.T) {
+	t.Parallel()
+	identity, supported := ResolveValidatorPolicy(PolicyVersion)
+	if !supported || identity.Version != PolicyVersion || identity.SHA256 != ValidatorPolicySHA256() {
+		t.Fatalf("current policy selection = %+v, supported=%v", identity, supported)
+	}
+	if identity, supported := ResolveValidatorPolicy("incident-validator-unsupported"); supported || identity != (ValidatorPolicyIdentity{}) {
+		t.Fatalf("unsupported policy selection = %+v, supported=%v", identity, supported)
+	}
+
+	pack := readFixture(t, "valid-minimal.yaml")
+	current, err := Validate(context.Background(), pack)
+	if err != nil {
+		t.Fatal(err)
+	}
+	explicit, err := ValidateForPolicy(context.Background(), pack, PolicyVersion)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(current, explicit) {
+		t.Fatalf("current and explicitly selected validation differ:\ncurrent=%+v\nexplicit=%+v", current, explicit)
+	}
+
+	_, err = ValidateForPolicy(context.Background(), pack, "incident-validator-unsupported")
+	assertDiagnostic(t, err, "UNSUPPORTED_VALIDATOR_POLICY")
 }

@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "review-assertion-v1alpha1.json",
+  "title": "CIRewind pre-submission human review assertion v1alpha1",
+  "description": "Canonical human-authored material review assertions used to derive the exact fixed GitHub review body before GitHub assigns review metadata. Validation does not create an approval, establish independence, or certify factual truth.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "reviewId",
+    "reviewer",
+    "declaredRole",
+    "independent",
+    "conflictDisclosure",
+    "incidentId",
+    "packVersion",
+    "candidateCommit",
+    "bindings",
+    "repository",
+    "pullRequestNumber",
+    "scopes",
+    "commands",
+    "sourceObjectsChecked",
+    "decision",
+    "rationale",
+    "knownLimitations"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "cirewind.review-assertion/v1alpha1" },
+    "reviewId": { "$ref": "review-common-v1alpha1.json#/$defs/pathID" },
+    "reviewer": { "$ref": "review-common-v1alpha1.json#/$defs/reviewerIdentity" },
+    "declaredRole": { "enum": ["maintainer", "outside-technical"] },
+    "independent": {
+      "description": "The reviewer's declaration only; this field cannot certify independence by itself.",
+      "type": "boolean"
+    },
+    "conflictDisclosure": { "$ref": "review-approval-v1alpha1.json#/properties/conflictDisclosure" },
+    "incidentId": { "$ref": "review-common-v1alpha1.json#/$defs/pathID" },
+    "packVersion": { "$ref": "review-common-v1alpha1.json#/$defs/semver" },
+    "candidateCommit": { "$ref": "review-common-v1alpha1.json#/$defs/gitCommit" },
+    "bindings": { "$ref": "review-approval-v1alpha1.json#/$defs/bindings" },
+    "repository": {
+      "allOf": [
+        { "$ref": "review-common-v1alpha1.json#/$defs/githubRepository" },
+        { "pattern": "^[a-z0-9_.-]+/[a-z0-9_.-]+$" }
+      ]
+    },
+    "pullRequestNumber": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 2147483647
+    },
+    "scopes": { "$ref": "review-approval-v1alpha1.json#/properties/scopes" },
+    "commands": { "$ref": "review-approval-v1alpha1.json#/properties/commands" },
+    "sourceObjectsChecked": { "$ref": "review-approval-v1alpha1.json#/properties/sourceObjectsChecked" },
+    "decision": { "$ref": "review-approval-v1alpha1.json#/properties/decision" },
+    "rationale": { "$ref": "review-approval-v1alpha1.json#/properties/rationale" },
+    "knownLimitations": { "$ref": "review-approval-v1alpha1.json#/properties/knownLimitations" }
+  }
+}

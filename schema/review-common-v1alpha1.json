@@ -1,0 +1,268 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "review-common-v1alpha1.json",
+  "title": "CIRewind real incident review common definitions v1alpha1",
+  "description": "Closed, bounded primitive definitions shared by the offline real incident-pack review records.",
+  "type": "object",
+  "additionalProperties": false,
+  "maxProperties": 0,
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "gitCommit": {
+      "description": "A complete lowercase Git object ID; abbreviated object IDs are not accepted.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$"
+    },
+    "stableID": {
+      "description": "A stable identifier that is also safe as one cross-platform filename component.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$",
+      "allOf": [
+        { "not": { "pattern": "\\.$" } },
+        {
+          "not": {
+            "pattern": "^(?:[Cc][Oo][Nn]|[Pp][Rr][Nn]|[Aa][Uu][Xx]|[Nn][Uu][Ll]|[Cc][Oo][Mm][1-9]|[Ll][Pp][Tt][1-9])(?:\\..*)?$"
+          }
+        }
+      ]
+    },
+    "pathID": {
+      "description": "A stable ID safe as one cross-platform path component.",
+      "$ref": "#/$defs/stableID"
+    },
+    "semver": {
+      "type": "string",
+      "maxLength": 128,
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"
+    },
+    "utcTimestamp": {
+      "type": "string",
+      "format": "date-time",
+      "minLength": 20,
+      "maxLength": 30,
+      "pattern": "^[0-9]{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\\.[0-9]{0,8}[1-9])?Z$"
+    },
+    "safeText": {
+      "description": "Bounded inert multiline text. LF is the only permitted control; DEL, C1 controls, directional controls, and HTML angle brackets are forbidden.",
+      "type": "string",
+      "maxLength": 4096,
+      "pattern": "^[^\u0000-\u0009\u000b-\u001f\u007f-\u009f\u200e\u200f\u202a-\u202e\u2066-\u2069\ufeff<>]*$"
+    },
+    "nonEmptySafeText": {
+      "allOf": [
+        { "$ref": "#/$defs/safeText" },
+        { "minLength": 1, "pattern": "^\\S(?:[\\s\\S]*\\S)?$" }
+      ]
+    },
+    "shortSafeText": {
+      "allOf": [
+        { "$ref": "#/$defs/safeText" },
+        { "minLength": 1, "maxLength": 512 }
+      ]
+    },
+    "singleLineSafeText": {
+      "description": "Bounded inert single-line text. All C0, DEL, C1, directional controls, and HTML angle brackets are forbidden.",
+      "type": "string",
+      "maxLength": 4096,
+      "pattern": "^[^\u0000-\u001f\u007f-\u009f\u200e\u200f\u2028\u2029\u202a-\u202e\u2066-\u2069\ufeff<>]*$"
+    },
+    "nonEmptySingleLineSafeText": {
+      "allOf": [
+        { "$ref": "#/$defs/singleLineSafeText" },
+        { "minLength": 1, "pattern": "^\\S(?:.*\\S)?$" }
+      ]
+    },
+    "githubLogin": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 39,
+      "pattern": "^[a-z0-9]([a-z0-9-]{0,37}[a-z0-9])?$"
+    },
+    "databaseID": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "reviewerIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["login", "databaseId"],
+      "properties": {
+        "login": { "$ref": "#/$defs/githubLogin" },
+        "databaseId": { "$ref": "#/$defs/databaseID" }
+      }
+    },
+    "platformLogin": {
+      "description": "A conservative GitHub actor login; normalized GitHub App bot logins retain their [bot] suffix.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 44,
+      "pattern": "^[a-z0-9]([a-z0-9-]{0,37}[a-z0-9])?(\\[bot\\])?$"
+    },
+    "platformActor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["login", "databaseId"],
+      "properties": {
+        "login": { "$ref": "#/$defs/platformLogin" },
+        "databaseId": { "$ref": "#/$defs/databaseID" }
+      }
+    },
+    "githubRepository": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 201,
+      "pattern": "^[A-Za-z0-9_.-]{1,100}/[A-Za-z0-9_.-]{1,100}$",
+      "not": { "pattern": "\\.\\." }
+    },
+    "httpsURL": {
+      "type": "string",
+      "format": "uri",
+      "minLength": 9,
+      "maxLength": 2048,
+      "pattern": "^https://[^/?#@\\s]+(?:/[^?#\\s]*)?(?:#[^?\\s]*)?$"
+    },
+    "githubReviewURL": {
+      "allOf": [
+        { "$ref": "#/$defs/httpsURL" },
+        {
+          "pattern": "^https://github\\.com/[A-Za-z0-9_.-]{1,100}/[A-Za-z0-9_.-]{1,100}/pull/[1-9][0-9]*#pullrequestreview-[1-9][0-9]*$"
+        }
+      ]
+    },
+    "githubWorkflowRunURL": {
+      "allOf": [
+        { "$ref": "#/$defs/httpsURL" },
+        {
+          "pattern": "^https://github\\.com/[A-Za-z0-9_.-]{1,100}/[A-Za-z0-9_.-]{1,100}/actions/runs/[1-9][0-9]*$"
+        }
+      ]
+    },
+    "safeRelativePath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}(?:/[A-Za-z0-9][A-Za-z0-9._-]{0,99})*$",
+      "allOf": [
+        { "not": { "pattern": "(^|/)\\.\\.?(/|$)" } },
+        { "not": { "pattern": "//" } },
+        { "not": { "pattern": "/$" } },
+        { "not": { "pattern": "\\\\" } },
+        { "not": { "pattern": "\\.(?:/|$)" } },
+        {
+          "not": {
+            "pattern": "(^|/)(?:[Cc][Oo][Nn]|[Pp][Rr][Nn]|[Aa][Uu][Xx]|[Nn][Uu][Ll]|[Cc][Oo][Mm][1-9]|[Ll][Pp][Tt][1-9])(?:\\.[^/]*)?(/|$)"
+          }
+        }
+      ]
+    },
+    "reviewedPackPath": {
+      "description": "The identifier-derived reviewed pack destination. Semantic validation also checks equality to incidentId and packVersion.",
+      "type": "string",
+      "minLength": 30,
+      "maxLength": 253,
+      "pattern": "^incidents/reviewed/[A-Za-z0-9][A-Za-z0-9._-]{0,99}/(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?\\.ya?ml$",
+      "allOf": [
+        { "not": { "pattern": "^incidents/reviewed/[^/]*\\./" } },
+        {
+          "not": {
+            "pattern": "^incidents/reviewed/(?:[Cc][Oo][Nn]|[Pp][Rr][Nn]|[Aa][Uu][Xx]|[Nn][Uu][Ll]|[Cc][Oo][Mm][1-9]|[Ll][Pp][Tt][1-9])(?:\\..*)?/"
+          }
+        }
+      ]
+    },
+    "rfc6901Pointer": {
+      "description": "A non-root RFC 6901 JSON Pointer with correctly escaped tilde tokens.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096,
+      "pattern": "^(?:/(?:[^~/\u0000-\u001f\u007f]|~[01])*)+$"
+    },
+    "semanticSelector": {
+      "description": "A stable semantic selector composed only of bounded kind:value segments.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 300,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,299}$"
+    },
+    "sourceLocation": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1000,
+      "pattern": "^[^\u0000-\u001f\u007f<>]+$"
+    },
+    "reviewPolicyProfile": {
+      "enum": ["standard-v0.2", "trivy-v0.2"]
+    },
+    "reviewScope": {
+      "enum": [
+        "identity",
+        "time",
+        "transitive-mapping",
+        "ioc-extraction",
+        "remediation",
+        "hostile-input-privacy",
+        "component-namespace",
+        "complete"
+      ]
+    },
+    "findingState": {
+      "enum": [
+        "CONFIRMED_EXECUTED",
+        "CONFIRMED_DOWNLOADED",
+        "CONFIRMED_CALLED_WORKFLOW",
+        "DECLARED_AT_RUN_SHA",
+        "RUN_IN_WINDOW_MUTABLE_REF",
+        "POTENTIAL_TRANSITIVE",
+        "CURRENT_REFERENCE_ONLY",
+        "NO_MATCH_CONFIRMED",
+        "UNKNOWN_EVIDENCE_GAP",
+        "CONTRADICTORY_EVIDENCE"
+      ]
+    },
+    "provenanceLevel": {
+      "enum": ["L4_CERTAIN", "L3_STRONG", "L2_PROBABLE", "L1_POSSIBLE", "L0_UNKNOWN"]
+    },
+    "evidenceID": {
+      "type": "string",
+      "pattern": "^ev1:[0-9a-f]{64}$"
+    },
+    "coverageAssessmentID": {
+      "type": "string",
+      "pattern": "^cova1:[0-9a-f]{64}$"
+    },
+    "safeIDSet": {
+      "$comment": "Canonical instances sort these IDs lexicographically; JSON Schema enforces uniqueness and the semantic validator enforces ordering.",
+      "type": "array",
+      "maxItems": 2000,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/stableID" }
+    },
+    "nonEmptySafeIDSet": {
+      "allOf": [
+        { "$ref": "#/$defs/safeIDSet" },
+        { "minItems": 1 }
+      ]
+    },
+    "normalizedScalar": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 16384,
+      "allOf": [
+        { "pattern": "^\\S(?:[\\s\\S]*\\S)?$" },
+        { "pattern": "^[^\u0000-\u0009\u000b-\u001f\u007f-\u009f\u200e\u200f\u202a-\u202e\u2066-\u2069\ufeff<>]*$" }
+      ]
+    },
+    "mediaType": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 192,
+      "pattern": "^[a-z0-9][a-z0-9!#$&^_.+-]{0,63}/[a-z0-9][a-z0-9!#$&^_.+-]{0,63}$"
+    }
+  }
+}

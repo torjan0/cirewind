@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "platform-approval-snapshot-v1alpha1.json",
+  "title": "CIRewind offline GitHub approval metadata snapshot v1alpha1",
+  "description": "Bounded, normalized evidence captured from an identified GitHub surface and reviewed offline. This record is not a signature or attestation, is not self-certifying, cannot prove reviewer identity or independence, and cannot establish factual truth or reviewed status. Policy may only report that matching policy records and platform metadata are present.",
+  "$comment": "Consumers MUST treat this as hostile offline input and MUST NOT follow its URLs, make requests directed by it, execute content, or count it as an approval by itself.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "repository",
+    "pullRequestNumber",
+    "candidateCommit",
+    "observedAt",
+    "observationSource",
+    "workflowSourceCommit",
+    "workflowRunUrl",
+    "workflowRunId",
+    "workflowRunAttempt",
+    "responseSha256",
+    "approvals"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "cirewind.platform-approval-snapshot/v1alpha1" },
+    "repository": { "$ref": "review-common-v1alpha1.json#/$defs/githubRepository" },
+    "pullRequestNumber": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 2147483647
+    },
+    "candidateCommit": { "$ref": "review-common-v1alpha1.json#/$defs/gitCommit" },
+    "observedAt": { "$ref": "review-common-v1alpha1.json#/$defs/utcTimestamp" },
+    "observationSource": {
+      "description": "The trusted capture surface normalized before this offline record was created; not an assertion supplied by incident-pack content.",
+      "enum": ["github-rest-api", "github-actions-event"]
+    },
+    "workflowSourceCommit": {
+      "description": "Exact repository commit from which the normalization workflow and tooling were checked out. This is provenance for human verification, not a signature or attestation.",
+      "$ref": "review-common-v1alpha1.json#/$defs/gitCommit"
+    },
+    "workflowRunUrl": { "$ref": "review-common-v1alpha1.json#/$defs/githubWorkflowRunURL" },
+    "workflowRunId": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "workflowRunAttempt": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10000
+    },
+    "responseSha256": { "$ref": "review-common-v1alpha1.json#/$defs/sha256" },
+    "approvals": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/platformApproval" }
+    }
+  },
+  "$defs": {
+    "platformApproval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reviewDatabaseId",
+        "reviewUrl",
+        "reviewer",
+        "accountType",
+        "state",
+        "commitId",
+        "submittedAt",
+        "bodySha256",
+        "dismissed"
+      ],
+      "properties": {
+        "reviewDatabaseId": { "$ref": "review-common-v1alpha1.json#/$defs/databaseID" },
+        "reviewUrl": { "$ref": "review-common-v1alpha1.json#/$defs/githubReviewURL" },
+        "reviewer": { "$ref": "review-common-v1alpha1.json#/$defs/platformActor" },
+        "accountType": { "enum": ["User", "Bot", "Organization", "Mannequin"] },
+        "state": { "enum": ["APPROVED", "CHANGES_REQUESTED", "COMMENTED", "DISMISSED"] },
+        "commitId": { "$ref": "review-common-v1alpha1.json#/$defs/gitCommit" },
+        "submittedAt": { "$ref": "review-common-v1alpha1.json#/$defs/utcTimestamp" },
+        "bodySha256": {
+          "description": "SHA-256 of the exact GitHub review body. The hostile body itself is not retained.",
+          "$ref": "review-common-v1alpha1.json#/$defs/sha256"
+        },
+        "dismissed": { "type": "boolean" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "accountType": { "const": "User" } },
+            "required": ["accountType"]
+          },
+          "then": {
+            "properties": {
+              "reviewer": { "$ref": "review-common-v1alpha1.json#/$defs/reviewerIdentity" }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "accountType": { "const": "Bot" } },
+            "required": ["accountType"]
+          },
+          "then": {
+            "properties": {
+              "reviewer": {
+                "properties": { "login": { "pattern": "\\[bot\\]$" } }
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "reviewer": {
+                "properties": { "login": { "not": { "pattern": "\\[bot\\]$" } } }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "dismissed": { "const": true } },
+            "required": ["dismissed"]
+          },
+          "then": { "properties": { "state": { "const": "DISMISSED" } } },
+          "else": { "properties": { "state": { "not": { "const": "DISMISSED" } } } }
+        }
+      ]
+    }
+  }
+}

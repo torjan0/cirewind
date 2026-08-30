@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "review-validation-v1alpha1.json",
+  "title": "CIRewind immutable candidate validation result v1alpha1",
+  "description": "Hash-bound result of deterministic pack, fixture, and oracle validation. A passing result establishes conformance only; it does not establish that incident facts are true.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "incidentId",
+    "packVersion",
+    "originalPackSha256",
+    "canonicalPackSha256",
+    "validatorVersion",
+    "validatorPolicySha256",
+    "expectedFindingsSha256",
+    "fixtureManifestSha256",
+    "result"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "cirewind.review-validation/v1alpha1" },
+    "incidentId": { "$ref": "review-common-v1alpha1.json#/$defs/pathID" },
+    "packVersion": { "$ref": "review-common-v1alpha1.json#/$defs/semver" },
+    "originalPackSha256": { "$ref": "review-common-v1alpha1.json#/$defs/sha256" },
+    "canonicalPackSha256": { "$ref": "review-common-v1alpha1.json#/$defs/sha256" },
+    "validatorVersion": {
+      "allOf": [
+        { "$ref": "review-common-v1alpha1.json#/$defs/nonEmptySingleLineSafeText" },
+        { "maxLength": 200 }
+      ]
+    },
+    "validatorPolicySha256": { "$ref": "review-common-v1alpha1.json#/$defs/sha256" },
+    "expectedFindingsSha256": { "$ref": "review-common-v1alpha1.json#/$defs/sha256" },
+    "fixtureManifestSha256": { "$ref": "review-common-v1alpha1.json#/$defs/sha256" },
+    "result": { "const": "pass" }
+  }
+}

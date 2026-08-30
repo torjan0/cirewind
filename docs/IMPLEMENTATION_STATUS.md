@@ -1,6 +1,7 @@
 # CIRewind implementation status
 
-Status snapshot: **2026-08-22**
+Published-release status snapshot: **2026-08-22**. Unreleased v0.2 worktree note
+updated **2026-08-30**.
 
 Release decision: **GO and published for experimental v0.1.1 inside
 [`ADR 0011`](adr/0011-experimental-v0-1-qualification-envelope.md)'s bounded
@@ -34,6 +35,135 @@ organization, credential, or expired object.
   completeness is not a v0.1 support claim; output must expose partial coverage.
 - **Release blocker** — a candidate-integrity, security, evidence-semantic, or
   publication gate still required on the exact release revision.
+
+## v0.2 adoption branch status
+
+The published product remains v0.1.1. The `v0.2-adoption` worktree contains
+unreleased adoption work and must not be read as a v0.2 release or qualification
+claim. The accepted forensic semantics remain unchanged: the ten canonical
+finding states, five provenance identifiers, eight mandatory invariants, and
+attempt/job-specific identity are still the authority.
+
+Real incident-pack governance infrastructure is implemented in the current
+worktree under `internal/packreview`, `tools/packreview`, and the closed schemas
+under `schema/`. It provides:
+
+- strict, bounded packet, retained review-policy, source, typed claim, conflict,
+  pre-review assertion, human review, normalized platform-observation,
+  promotion, and append-only registry records;
+- pre-decode retained-JSON shape enforcement for required fields and explicit
+  nulls, with `Claim.canonicalPointer` as the sole schema-authorized nullable
+  value, plus path-bearing-field rejection before any derived filesystem read;
+- deterministic candidate, fixture, and review-record manifests with fixed
+  allowlists, exact byte/hash bindings, link/path/collision checks, and bounded
+  file/depth/total-size limits;
+- a clean-checkout review-unit contract that permits Git's unavoidable absence
+  of an empty `approvals/` directory only at candidate stage and requires the
+  real closed directory as soon as review or promotion material exists;
+- a material-inventory validator derived from the canonical incident pack,
+  including source-to-field and source-location closure, typed identity and
+  digest namespaces, temporal precision, deliberate omissions bound to semantic
+  slots that are actually absent, symmetric conflicts, and secondary-source
+  restrictions;
+- deterministic inert `REVIEW.md` rendering from canonical human-supplied
+  `review.json`, plus an exact fixed review-body renderer from a separately
+  human-authored material assertion; neither representation creates or
+  authenticates an approval;
+- a bounded local adapter for the GitHub list-reviews response plus a manually
+  dispatched, read-only repository workflow gated to the selected default
+  branch; it builds the normalizer before token use, projects/captures review
+  metadata twice, byte-compares it, rechecks exact C, then normalizes without a
+  credential and transfers the canonical snapshot with its hash and artifact ID;
+- offline comparison of exact review records to an externally acquired,
+  normalized GitHub PR-review snapshot, including candidate-head, PR, reviewer,
+  account type, latest effective state, dismissal, exact body hash, official
+  policy repository, role, scope, self-review, checked-source closure, and
+  policy-count checks;
+- closed fixture-index replay through the production offline derivation path,
+  with exact finding/state/provenance/evidence-or-gap/coverage-ID comparison,
+  forbidden-state checks, and rejection of unindexed scenario snapshots;
+- idempotent no-overwrite promotion of byte-identical approved candidate YAML,
+  plus retained platform-snapshot hashing and separate promotion/review-record
+  manifests, with the two retained timestamps constrained to an inclusive
+  15-minute record-chronology interval; this structural check is not an
+  authenticated wall-clock freshness claim; and
+- reviewed-tree and append-only registry verification, including allowed status
+  transitions, immutable history, supersession closure, exact promoted bytes,
+  manifest bindings, bounded closed-tree traversal, revalidation of retained
+  platform approvals and retained validator/review-policy versions, validation
+  of review units retained in registry history, and an externally supplied
+  promotion content commit P.
+
+The maintainer-only tool intentionally performs no network request, process or
+Git execution, credential lookup, approval creation, commit, push, tag, release,
+or registry mutation. The fixed Git guard requires exact `HEAD == C` and a clean
+candidate worktree, or—only during post-approval materialization—an explicit
+maintainer-controlled allowlist of fixed review-record paths. Rename sources,
+ignored untracked files, and gitlink/submodule changes remain visible to this
+check. Candidate change-set separation runs in the dedicated default-branch
+`.github/workflows/pack-review-candidate-policy.yml` `pull_request_target`
+workflow: only the exact trusted-base script executes,
+the pull-request head is checked out solely as inert Git data, permissions are
+read-only, and the workflow executes no head-controlled file, build, test,
+dependency, or hook. The gate begins governing subsequent PR events only after
+the trusted workflow and guard land on the default branch. This avoids both a
+policy definition controlled by the candidate and an initial-PR bootstrap
+failure. Qualifying GitHub
+approvals are obtained against C. Candidate CI must invoke the candidate-tree
+command with externally supplied `HEAD` C; that command validates every retained
+unit. Existing registered history retains its recorded C, while unregistered
+candidate content binds to the supplied C; the registry at C cannot be required
+to name C because that would be a commit self-reference. The
+normalized snapshot and human records are then materialized without redefining
+C, promotion output is committed as P, and later append-only registry history
+may name C and P without naming its own containing commit. Protected history and
+acquisition/authentication of the GitHub observation remain external caller/CI
+responsibilities. A checked-in normalized snapshot is not self-authenticating.
+It is point-in-time process evidence: a human must verify the exact workflow
+run/ref/source commit, PR approval on C, artifact identity, and hashes, and the
+offline verifier cannot discover a later dismissal or review. A detached local
+snapshot is not platform proof.
+The adapter behavior follows the [GitHub CLI pagination/jq contract](https://cli.github.com/manual/gh_api),
+the CLI's [source-enforced `--slurp`/`--jq` exclusion at revision `40b742f`](https://github.com/cli/cli/blob/40b742f76d68e6b1f472942a6368db4b5d765641/pkg/cmd/api/api.go),
+and the [GitHub REST list-reviews endpoint](https://docs.github.com/en/rest/pulls/reviews?apiVersion=2022-11-28#list-reviews-for-a-pull-request),
+retrieved 2026-08-30.
+The candidate-policy trust split follows GitHub's
+[`pull_request_target` security guidance](https://docs.github.com/en/actions/reference/security/securely-using-pull_request_target)
+and [event semantics](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#pull_request_target),
+including the explicit checkout-v7 opt-in used only for inert head inspection;
+retrieved 2026-08-30.
+
+Full worktree/CI qualification of this unreleased infrastructure remains in
+progress; implementation presence is not a release-gate result. The targeted
+synthetic machine fixture matrix now covers all ten finding states, inclusive-
+start/exclusive-end boundaries, contradiction, evidence gaps, exact coverage/gap
+oracle checks, and a downloaded-only scenario that forbids
+`CONFIRMED_EXECUTED`. `PACK-024` remains open because its `PACK-023` dependency,
+complete CI/governance run, and final workflow security audit are not yet closed.
+The checked-in policy intentionally names no fabricated eligible maintainers, so
+a real promotion remains fail-closed.
+
+The 2026-08-30 pre-commit path-confinement variant audit found and corrected an
+accumulate-then-dereference validation family before publication. Its
+repository-wide sink review found no active recurrence, and the adjacent
+retained-JSON schema/runtime audit covers all current governance document types.
+See
+[`2026-08-30-pack-review-path-variant-audit.md`](validation/2026-08-30-pack-review-path-variant-audit.md).
+The final local governance pass then completed normal/race/vet, Action and shell
+lint, vulnerability, license, secret-history, syscall-safety, six-target build,
+demo, manifest, and disposable-clean-tree exact-HEAD checks. The exact local
+scope and remaining hosted/human gates are recorded in
+[`2026-08-30-pack-review-governance-qualification.md`](validation/2026-08-30-pack-review-governance-qualification.md).
+
+No real incident pack has been independently reviewed, promoted, or made
+release-ready. No automated session, local JSON record, deterministic Markdown
+rendering, schema result, manifest, or normalized snapshot counts as an
+independent human approval. Reviewdog and tj-actions still require the accepted
+outside-human and maintainer gates; Trivy still requires two distinct outside
+reviewers in addition to the maintainer policy; Xygeni remains nonblocking and
+excluded by default. `PACK-022` and `PACK-023` remain open because their accepted
+criteria require an actual qualifying GitHub human approval against C and a real
+C-to-P-to-later-registry history, respectively.
 
 ## CLI status
 
@@ -366,4 +496,8 @@ blocking for a patch release.
 No real-world incident pack is release-ready. This does not block the core binary
 or schema, but any real pack is a separate reviewed content release. Every value
 must have primary-source provenance, exact precision, deterministic fixtures,
-conflict review, and independent maintainer review; otherwise use synthetic data.
+conflict review, exact-content GitHub PR approval, and the independent human
+review required by the accepted policy; otherwise use synthetic data. The v0.2
+offline governance tooling can validate structure and recorded bindings, but it
+cannot establish factual truth, reviewer identity or independence, GitHub
+authenticity, or a clean/immutable Git history by itself.
