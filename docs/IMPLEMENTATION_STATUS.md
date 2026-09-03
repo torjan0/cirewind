@@ -1,8 +1,6 @@
 # CIRewind implementation status
 
 Published-release status snapshot: **2026-08-22**. Unreleased v0.2 worktree note
-updated **2026-09-02**.
-
 updated **2026-09-03**.
 
 Release decision: **GO and published for experimental v0.1.1 inside

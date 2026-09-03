@@ -6,15 +6,6 @@ All notable changes to CIRewind are documented here. The format follows
 
 ## [Unreleased]
 
-### Changed
-
-- `cirewind version` now falls back to Go module build information when no
-  release metadata was linked in: a versioned `go install` reports the module
-  version, a checkout build reports its embedded VCS revision and a `+dirty`
-  marker for a modified worktree, and anything the toolchain did not record
-  stays `dev` or `unknown`. Linker-injected release metadata remains
-  authoritative and the output format is unchanged.
-
 ### Added
 
 - `docs/INSTALLATION.md` describes the evaluation and high-assurance
@@ -23,7 +14,6 @@ All notable changes to CIRewind are documented here. The format follows
   guidance. `make go-install-check` and `make go-install-qualify` prequalify
   the lane offline through a file-based module proxy on the host and inside a
   clean minimal container; neither claims that a public tag exists.
-
 - `make go-install-public-qualify` and `scripts/qualify-public-go-install.sh`,
   the post-publication anonymous public-lane check for the versioned
   `go install` command (fresh caches, default proxy and checksum database,
@@ -31,9 +21,6 @@ All notable changes to CIRewind are documented here. The format follows
   output, embedded module hash, binary digest, offline demo and verification,
   and a bound record), with a file-proxy dry run for its own test. Preparation
   for `DIST-010`; it runs only after a public tag exists.
-
-### Added
-
 - Deterministic synthetic sample-site generator (`tools/samplesite`,
   `internal/samplesite`), the two-generation build script, the sandboxed
   Chromium site audit, and the `sample-site`, `sample-site-check`, and
@@ -44,37 +31,9 @@ All notable changes to CIRewind are documented here. The format follows
   workflow, which has never been dispatched. The generator publishes nothing;
   the human accessibility review, the protected environment, and the README
   cold-reader review remain open.
-
 - Homebrew evaluation-lane formula generator (`releasetool formula`) rendered
   only from verified release subjects, with `make brew-formula-check`
   qualifying it against synthetic subjects through a throwaway local tap.
-
-### Changed
-
-- Release archives now carry `incidents/reviewed/index.json` and, when the
-  append-only review registry marks a pack `reviewed`, that pack's exact bytes
-  bound to the recorded hash with its registry and approval identifiers;
-  candidate copies, review packets, and superseded or withdrawn versions are
-  rejected at packaging and verification. The distribution format version is 2.
-  Release smokes run the demo twice from the release binary and the release
-  contract test builds the sample site twice from that output.
-
-- README candidate banner: maintainer-owned fixed assets
-  (`site/assets/cirewind-banner-dark.png` and `cirewind-banner-light.png`)
-  rendered above the heading for GitHub's dark and light themes through typed
-  slots whose recorded SHA-256 values are drift checked, with alt text naming
-  every element the image encodes.
-
-- `make rc-freeze` and `releasetool acquisition-record`, which freeze one exact
-  release candidate locally from separately fixed intended-final metadata:
-  double build and byte comparison, clean-clone rebuild, final formula render,
-  the local gate ledger, and a bounded acquisition record
-  (`schema/rc-acquisition-record-v1alpha1.json`) whose immutable artifact
-  fields stay empty until an authorized hosted qualification. Preparation for
-  `DIST-007`; it publishes nothing and closes no human gate.
-
-### Added
-
 - Reviewdog `action-setup` v1 tag compromise candidate packet
   (`review-packets/CIR-REVIEWDOG-ACTION-SETUP-2025/1.0.0`) with a full source
   ledger, claim matrix, conflict ledger, generated fixture scenarios, and
@@ -101,6 +60,34 @@ All notable changes to CIRewind are documented here. The format follows
   (input hash, extractor version, recorded normalizations, output hash) with
   no network use, and the `CIR-AQUASECURITY-TRIVY-2026` fixture family with a
   synthetic-archive runtime writer that carries a package digest.
+- README candidate banner: maintainer-owned fixed assets
+  (`site/assets/cirewind-banner-dark.png` and `cirewind-banner-light.png`)
+  rendered above the heading for GitHub's dark and light themes through typed
+  slots whose recorded SHA-256 values are drift checked, with alt text naming
+  every element the image encodes.
+- `make rc-freeze` and `releasetool acquisition-record`, which freeze one exact
+  release candidate locally from separately fixed intended-final metadata:
+  double build and byte comparison, clean-clone rebuild, final formula render,
+  the local gate ledger, and a bounded acquisition record
+  (`schema/rc-acquisition-record-v1alpha1.json`) whose immutable artifact
+  fields stay empty until an authorized hosted qualification. Preparation for
+  `DIST-007`; it publishes nothing and closes no human gate.
+
+### Changed
+
+- `cirewind version` now falls back to Go module build information when no
+  release metadata was linked in: a versioned `go install` reports the module
+  version, a checkout build reports its embedded VCS revision and a `+dirty`
+  marker for a modified worktree, and anything the toolchain did not record
+  stays `dev` or `unknown`. Linker-injected release metadata remains
+  authoritative and the output format is unchanged.
+- Release archives now carry `incidents/reviewed/index.json` and, when the
+  append-only review registry marks a pack `reviewed`, that pack's exact bytes
+  bound to the recorded hash with its registry and approval identifiers;
+  candidate copies, review packets, and superseded or withdrawn versions are
+  rejected at packaging and verification. The distribution format version is 2.
+  Release smokes run the demo twice from the release binary and the release
+  contract test builds the sample site twice from that output.
 
 ### Documentation
 
