@@ -47,7 +47,7 @@ cirewind verify cirewind-demo
 ```
 
 With the supported Go toolchain, `go install github.com/torjan0/cirewind/cmd/cirewind@v0.2.0`
-provides the same evaluation build before the demo and verify commands. The demo
+provides the same evaluation build for the demo and verify commands. The demo
 needs no credential, network access, or repository clone; it is a synthetic
 case, not a real incident.
 
