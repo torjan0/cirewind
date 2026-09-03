@@ -23,7 +23,7 @@ func main() {
 
 func run(args []string, stdout, stderr io.Writer) error {
 	if len(args) == 0 {
-		return errors.New("expected build-date, ldflags, package, finalize, verify, or compare")
+		return errors.New("expected build-date, ldflags, package, finalize, verify, compare, or formula")
 	}
 	switch args[0] {
 	case "build-date", "ldflags":
@@ -45,9 +45,40 @@ func run(args []string, stdout, stderr io.Writer) error {
 		return runVerify(args[1:], stdout, stderr)
 	case "compare":
 		return runCompare(args[1:], stdout, stderr)
+	case "formula":
+		return runFormula(args[1:], stdout, stderr)
 	default:
 		return fmt.Errorf("unknown command %q", args[0])
 	}
+}
+
+func runFormula(args []string, stdout, stderr io.Writer) error {
+	fs := flag.NewFlagSet("formula", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	var directory, out, downloadBase string
+	fs.StringVar(&directory, "dist", "", "verified release distribution directory")
+	fs.StringVar(&out, "out", "", "new formula file to write (cirewind.rb)")
+	fs.StringVar(&downloadBase, "download-base", "", "fixture-only absolute directory URL that serves the subjects locally; omit for the upstream release location")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if directory == "" || out == "" || fs.NArg() != 0 {
+		return errors.New("formula requires --dist and --out, optionally --download-base")
+	}
+	formula, err := releaseartifact.RenderFormulaFromDistribution(directory, releaseartifact.FormulaOptions{DownloadBase: downloadBase})
+	if err != nil {
+		return err
+	}
+	if err := writeExclusive(out, formula); err != nil {
+		return err
+	}
+	// Formula files are read by Homebrew's audit and style tooling, which
+	// rejects private modes; the file carries no secret.
+	if err := os.Chmod(out, 0o644); err != nil {
+		return err
+	}
+	fmt.Fprintf(stdout, "Homebrew evaluation-lane formula rendered from verified release subjects: %s\n", out)
+	return nil
 }
 
 type metadataFlags struct {

@@ -541,7 +541,22 @@ public-proxy claim is made; reference-host timing remains `ADO-031`.
 
 - [x] **DIST-002 — Prequalify the versioned `go install` contract.** Serve the exact candidate as `v0.2.0` through a disposable local file-based Go module proxy, then run version, demo, manifest verification, and uninstall/path guidance in clean environments. **Done when:** no source clone/current `go.mod` is required by the installing environment, version output is honest, the installed binary creates the exact demo offline, supported OS/arch/Go prerequisites are documented, and no public-tag/install claim is made. *(Tests: local-proxy clean-container/host cold and warm install; dependencies: `DIST-001`, `ADO-015`.)*
 
-- [ ] **DIST-003 — Prepare the least-surprise Homebrew formula generator/template.** Define final immutable upstream `v0.2.0` URL shapes, no bottles, supported macOS/Linux architectures, required per-asset SHA-256 inputs, license, and a formula test running version/demo/verify in a temporary path with no postinstall network. Use only synthetic candidate-archive fixtures before RC freeze; do not call their hashes final. **Done when:** template/generator plus fixture formula pass local `brew audit/style/test`, missing/duplicate/wrong-platform subjects fail, and Homebrew is labeled an evaluation lane rather than attestation equivalent. *(Tests: local template/formula, URL/subject mapping, hostile metadata, deterministic rendering; dependencies: `DIST-006`.)*
+- [x] **DIST-003 — Prepare the least-surprise Homebrew formula generator/template.** Define final immutable upstream `v0.2.0` URL shapes, no bottles, supported macOS/Linux architectures, required per-asset SHA-256 inputs, license, and a formula test running version/demo/verify in a temporary path with no postinstall network. Use only synthetic candidate-archive fixtures before RC freeze; do not call their hashes final. **Done when:** template/generator plus fixture formula pass local `brew audit/style/test`, missing/duplicate/wrong-platform subjects fail, and Homebrew is labeled an evaluation lane rather than attestation equivalent. *(Tests: local template/formula, URL/subject mapping, hostile metadata, deterministic rendering; dependencies: `DIST-006`.)*
+
+Formula generator checkpoint (2026-09-03): `releasetool formula` renders the
+evaluation-lane formula only from a verified release distribution, binding
+exactly one archive per Unix target with the release naming and lowercase
+SHA-256, ignoring Windows subjects, and rejecting missing, duplicate,
+misnamed, foreign-platform, uppercase-digest, version-drifted, and
+wrong-format subjects. `make brew-formula-check` passed locally with a portable
+Linux Homebrew against synthetic `0.0.1` subjects: deterministic rendering,
+`brew style`, `brew audit --strict`, install from a loopback mirror of the
+upstream asset path shape, `brew test` (version, demo, verify), and uninstall,
+all through a throwaway local tap; see
+[`2026-09-03-homebrew-formula-qualification.md`](docs/validation/2026-09-03-homebrew-formula-qualification.md).
+The macOS blocks were audited but not executed (`DIST-005`), no tap was
+created remotely, and the final `v0.2.0` formula waits for the frozen
+release-candidate subjects (`DIST-007`).
 
 - [ ] **DIST-004 — Authorize/create/protect `torjan0/homebrew-tap`.** Maksim creates the separate empty tap and reviews ownership/protection/update policy; the formula remains local or on an unmerged review branch until public assets exist. **Done when:** public repository identity/protection is recorded, no install command/formula is advertised, and no unreviewed automation can publish formula changes. **This task cannot be completed without explicit authorization.** *(Dependencies: `DIST-003`; maintainer external-state gate.)*
 

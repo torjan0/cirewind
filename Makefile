@@ -18,8 +18,9 @@ PUBLIC_LAB_WORK_ROOT ?=
 SITE_OUT ?=
 SITE_VERSION ?=
 README_VERSION ?= 0.2.0
+BREW_WORK_ROOT ?=
 
-.PHONY: build test vet race vuln licenses demo browser-audit safety-audit pack-review-check pack-review-clean release release-test release-verify release-spdx release-workflow-audit sample-site sample-site-check sample-site-browser-audit readme-candidate readme-candidate-check preflight clean
+.PHONY: build test vet race vuln licenses demo browser-audit safety-audit pack-review-check pack-review-clean release release-test release-verify release-spdx release-workflow-audit sample-site sample-site-check sample-site-browser-audit readme-candidate readme-candidate-check brew-formula-check preflight clean
 
 build:
 	mkdir -p "$(dir $(BINARY))"
@@ -142,6 +143,11 @@ readme-candidate:
 readme-candidate-check:
 	sh -n scripts/readme-candidate.sh
 	sh ./scripts/readme-candidate.sh "$(README_VERSION)" --check
+
+brew-formula-check:
+	@test -n "$(BREW_WORK_ROOT)" || { echo "BREW_WORK_ROOT is required" >&2; exit 2; }
+	sh -n scripts/test-brew-formula.sh
+	sh ./scripts/test-brew-formula.sh "$(BREW_WORK_ROOT)"
 
 preflight:
 	sh ./scripts/preflight.sh

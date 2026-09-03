@@ -45,6 +45,10 @@ All notable changes to CIRewind are documented here. The format follows
   the human accessibility review, the protected environment, and the README
   cold-reader review remain open.
 
+- Homebrew evaluation-lane formula generator (`releasetool formula`) rendered
+  only from verified release subjects, with `make brew-formula-check`
+  qualifying it against synthetic subjects through a throwaway local tap.
+
 ### Changed
 
 - Release archives now carry `incidents/reviewed/index.json` and, when the
