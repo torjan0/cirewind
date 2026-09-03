@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cirewind.dev/schema/rc-acquisition-record-v1alpha1.json",
+  "title": "CIRewind release-candidate acquisition record",
+  "description": "Bounded, locally frozen identity of one exact v0.2 release candidate: intended final metadata, toolchain, reproducible build command, release-subject and binary digests, the final formula and README bytes, the recorded old default-branch tip, the local qualification ledger, and the immutable artifact fields that only an authorized hosted qualification may fill. The record never claims publication, authentication, or human approval.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "intendedVersion", "sourceCommit", "expectedDefaultTip", "sourceDateEpoch", "buildDate", "toolchain", "buildCommand", "releaseSubjects", "binaries", "formula", "readme", "immutableArtifact", "qualification", "publication"],
+  "properties": {
+    "schemaVersion": { "const": "cirewind.rc-acquisition/v1alpha1" },
+    "intendedVersion": { "type": "string", "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$" },
+    "sourceCommit": { "$ref": "#/$defs/gitObjectID" },
+    "expectedDefaultTip": { "$ref": "#/$defs/gitObjectID" },
+    "sourceDateEpoch": { "type": "integer", "minimum": 0 },
+    "buildDate": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$" },
+    "toolchain": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["goVersion", "hostOS", "hostArch", "cgoEnabled", "trimpath", "buildVCS"],
+      "properties": {
+        "goVersion": { "type": "string", "pattern": "^go[0-9]+\\.[0-9]+\\.[0-9]+$" },
+        "hostOS": { "type": "string", "minLength": 1, "maxLength": 32 },
+        "hostArch": { "type": "string", "minLength": 1, "maxLength": 32 },
+        "cgoEnabled": { "const": false },
+        "trimpath": { "const": true },
+        "buildVCS": { "const": false }
+      }
+    },
+    "buildCommand": { "type": "string", "minLength": 1, "maxLength": 512 },
+    "releaseSubjects": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "items": { "$ref": "#/$defs/fileRecord" }
+    },
+    "binaries": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 16,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["target", "archive", "name", "sha256", "bytes"],
+        "properties": {
+          "target": { "type": "string", "pattern": "^(linux|darwin|windows)/(amd64|arm64)$" },
+          "archive": { "$ref": "#/$defs/fileName" },
+          "name": { "$ref": "#/$defs/fileName" },
+          "sha256": { "$ref": "#/$defs/sha256" },
+          "bytes": { "type": "integer", "minimum": 1 }
+        }
+      }
+    },
+    "formula": { "$ref": "#/$defs/fileRecord" },
+    "readme": { "$ref": "#/$defs/fileRecord" },
+    "immutableArtifact": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["workflow", "runID", "runAttempt", "artifactID", "artifactSHA256", "sourceCommit", "accessTime"],
+          "properties": {
+            "workflow": { "type": "string", "minLength": 1, "maxLength": 256 },
+            "runID": { "type": "integer", "minimum": 1 },
+            "runAttempt": { "type": "integer", "minimum": 1 },
+            "artifactID": { "type": "integer", "minimum": 1 },
+            "artifactSHA256": { "$ref": "#/$defs/sha256" },
+            "sourceCommit": { "$ref": "#/$defs/gitObjectID" },
+            "accessTime": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$" }
+          }
+        }
+      ]
+    },
+    "qualification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["suites", "complete"],
+      "properties": {
+        "suites": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "status", "command", "durationMs", "reason"],
+            "properties": {
+              "name": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$" },
+              "status": { "enum": ["pass", "fail", "skipped"] },
+              "command": { "type": "string", "minLength": 1, "maxLength": 512 },
+              "durationMs": { "type": "integer", "minimum": 0 },
+              "reason": { "type": "string", "maxLength": 512 }
+            }
+          }
+        },
+        "complete": { "type": "boolean" }
+      }
+    },
+    "publication": { "const": "not-published; no tag, release, artifact, or attestation exists for this candidate" }
+  },
+  "$defs": {
+    "gitObjectID": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "fileName": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,254}$" },
+    "fileRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "sha256", "bytes"],
+      "properties": {
+        "name": { "$ref": "#/$defs/fileName" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "bytes": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

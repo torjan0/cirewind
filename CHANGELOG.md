@@ -33,6 +33,14 @@ All notable changes to CIRewind are documented here. The format follows
   Release smokes run the demo twice from the release binary and the release
   contract test builds the sample site twice from that output.
 
+- `make rc-freeze` and `releasetool acquisition-record`, which freeze one exact
+  release candidate locally from separately fixed intended-final metadata:
+  double build and byte comparison, clean-clone rebuild, final formula render,
+  the local gate ledger, and a bounded acquisition record
+  (`schema/rc-acquisition-record-v1alpha1.json`) whose immutable artifact
+  fields stay empty until an authorized hosted qualification. Preparation for
+  `DIST-007`; it publishes nothing and closes no human gate.
+
 ### Documentation
 
 - Record the completed protected v0.1.1 draft, publication, and anonymous

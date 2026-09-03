@@ -208,6 +208,59 @@ rendered file as a fixture. The final `v0.2.0` formula is rendered from the
 frozen release-candidate subjects and published to the maintainer-owned tap
 only after the release is public.
 
+## Release candidate freeze
+
+`DIST-007` freezes one exact commit locally before any tag, artifact, or
+publication exists. `make rc-freeze` drives that freeze from separately fixed
+intended-final metadata rather than from a ref name:
+
+```sh
+make rc-freeze \
+  RC_OUT=/path/to/rc-0.2.0 \
+  RC_COMMIT=<full frozen commit> \
+  RC_VERSION=0.2.0 \
+  RC_EXPECTED_DEFAULT_TIP=<full old default-branch tip> \
+  RELEASE_WORK_ROOT=/large/private/work/path
+```
+
+The driver refuses a dirty tree, a commit other than `HEAD`, a `v`-prefixed or
+pre-release version, and an output directory that already exists. It exports
+an immutable snapshot of the commit, builds the six release subjects twice
+with the fixed version, commit, and source-date epoch and compares every byte,
+verifies the candidate, rebuilds it a third time from a fresh local clone of
+the repository and compares again, renders the final upstream-shaped Homebrew
+formula from the exact subject hashes, and then runs the local gates through
+the existing Make targets (tests, vet, race, vulnerability and license checks,
+offline safety audit, browser and site audits, README candidate check,
+pack-review governance, release workflow audit, formula install, demo timing,
+and a history scan of every commit reachable from the frozen commit, run with
+gitleaks when it is installed and otherwise as a bounded built-in scan for
+exact GitHub, AWS, Slack, and private-key shapes).
+Each gate lands in a tab-separated ledger as `pass`, `fail`, or `skipped` with
+a reason; a gate that exits with status 2 for a missing prerequisite is
+recorded as skipped, any other failure stops the freeze, and
+`CIREWIND_RC_SUITES` may select a subset, which is itself recorded as a
+skipped selection so the ledger can never look complete by omission.
+
+The output holds `subjects/` (the verified distribution), `cirewind.rb` (the
+final formula bytes), `README.md` (the frozen README bytes), the gate ledger,
+and `rc-acquisition-record.json` with its `.sha256` sidecar. The record binds
+the intended version, source commit, expected old default tip, source-date
+epoch and build date, Go toolchain and host, the reproducible build command,
+every release-subject and per-target binary digest, the formula and README
+digests, and the qualification ledger; `immutableArtifact` stays `null` until
+an authorized hosted qualification (`DIST-007A`) supplies workflow, run,
+attempt, and artifact identities, and `publication` states that nothing is
+published. `releasetool verify-acquisition-record --dist DIR --record FILE`
+recomputes the subject digests against a record. The schema is
+`schema/rc-acquisition-record-v1alpha1.json`.
+
+A freeze with `qualification.complete` false, any skipped gate, missing
+reviewed packs, or an unauthorized public lab is preparation only and cannot
+close `DIST-007`. `make rc-freeze-check RELEASE_WORK_ROOT=...` exercises the
+driver on a disposable synthetic commit with a subset of gates and proves the
+argument rejections, the double-build comparison, and the record round trip.
+
 ## Runtime smoke boundaries
 
 `scripts/smoke-release.sh` verifies the distribution, unsets all supported
