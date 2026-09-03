@@ -3,6 +3,8 @@
 Published-release status snapshot: **2026-08-22**. Unreleased v0.2 worktree note
 updated **2026-09-02**.
 
+updated **2026-09-03**.
+
 Release decision: **GO and published for experimental v0.1.1 inside
 [`ADR 0011`](adr/0011-experimental-v0-1-qualification-envelope.md)'s bounded
 qualification envelope**. Release tree
@@ -133,8 +135,12 @@ and [event semantics](https://docs.github.com/en/actions/reference/workflows-and
 including the explicit checkout-v7 opt-in used only for inert head inspection;
 retrieved 2026-08-30.
 
-Full worktree/CI qualification of this unreleased infrastructure remains in
-progress; implementation presence is not a release-gate result. The targeted
+The infrastructure landed on `main` in PR #4 as commit
+`200fde2e8ef651545b6da1ab2b598ddb88820555`, and hosted CI run
+[`33336075460`](https://github.com/torjan0/cirewind/actions/runs/33336075460)
+passed all ten jobs at that commit, including the incident-pack review contract
+job. That satisfies the bounded criteria of `PACK-020` and `PACK-021`;
+implementation presence is still not a factual-review result. The targeted
 synthetic machine fixture matrix now covers all ten finding states, inclusive-
 start/exclusive-end boundaries, contradiction, evidence gaps, exact coverage/gap
 oracle checks, and a downloaded-only scenario that forbids
