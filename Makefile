@@ -13,7 +13,7 @@ SPDX_TOOLS_VERSION ?=
 PUBLIC_LAB_REQUIRE_ACTIONLINT ?= 0
 PUBLIC_LAB_WORK_ROOT ?=
 
-.PHONY: build test vet race vuln licenses demo browser-audit safety-audit public-lab-build public-lab-check public-lab-syscall-audit pack-review-check pack-review-clean release release-test release-verify release-spdx release-workflow-audit preflight clean
+.PHONY: build test vet race vuln licenses demo browser-audit safety-audit public-lab-build public-lab-check public-lab-syscall-audit pack-review-check pack-review-clean release release-test release-verify release-spdx release-workflow-audit preflight clean go-install-check go-install-qualify
 
 build:
 	mkdir -p "$(dir $(BINARY))"
@@ -57,6 +57,16 @@ public-lab-check:
 
 public-lab-syscall-audit:
 	sh ./scripts/public-lab-marker-audit.sh
+
+go-install-check:
+	sh -n ./scripts/go-install-proxy.sh
+	sh -n ./scripts/test-go-install-version.sh
+	GO="$(GO)" GOTOOLCHAIN="$(GO_TOOLCHAIN)" sh ./scripts/test-go-install-version.sh
+
+go-install-qualify:
+	sh -n ./scripts/go-install-proxy.sh
+	sh -n ./scripts/qualify-go-install.sh
+	GO="$(GO)" GOTOOLCHAIN="$(GO_TOOLCHAIN)" sh ./scripts/qualify-go-install.sh
 
 pack-review-check:
 	bash -n scripts/pack-review-git-guard.sh
