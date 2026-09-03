@@ -355,11 +355,35 @@ claimed.
 
 ### Static sample site and Pages
 
-- [ ] **SITE-001 — Implement deterministic sample-site staging.** Build two demo cases from an exact source revision, verify/byte-compare them, generate two allowlisted site trees and deterministic complete case archives, and compare all bytes. Publish the complete synthetic raw-disabled case as audited individual files and archive; source prior version trees/tombstones only from checked-in or hash-locked local inputs, never the deployed site. **Done when:** the case manifest and distinct versioned `site-manifest.sha256` both verify, no wall clock/temp path/host data enters output, all site/case/archive hashes match, and unsafe/unexpected/link entries fail closed. *(Tests: double-generation, case/site manifest tamper, prior-version input, archive metadata, allowlist/path/size/privacy tests; dependencies: `ADO-015`, `ADO-025`.)*
+- [x] **SITE-001 — Implement deterministic sample-site staging.** Build two demo cases from an exact source revision, verify/byte-compare them, generate two allowlisted site trees and deterministic complete case archives, and compare all bytes. Publish the complete synthetic raw-disabled case as audited individual files and archive; source prior version trees/tombstones only from checked-in or hash-locked local inputs, never the deployed site. **Done when:** the case manifest and distinct versioned `site-manifest.sha256` both verify, no wall clock/temp path/host data enters output, all site/case/archive hashes match, and unsafe/unexpected/link entries fail closed. *(Tests: double-generation, case/site manifest tamper, prior-version input, archive metadata, allowlist/path/size/privacy tests; dependencies: `ADO-015`, `ADO-025`.)*
 
 - [ ] **SITE-002 — Implement the exact landing hierarchy and sample links.** Generate the headline, visible SVG, synthetic partial counts, report/download/manifest links, demo command, A-to-B-to-A explanation, eight invariants, installation lanes, limitations, and privacy/provenance sections. **Done when:** counts come from validated output; sample-content links are fixed relative paths; only policy-allowlisted fixed project/release and lab reproduction-index HTTPS links are external and pass redirect auditing; the first viewport includes value/visual/counts/command/experimental label; and no candidate/real incident is presented as reviewed. *(Tests: HTML golden, content order, counts, link/redirect checker, responsive render; dependencies: `SITE-001`.)*
 
 - [ ] **SITE-003 — Harden site CSP, privacy, hostile fields, and accessibility.** Use no JavaScript/remote assets/forms/storage/analytics, embed SVG only as same-origin image, and enforce hashed style plus deny-by-default meta CSP. **Done when:** offline/browser/network audits pass, hostile labels remain inert, platform logging is described honestly, and automated checks plus an actual human design-stage keyboard/screen-reader/zoom/contrast review pass; the final integrated bytes remain gated by `ADO-026`. **Automation cannot complete the manual-review criterion.** *(Tests: CSP/remote URL/DOM/injection/privacy/accessibility suite; dependencies: `SITE-002`.)*
+
+Sample-site engineering checkpoint (2026-09-03): `internal/samplesite` and
+`tools/samplesite` on the `site/v0.2-sample-site` branch implement the
+deterministic synthetic sample-site generator: verified-case loading compared
+against the embedded demo oracle, byte-identical case copies, a deterministic
+USTAR/gzip archive with `SHA256SUMS`, a distinct versioned
+`site-manifest.sha256`, a `provenance.json` without wall-clock, run, or host
+data, hash-locked prior version trees and tombstones from local inputs only, and
+a fail-closed tree audit (exact allowlist; no links or executable bits; type and
+64 MiB aggregate budgets; `raw/`, credential-shape, and host-path rejection;
+inert-SVG vocabulary; exact meta CSP; three fixed external URLs; prohibited
+language). `scripts/build-sample-site.sh` generates two demo cases and two sites
+and byte-compares them before publishing one copy, and `make sample-site-check`
+runs the package tests plus an end-to-end build, verify, and tamper check.
+`SITE-001` is closed on that evidence. `SITE-002` stays open: the landing
+hierarchy, oracle-derived counts, fixed relative links, first-viewport content,
+and overclaim scan are implemented and tested, but redirect auditing of the
+release and lab reproduction-index links cannot pass until those targets exist
+(`DIST-008`, `LAB-PUBLIC-007`), and no responsive render has been recorded.
+`SITE-003` stays open: the CSP, no-script/form/storage/remote-asset rules,
+same-origin SVG embedding, hostile-field inertness, and honest platform-logging
+wording are enforced mechanically, while the browser/network audit and the
+actual human keyboard, screen-reader, zoom, and contrast review are outstanding.
+Nothing is deployed; `SITE-004` and `SITE-005` have not started.
 
 - [ ] **SITE-004 — Add read-only Pages validation CI.** On PR/main, build and audit the site without deploying, using top-level no permissions and job-level `contents: read`. **Done when:** no `pull_request_target` or write permission exists, all introduced Actions are source-verified full-SHA pins in the pin registry, fork tests cannot deploy, and checks are eligible/recommended for required-check configuration; actual repository setting changes remain `SITE-006`. *(Tests: workflow/pin/permissions trigger audit; dependencies: `SITE-003`.)*
 

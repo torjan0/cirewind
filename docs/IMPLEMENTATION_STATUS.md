@@ -165,6 +165,22 @@ excluded by default. `PACK-022` and `PACK-023` remain open because their accepte
 criteria require an actual qualifying GitHub human approval against C and a real
 C-to-P-to-later-registry history, respectively.
 
+The synthetic sample-site generator (`internal/samplesite`, `tools/samplesite`,
+`scripts/build-sample-site.sh`, `make sample-site` and `make sample-site-check`)
+is implemented on the `site/v0.2-sample-site` branch. It builds one immutable
+versioned tree from a verified raw-disabled demo case: a landing page rendered
+from typed data under a hashed-style deny-by-default meta CSP, byte-identical
+copies of `graph.svg`, `findings.json`, and `summary.md`, the complete case,
+a deterministic archive with `SHA256SUMS`, a distinct versioned site manifest,
+and a provenance record without wall-clock or host data. The tree audit fails
+closed on unexpected entries, links, executable bits, size budgets, `raw/`,
+credential or host-path shapes, active SVG constructs, forbidden HTML
+primitives, non-allowlisted URLs, and any digest mismatch. Prior version trees
+enter only as hash-locked local inputs. Two builds from one revision are
+byte-identical. No site has been deployed, no Pages workflow exists, the live
+link redirect audit and the human accessibility review remain open, and none
+of this is a v0.2 release claim.
+
 ## CLI status
 
 | Command | Status | Qualification boundary |

@@ -6,6 +6,13 @@ All notable changes to CIRewind are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Deterministic synthetic sample-site generator (`tools/samplesite`,
+  `internal/samplesite`), the two-generation build script, and the
+  `sample-site` and `sample-site-check` Make targets. The generator publishes
+  nothing; deployment workflows and the human accessibility review remain open.
+
 ### Documentation
 
 - Record the completed protected v0.1.1 draft, publication, and anonymous
