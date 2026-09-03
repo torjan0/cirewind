@@ -12,8 +12,9 @@ SPDX_VALIDATOR ?=
 SPDX_TOOLS_VERSION ?=
 SITE_OUT ?=
 SITE_VERSION ?=
+README_VERSION ?= 0.2.0
 
-.PHONY: build test vet race vuln licenses demo browser-audit safety-audit pack-review-check pack-review-clean release release-test release-verify release-spdx release-workflow-audit sample-site sample-site-check sample-site-browser-audit preflight clean
+.PHONY: build test vet race vuln licenses demo browser-audit safety-audit pack-review-check pack-review-clean release release-test release-verify release-spdx release-workflow-audit sample-site sample-site-check sample-site-browser-audit readme-candidate readme-candidate-check preflight clean
 
 build:
 	mkdir -p "$(dir $(BINARY))"
@@ -92,6 +93,13 @@ sample-site-check:
 
 sample-site-browser-audit:
 	sh ./scripts/site-browser-audit.sh
+
+readme-candidate:
+	sh ./scripts/readme-candidate.sh "$(README_VERSION)"
+
+readme-candidate-check:
+	sh -n scripts/readme-candidate.sh
+	sh ./scripts/readme-candidate.sh "$(README_VERSION)" --check
 
 preflight:
 	sh ./scripts/preflight.sh

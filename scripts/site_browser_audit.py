@@ -644,15 +644,66 @@ def audit_site(site: Path, version: str, base_path: str, driver: Driver) -> dict
     }
 
 
+def preflight(chrome: str, chromedriver: str, work: Path) -> int:
+    """Launch Chrome directly under the audit policy and report why it fails."""
+    import subprocess
+
+    print(json.dumps({"chrome": chrome, "chromedriver": chromedriver}))
+    for executable in (chrome, chromedriver):
+        try:
+            version = subprocess.run([executable, "--version"], capture_output=True, text=True, timeout=30, check=False)
+            print(f"{executable} --version: exit={version.returncode} {version.stdout.strip()} {version.stderr.strip()}"[:400])
+        except (OSError, subprocess.TimeoutExpired) as error:
+            print(f"{executable} --version failed: {error}")
+    sysctl = Path("/proc/sys/kernel/apparmor_restrict_unprivileged_userns")
+    if sysctl.is_file():
+        print(f"apparmor_restrict_unprivileged_userns={sysctl.read_text(encoding='utf-8').strip()}")
+    helper = Path(chrome).resolve().parent / "chrome-sandbox"
+    if helper.exists():
+        mode = helper.stat().st_mode
+        print(f"chrome-sandbox helper: {helper} mode={oct(mode & 0o7777)} uid={helper.stat().st_uid}")
+    else:
+        print(f"chrome-sandbox helper absent beside {Path(chrome).resolve()}")
+    profile = work / "preflight-profile"
+    command = [chrome, *site_chromium_arguments(profile), "--dump-dom", "about:blank"]
+    try:
+        result = subprocess.run(command, capture_output=True, text=True, timeout=60, check=False)
+    except subprocess.TimeoutExpired:
+        print("preflight: Chrome did not exit within 60 seconds")
+        return 1
+    stderr_lines = [line for line in result.stderr.splitlines() if line.strip()]
+    print(f"preflight: exit={result.returncode} dom_bytes={len(result.stdout)}")
+    for line in stderr_lines[-40:]:
+        print("chrome stderr: " + "".join(character for character in line if character.isprintable())[:300])
+    if result.returncode != 0 or "<html" not in result.stdout.lower():
+        print("preflight: sandboxed headless Chrome cannot start on this host under the audit policy")
+        return 1
+    print("preflight: sandboxed headless Chrome started under the audit policy")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("site", type=Path)
-    parser.add_argument("--version", required=True)
+    parser.add_argument("site", type=Path, nargs="?")
+    parser.add_argument("--version")
     parser.add_argument("--base-path", default="/cirewind/")
     parser.add_argument("--chrome")
     parser.add_argument("--chromedriver")
     parser.add_argument("--work-root", type=Path)
+    parser.add_argument("--preflight", action="store_true", help="launch Chrome directly under the audit policy and report the outcome")
     args = parser.parse_args()
+
+    if args.preflight:
+        work_root = args.work_root.expanduser().resolve() if args.work_root else None
+        chrome = first_executable(args.chrome or os.environ.get("CIREWIND_CHROME"), ("/snap/chromium/current/usr/lib/chromium-browser/chrome", "chromium", "chromium-browser", "google-chrome"))
+        chromedriver = first_executable(args.chromedriver or os.environ.get("CIREWIND_CHROMEDRIVER"), ("/snap/chromium/current/usr/lib/chromium-browser/chromedriver", "chromedriver"))
+        work = Path(tempfile.mkdtemp(prefix="cirewind-site-preflight.", dir=work_root))
+        try:
+            return preflight(chrome, chromedriver, work)
+        finally:
+            remove_work_tree(work)
+    if args.site is None or not args.version:
+        raise AuditError("site directory and --version are required unless --preflight is given")
 
     site = args.site.expanduser().resolve()
     if not VERSION_PATTERN.match(args.version):

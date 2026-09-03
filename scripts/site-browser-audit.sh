@@ -42,6 +42,7 @@ export CGO_ENABLED=0
 
 cd "$root"
 PYTHONDONTWRITEBYTECODE=1 python3 "$root/scripts/site_browser_audit_test.py"
+TMPDIR="$work_root" PYTHONDONTWRITEBYTECODE=1 python3 "$root/scripts/site_browser_audit.py" --preflight --work-root "$work_root"
 
 source_commit=$(git rev-parse --verify 'HEAD^{commit}')
 toolchain_version=$(go env GOVERSION)

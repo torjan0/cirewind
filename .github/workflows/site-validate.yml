@@ -39,6 +39,8 @@ jobs:
           cache: true
       - name: Build twice, verify, and tamper-test the sample site
         run: make sample-site-check
+      - name: Reject README candidate drift
+        run: make readme-candidate-check
       - name: Audit the sample site in sandboxed, network-denied Chromium
         run: |
           if [ -n "${CHROMEWEBDRIVER:-}" ] && [ -x "$CHROMEWEBDRIVER/chromedriver" ]; then

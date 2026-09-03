@@ -14,7 +14,7 @@ import (
 	"github.com/torjan0/cirewind/internal/model"
 )
 
-//go:embed templates/landing.html.tmpl templates/root.html.tmpl
+//go:embed templates/landing.html.tmpl templates/root.html.tmpl templates/readme.md.tmpl
 var templateFiles embed.FS
 
 // Stylesheet is the only style on the site. Its SHA-256 is the sole style

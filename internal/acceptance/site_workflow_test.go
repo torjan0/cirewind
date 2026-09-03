@@ -55,7 +55,7 @@ func TestSiteValidationWorkflowIsReadOnlyAndNeverDeploys(t *testing.T) {
 		t.Fatalf("site validation must check out the repository exactly once, got %d", checkouts)
 	}
 	joined := strings.Join(runs, "\n")
-	for _, required := range []string{"make sample-site-check", "make sample-site-browser-audit"} {
+	for _, required := range []string{"make sample-site-check", "make readme-candidate-check", "make sample-site-browser-audit"} {
 		if !strings.Contains(joined, required) {
 			t.Errorf("site validation must run %q", required)
 		}
