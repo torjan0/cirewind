@@ -229,3 +229,19 @@ func mutateSyntheticSnapshot(t *testing.T, repo *syntheticReviewRepo, mutate fun
 	mutate(&snapshot)
 	mustWrite(t, repo.snapshot, mustCanonical(t, snapshot))
 }
+
+func TestCheckApprovalsRejectsRenderedMarkdownDrift(t *testing.T) {
+	repo := newSyntheticReviewRepo(t, StandardPolicyProfile)
+	addSyntheticApprovals(t, &repo, 1)
+	markdownPath := filepath.Join(repo.unit, "approvals", "synthetic-review-3", "REVIEW.md")
+	rendered, err := os.ReadFile(markdownPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A hand edit to the generated Markdown must never survive: review.json is
+	// the only authority and REVIEW.md must equal its deterministic rendering.
+	edited := append(append([]byte(nil), rendered...), []byte("\nHand-edited approval note.\n")...)
+	mustWrite(t, markdownPath, edited)
+	_, err = CheckApprovals(context.Background(), repo.unit, syntheticCommit, repo.unitValue.CandidateManifestSHA256, repo.snapshot)
+	assertProblemCode(t, err, "REVIEW_MARKDOWN_DRIFT")
+}
