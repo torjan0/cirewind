@@ -187,10 +187,20 @@ the staged README candidate under `site/generated` with typed slots, a preview
 viewport of the graph, and an explicit slot inventory; it is never `README.md`
 before activation. `.github/workflows/site-validate.yml` builds, verifies,
 tamper-tests, and drift-checks the site and candidate on pull requests with
-`contents: read` only and no deployment step. No site has been deployed, no
-deployment workflow exists, the live link redirect audit, the human
-accessibility review, and the README cold-reader review remain open, and none
-of this is a v0.2 release claim.
+`contents: read` only and no deployment step. `.github/workflows/site-deploy.yml`
+is the protected, dispatch-only deployment at an exact annotated release tag; it
+has never been dispatched. No site has been deployed, the live link redirect
+audit, the human accessibility review, and the README cold-reader review remain
+open, and none of this is a v0.2 release claim.
+
+Release qualification now exercises the adoption surfaces: the native,
+container, and Wine smokes run `cirewind demo` twice from the extracted release
+binary and compare every v0.2 case file, the release contract test builds the
+sample site twice from that demo output, and archives carry a registry-bound
+reviewed-pack contract (distribution format version 2) whose inclusion,
+exclusion, and tamper rules are exercised with synthetic registry fixtures. The
+repository registry is empty, so no real pack ships; `DIST-006` remains open on
+its reference-host, human-review, and review-safety CI dependencies.
 
 ## CLI status
 

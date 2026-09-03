@@ -415,6 +415,26 @@ and `SITE-005` have not started.
 
 - [ ] **SITE-005 — Add protected exact-tag Pages deployment workflow.** Land the dispatch/deployment workflow in the pre-activation default-branch base, then have it revalidate annotated tag/commit, upload the exact audited site once under a unique trusted artifact name, record the returned `artifact_id` plus CIRewind's locally computed site-tree/site-manifest hash, and make deployment depend on that producer while passing the documented artifact name to `deploy-pages`; use only justified Pages/OIDC permissions. **Done when:** default-branch presence and tagged-ref dispatch are tested, workflow text does not call the local site hash an uploaded-artifact digest or claim deployment is ID-addressed, wrong ref/commit/name/local hash/environment fails closed, any optional API download/digest check is separately permissioned/live-qualified, PR branches cannot invoke production deployment, and no deployment rebuild changes bytes. *(Tests: mocked workflow contract, default-branch/trigger fixtures, and local policy preflight; dependencies: `SITE-004`, `DIST-006`.)*
 
+Deployment workflow checkpoint (2026-09-03): `.github/workflows/site-deploy.yml`
+is landed but never dispatched. It is `workflow_dispatch`-only with a required
+tag input, denies permissions by default, validates the dispatch ref before
+checkout, checks out the exact tag without stored credentials, revalidates the
+annotated tag and checked-out commit through `verify-release-ref.sh`, requires
+a published non-draft release for the tag, fails closed unless the
+`github-pages` environment is protected, builds the site twice from the exact
+commit and byte-compares, cross-checks the committed README graph copy against
+the built site, verifies the tree, records the local site-manifest and archive
+hashes, uploads once under a run-unique trusted artifact name with
+`contents: read` only, and deploys that name from a separate job holding only
+`pages: write` and `id-token: write`. The workflow text states that the
+returned artifact identifier is not a digest and that deployment is addressed
+by artifact name. The Pages actions are pinned to source-verified commits
+recorded in `.github/actions-pins.json` (rechecked 2026-09-03), and
+`TestSiteDeploymentWorkflowIsExactTagAndLeastPrivilege` pins the contract.
+Open: the mocked end-to-end contract test of the inline validation steps, the
+default-branch presence that only a merge provides, the protected environment
+itself (`SITE-006`), and the `DIST-006` dependency.
+
 - [ ] **SITE-006 — Authorize/configure GitHub Pages and repository policy.** Enable Actions publishing, approve selected full-SHA Pages Actions, and protect `github-pages`; do not pre-authorize an artifact that has not yet been frozen. **Done when:** Maksim records each settings decision, workflow eligibility is confirmed without weakening repository policy, and exact deployment authorization remains `SITE-007`. **This task cannot be completed by local implementation alone.** *(Dependencies: `SITE-005`; maintainer external-state gate.)*
 
 - [ ] **SITE-007 — Authorize, perform, and audit the first public sample deployment.** After both frozen public install lanes qualify, Maksim binds explicit deployment authorization to the exact frozen site-tree/site-manifest hash, then deploys the versioned site and anonymously fetches/reverifies every link, checksum, MIME behavior, visual, CSP/network behavior, and public count. The returned `artifact_id` identifies the upload record but is not proof of uploaded byte identity; only a separately permissioned download/digest check may close that gap. **Done when:** public bytes and every advertised command match the release tree and qualified lanes, authorization and the known artifact-service trust gap are recorded, no remote asset/private data appears, and defects cause rollback/no-link rather than a false success. **This task cannot be completed by local implementation alone.** *(Tests: post-deploy anonymous audit; dependencies: `SITE-006`, `DIST-005`, `DIST-008`, `DIST-010`; maintainer deployment gate.)*
@@ -458,6 +478,27 @@ and `SITE-005` have not started.
 - [ ] **DIST-005 — Publish and anonymously qualify the Homebrew lane.** After v0.2 assets exist, publish exact formula hashes and test `brew install torjan0/tap/cirewind`, version, demo, and verify on supported clean hosts. **Done when:** anonymous installs use the exact public assets, every host passes, and the frozen README remains off the default-branch landing page on failure. **Requires maintainer publication authorization.** *(Dependencies: `DIST-004`, `DIST-008`.)*
 
 - [ ] **DIST-006 — Integrate demo/SVG/site and generic reviewed-pack plumbing into reproducible release qualification.** Extend release archives/smokes/SBOM/licenses/attestation subjects and exact-file comparisons without weakening protected draft/publish flow; produce deterministic local candidate release subjects for distribution tests. Exercise reviewed-pack inclusion and candidate exclusion with synthetic policy fixtures rather than waiting for real approvals. **Done when:** two release builds are byte-identical, candidate archive hashes are stable, all new files are expected/hashed, candidates are absent, release binaries demo/verify outside checkout, and all workflow Actions remain verified full-SHA pins. *(Tests: release-contract double build, synthetic reviewed/candidate exclusion, six-target smoke as supported, SPDX/provenance/pin audits; dependencies: `ADO-015`, `ADO-025`, `PACK-024`, `SITE-004`.)*
+
+Release integration checkpoint (2026-09-03): the native, container, and Wine
+release smokes now run `cirewind demo` twice from the extracted release
+binary outside the checkout, require every v0.2 case file including
+`graph.svg`, compare both runs byte for byte, and reject raw materialization;
+the release contract test additionally builds the sample site twice from the
+release binary's own demo output, byte-compares the trees, and verifies one.
+Archives carry a registry-bound reviewed-pack contract
+(`internal/releaseartifact/reviewedpacks.go`, distribution format version 2):
+only packs whose latest `review-registry.json` record is `reviewed` enter, by
+exact bytes bound to the recorded original-pack hash, with an
+`incidents/reviewed/index.json` that carries registry, promotion-commit,
+policy-profile, and approval identifiers; candidate copies, review packets, and
+superseded or withdrawn versions are rejected by the packager and by archive
+verification, the reviewed set must be identical across all six targets, and
+synthetic registry fixtures exercise inclusion, exclusion, tampering, aliasing,
+and malformed records. The smokes validate each bundled reviewed pack offline.
+The repository registry is still empty, so no real pack ships. Open: the
+reference-host measurements (`ADO-015`), the human visual review (`ADO-025`),
+review-safety CI (`PACK-024`), and the hosted six-target smoke of the new
+steps.
 
 - [ ] **DIST-007 — Freeze and deeply qualify the exact v0.2 release candidate locally.** After required reviewed packs and the authorized public lab/index land, freeze one commit containing the exact staged README/site links, record the expected old default-branch tip and begin a merge freeze, build its release subjects twice with separately fixed intended-final metadata (`0.2.0`, exact commit, deterministic build time), render/test the final unmerged Homebrew formula from those exact subject hashes, and run full tests, vet, race, fuzz seeds, vulnerability/license scans, offline safety, browser/SVG/site audits, secret/private-data/history scans, clean-clone reproduction, demo timing, pack records, local-proxy/formula installs, and release comparison twice. Prepare—but do not remotely publish—a bounded RC acquisition record containing that metadata, Go/toolchain identity, reproducible build command, release-subject and binary SHA-256 values, plus the allowed immutable artifact fields. **Done when:** release subjects, final formula bytes, README bytes, acquisition-record bytes, RC commit, intended-final metadata, and expected old default tip are frozen locally; required workflows already exist in the pre-activation default-branch base; independent local technical passes are green with no forensic/security waiver; and all evidence binds one immutable commit/binary digest. *(Tests: exact-subject double build, explicit-version-not-ref-name vector, local clean-clone byte match, default-tip ancestry/lease and workflow-presence checks, final-formula hash/install, and all pre-external repository preflight/release gates; dependencies: `ADO-015`, `ADO-025`, `ADO-032`, `DIST-002`, `DIST-003`, `DIST-006`, `PACK-070`, `SITE-005`, `LAB-PUBLIC-007`.)*
 

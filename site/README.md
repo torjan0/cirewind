@@ -2,10 +2,13 @@
 
 This directory documents the deterministic synthetic sample site described in
 [`docs/SAMPLE_SITE_SPEC.md`](../docs/SAMPLE_SITE_SPEC.md). Nothing here is
-deployed by the repository yet. The read-only validation workflow (`SITE-004`),
-the protected exact-tag deployment workflow (`SITE-005`), and the manual
-keyboard, screen-reader, zoom, and contrast review (`SITE-003`) remain open in
-[`TASKS.md`](../TASKS.md).
+deployed by the repository yet. `.github/workflows/site-validate.yml` builds,
+verifies, drift-checks, and browser-audits the site read-only on pull requests;
+`.github/workflows/site-deploy.yml` is the protected, dispatch-only deployment
+at an existing annotated release tag and has never been dispatched. The manual
+keyboard, screen-reader, zoom, and contrast review (`SITE-003`), the protected
+`github-pages` environment (`SITE-006`), and the deployment itself remain open
+in [`TASKS.md`](../TASKS.md).
 
 ## What the generator does
 

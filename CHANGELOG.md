@@ -13,10 +13,21 @@ All notable changes to CIRewind are documented here. The format follows
   Chromium site audit, and the `sample-site`, `sample-site-check`, and
   `sample-site-browser-audit` Make targets; the staged README candidate
   generator with typed slots, preview viewport, and slot inventory
-  (`readme-candidate`, `readme-candidate-check`); and the read-only sample-site
-  validation workflow. The generator publishes nothing; the deployment
-  workflow, the human accessibility review, and the README cold-reader review
-  remain open.
+  (`readme-candidate`, `readme-candidate-check`); the read-only sample-site
+  validation workflow; and the protected, dispatch-only Pages deployment
+  workflow, which has never been dispatched. The generator publishes nothing;
+  the human accessibility review, the protected environment, and the README
+  cold-reader review remain open.
+
+### Changed
+
+- Release archives now carry `incidents/reviewed/index.json` and, when the
+  append-only review registry marks a pack `reviewed`, that pack's exact bytes
+  bound to the recorded hash with its registry and approval identifiers;
+  candidate copies, review packets, and superseded or withdrawn versions are
+  rejected at packaging and verification. The distribution format version is 2.
+  Release smokes run the demo twice from the release binary and the release
+  contract test builds the sample site twice from that output.
 
 ### Documentation
 
