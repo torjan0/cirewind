@@ -9,9 +9,10 @@ All notable changes to CIRewind are documented here. The format follows
 ### Added
 
 - Deterministic synthetic sample-site generator (`tools/samplesite`,
-  `internal/samplesite`), the two-generation build script, and the
-  `sample-site` and `sample-site-check` Make targets. The generator publishes
-  nothing; deployment workflows and the human accessibility review remain open.
+  `internal/samplesite`), the two-generation build script, the sandboxed
+  Chromium site audit, and the `sample-site`, `sample-site-check`, and
+  `sample-site-browser-audit` Make targets. The generator publishes nothing;
+  deployment workflows and the human accessibility review remain open.
 
 ### Documentation
 

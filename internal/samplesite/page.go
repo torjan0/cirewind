@@ -19,7 +19,7 @@ var templateFiles embed.FS
 
 // Stylesheet is the only style on the site. Its SHA-256 is the sole style
 // source the policy permits; the bytes are versioned renderer constants.
-const Stylesheet = `:root{color-scheme:light}html,body{background:#FFFFFF;color:#111827;margin:0;font-family:ui-monospace,monospace;font-size:16px;line-height:1.5}main{max-width:64rem;margin:0 auto;padding:1rem}h1{font-size:1.75rem;line-height:1.25}h2{font-size:1.25rem;margin-top:2rem;border-top:1px solid #334155;padding-top:1rem}img{max-width:100%;height:auto;border:1px solid #334155}table{border-collapse:collapse}th,td{border:1px solid #334155;padding:0.25rem 0.5rem;text-align:left}caption{text-align:left;font-weight:bold;margin-bottom:0.5rem}pre{overflow-x:auto;border:1px solid #334155;padding:0.5rem}code{font-family:ui-monospace,monospace}a{color:#005A9C}a:focus{outline:3px solid #B42318;outline-offset:2px}.label{font-weight:bold;border:2px solid #B42318;display:inline-block;padding:0.25rem 0.5rem}.lede{font-size:1.1rem}`
+const Stylesheet = `:root{color-scheme:light}html,body{background:#FFFFFF;color:#111827;margin:0;font-family:ui-monospace,monospace;font-size:16px;line-height:1.5}main{max-width:64rem;margin:0 auto;padding:1rem}h1{font-size:1.75rem;line-height:1.25;margin:0.5rem 0}h2{font-size:1.25rem;margin-top:2rem;border-top:1px solid #334155;padding-top:1rem}img{max-width:100%;height:auto;border:1px solid #334155}table{border-collapse:collapse}th,td{border:1px solid #334155;padding:0.25rem 0.5rem;text-align:left}caption{text-align:left;font-weight:bold;margin-bottom:0.25rem}pre{overflow-x:auto;border:1px solid #334155;padding:0.375rem 0.5rem;margin:0.5rem 0}code{font-family:ui-monospace,monospace;overflow-wrap:anywhere}a{color:#005A9C;overflow-wrap:anywhere}a:focus{outline:3px solid #B42318;outline-offset:2px}.label{font-weight:bold;border:2px solid #B42318;display:inline-block;padding:0.125rem 0.5rem;margin:0 0 0.25rem}.lede{font-size:1.1rem;margin:0.5rem 0}.hero{display:grid;grid-template-columns:minmax(0,1fr);gap:0 1.5rem}.hero h2{font-size:1.1rem;margin-top:0.25rem;border-top:0;padding-top:0}.hero p,.hero ul{margin:0.25rem 0}.scroll{overflow-x:auto}.scroll:focus{outline:3px solid #B42318;outline-offset:2px}.visual{max-height:44vh;overflow:auto;border:1px solid #334155}.visual:focus{outline:3px solid #B42318;outline-offset:2px}.visual img{display:block;width:100%;height:auto;border:0}.counts th,.counts td{padding:0.125rem 0.5rem}@media(min-width:60rem){.hero{grid-template-columns:minmax(0,3fr) minmax(0,4fr)}}`
 
 // ProjectURL and LabReproductionIndexURL are the only external navigation
 // targets. They are build-time constants that no report, pack, or label can
@@ -80,8 +80,15 @@ type PageData struct {
 	SVGHeight          int
 }
 
+// CountPair places two canonical states side by side in the compact table.
+type CountPair struct {
+	Left  CountRow
+	Right CountRow
+}
+
 type landingView struct {
 	PageData
+	CountPairs  []CountPair
 	CSP         string
 	Stylesheet  template.CSS
 	Invariants  []string
@@ -137,8 +144,16 @@ func RenderLanding(data PageData) ([]byte, error) {
 	if data.ArchiveName != ArchiveName(data.Version) || data.SVGWidth <= 0 || data.SVGHeight <= 0 || data.Total <= 0 {
 		return nil, errors.New("landing data is incomplete")
 	}
+	if len(data.Counts)%2 != 0 {
+		return nil, errors.New("canonical state count is not even; the compact table needs pairs")
+	}
+	pairs := make([]CountPair, 0, len(data.Counts)/2)
+	for index := 0; index < len(data.Counts); index += 2 {
+		pairs = append(pairs, CountPair{Left: data.Counts[index], Right: data.Counts[index+1]})
+	}
 	view := landingView{
 		PageData:    data,
+		CountPairs:  pairs,
 		CSP:         ContentSecurityPolicy(),
 		Stylesheet:  template.CSS(Stylesheet),
 		Invariants:  append([]string(nil), Invariants...),

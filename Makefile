@@ -13,7 +13,7 @@ SPDX_TOOLS_VERSION ?=
 SITE_OUT ?=
 SITE_VERSION ?=
 
-.PHONY: build test vet race vuln licenses demo browser-audit safety-audit pack-review-check pack-review-clean release release-test release-verify release-spdx release-workflow-audit sample-site sample-site-check preflight clean
+.PHONY: build test vet race vuln licenses demo browser-audit safety-audit pack-review-check pack-review-clean release release-test release-verify release-spdx release-workflow-audit sample-site sample-site-check sample-site-browser-audit preflight clean
 
 build:
 	mkdir -p "$(dir $(BINARY))"
@@ -89,6 +89,9 @@ sample-site-check:
 	sh -n scripts/test-sample-site.sh
 	$(GO_EXACT) test ./internal/samplesite ./tools/samplesite
 	sh ./scripts/test-sample-site.sh
+
+sample-site-browser-audit:
+	sh ./scripts/site-browser-audit.sh
 
 preflight:
 	sh ./scripts/preflight.sh

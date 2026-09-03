@@ -71,6 +71,21 @@ re-audits a published tree and prints the case manifest, archive, and site
 manifest digests. `make sample-site-check` runs the package tests and an
 end-to-end build, verify, and one-byte tamper check.
 
+`make sample-site-browser-audit` builds a site from the current source and
+loads it in sandboxed, DNS-denied Chromium behind a loopback server under a
+project Pages base path (`/cirewind/`). It checks that the hashed stylesheet
+applies under the meta policy, that the page and the report and SVG pages make
+no request outside the loopback origin and base path, that every relative link
+resolves to the expected content type, that the only external links are the
+three fixed destinations with `rel="noreferrer"`, that the headline, visual,
+counts label, report link, command, and the word experimental sit in the first
+1440 by 900 viewport, that headings follow the reviewed order, that keyboard
+focus is visible, that nothing overflows horizontally from 320 px to 1440 px or
+at 200% zoom, that text stays legible under forced colors and a dark scheme,
+that the visual has a text equivalent when images are blocked, and that no
+storage or service worker is used. The manual keyboard, screen-reader, zoom,
+and contrast review recorded by a person is still required by `SITE-003`.
+
 ## Prior version trees
 
 Later versions keep earlier versioned trees or tombstones beside the current

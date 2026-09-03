@@ -9,6 +9,7 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
+	"html"
 	"io"
 	"os"
 	"path/filepath"
@@ -339,7 +340,7 @@ func AuditTree(ctx context.Context, siteDir, version string, caseFiles []string,
 				return Provenance{}, fmt.Errorf("page %q links to non-allowlisted URL %q", name, match)
 			}
 		}
-		if !strings.Contains(string(page), `<meta http-equiv="Content-Security-Policy" content="`+escapedCSP()+`">`) {
+		if policy, err := landingCSP(page); err != nil || policy != ContentSecurityPolicy() {
 			return Provenance{}, fmt.Errorf("page %q does not carry the exact content security policy", name)
 		}
 		if err := CheckProhibitedLanguage(page); err != nil {
@@ -423,6 +424,17 @@ func AuditTree(ctx context.Context, siteDir, version string, caseFiles []string,
 	return provenance, nil
 }
 
-func escapedCSP() string {
-	return strings.ReplaceAll(ContentSecurityPolicy(), "'", "&#39;")
+// landingCSP extracts the single meta policy exactly as a browser reads it,
+// reversing the attribute escaping html/template applies.
+func landingCSP(page []byte) (string, error) {
+	const marker = `<meta http-equiv="Content-Security-Policy" content="`
+	if bytes.Count(page, []byte(marker)) != 1 {
+		return "", errors.New("page must carry exactly one meta content security policy")
+	}
+	rest := page[bytes.Index(page, []byte(marker))+len(marker):]
+	end := bytes.IndexByte(rest, '"')
+	if end < 0 {
+		return "", errors.New("meta content security policy is unterminated")
+	}
+	return html.UnescapeString(string(rest[:end])), nil
 }

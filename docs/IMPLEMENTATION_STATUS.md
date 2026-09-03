@@ -177,9 +177,14 @@ closed on unexpected entries, links, executable bits, size budgets, `raw/`,
 credential or host-path shapes, active SVG constructs, forbidden HTML
 primitives, non-allowlisted URLs, and any digest mismatch. Prior version trees
 enter only as hash-locked local inputs. Two builds from one revision are
-byte-identical. No site has been deployed, no Pages workflow exists, the live
-link redirect audit and the human accessibility review remain open, and none
-of this is a v0.2 release claim.
+byte-identical. `make sample-site-browser-audit` exercises the built site in
+sandboxed, DNS-denied Chromium behind a loopback server under a project Pages
+base path: applied hashed policy, request allowlist, relative and fixed external
+links, first-viewport content, heading order, keyboard focus, overflow from
+320 px to 1440 px and at 200% zoom, forced colors, blocked images, storage and
+service-worker absence, and the report and SVG pages. No site has been
+deployed, no Pages workflow exists, the live link redirect audit and the human
+accessibility review remain open, and none of this is a v0.2 release claim.
 
 ## CLI status
 

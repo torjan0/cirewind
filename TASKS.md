@@ -378,12 +378,20 @@ runs the package tests plus an end-to-end build, verify, and tamper check.
 hierarchy, oracle-derived counts, fixed relative links, first-viewport content,
 and overclaim scan are implemented and tested, but redirect auditing of the
 release and lab reproduction-index links cannot pass until those targets exist
-(`DIST-008`, `LAB-PUBLIC-007`), and no responsive render has been recorded.
-`SITE-003` stays open: the CSP, no-script/form/storage/remote-asset rules,
-same-origin SVG embedding, hostile-field inertness, and honest platform-logging
-wording are enforced mechanically, while the browser/network audit and the
-actual human keyboard, screen-reader, zoom, and contrast review are outstanding.
-Nothing is deployed; `SITE-004` and `SITE-005` have not started.
+(`DIST-008`, `LAB-PUBLIC-007`); the responsive render is exercised by the
+browser audit below. `SITE-003` stays open: the CSP, no-script/form/storage/
+remote-asset rules, same-origin SVG embedding, hostile-field inertness, and
+honest platform-logging wording are enforced mechanically, and
+`make sample-site-browser-audit` loads the built site in sandboxed, DNS-denied
+Chromium behind a loopback server under a project Pages base path to check the
+applied hashed policy, zero non-loopback requests, every relative link, the
+three fixed external links with `rel="noreferrer"`, first-viewport content,
+heading order, visible keyboard focus, no horizontal overflow from 320 px to
+1440 px and at 200% zoom, forced-colors and dark-scheme legibility, text
+equivalents with images blocked, storage and service-worker absence, and the
+report and standalone SVG pages. The actual human keyboard, screen-reader,
+zoom, and contrast review remains outstanding. Nothing is deployed; `SITE-004`
+and `SITE-005` have not started.
 
 - [ ] **SITE-004 — Add read-only Pages validation CI.** On PR/main, build and audit the site without deploying, using top-level no permissions and job-level `contents: read`. **Done when:** no `pull_request_target` or write permission exists, all introduced Actions are source-verified full-SHA pins in the pin registry, fork tests cannot deploy, and checks are eligible/recommended for required-check configuration; actual repository setting changes remain `SITE-006`. *(Tests: workflow/pin/permissions trigger audit; dependencies: `SITE-003`.)*
 

@@ -46,8 +46,8 @@ func TestLandingPageHierarchyAndSafety(t *testing.T) {
 		t.Fatal(err)
 	}
 	text := string(page)
-	if !strings.Contains(text, `<meta http-equiv="Content-Security-Policy" content="`+escapedCSP()+`">`) {
-		t.Fatal("landing page does not embed the exact policy")
+	if policy, err := landingCSP(page); err != nil || policy != ContentSecurityPolicy() {
+		t.Fatalf("landing page does not embed the exact policy: %q %v", policy, err)
 	}
 	if !strings.Contains(text, Headline) {
 		t.Fatal("headline missing")
