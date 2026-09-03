@@ -15,6 +15,15 @@ All notable changes to CIRewind are documented here. The format follows
   stays `dev` or `unknown`. Linker-injected release metadata remains
   authoritative and the output format is unchanged.
 
+### Added
+
+- `docs/INSTALLATION.md` describes the evaluation and high-assurance
+  installation lanes, the prerequisites and supported targets for a versioned
+  `go install`, what an unstamped module build reports, and uninstall
+  guidance. `make go-install-check` and `make go-install-qualify` prequalify
+  the lane offline through a file-based module proxy on the host and inside a
+  clean minimal container; neither claims that a public tag exists.
+
 ### Documentation
 
 - Record the completed protected v0.1.1 draft, publication, and anonymous

@@ -61,17 +61,11 @@ if [ ! -d "$local_cache" ]; then
   exit 2
 fi
 
-proxy="$work/proxy/$module/@v"
-mkdir -p "$proxy" "$work/cwd" "$work/bin" "$work/gopath" "$work/modcache" "$work/gocache" "$work/tmp" "$work/home"
+mkdir -p "$work/proxy" "$work/cwd" "$work/bin" "$work/gopath" "$work/modcache" "$work/gocache" "$work/tmp" "$work/home"
 
-# Snapshot the current tree (tracked and untracked, ignoring ignored files)
-# into a temporary index and archive that tree as the module zip. The real
-# index and worktree are not modified.
-tree=$(cd "$root" && GIT_INDEX_FILE="$work/index" sh -c 'git read-tree HEAD && git add -A && git write-tree')
-(cd "$root" && git archive --format=zip --prefix="$module@$version/" -o "$proxy/$version.zip" "$tree")
-cp "$root/go.mod" "$proxy/$version.mod"
-printf '{"Version":"%s","Time":"2026-01-01T00:00:00Z"}\n' "$version" >"$proxy/$version.info"
-printf '%s\n' "$version" >"$proxy/list"
+# Snapshot the current tree as the synthetic module version. The helper uses a
+# temporary Git index, so the real index and worktree are not modified.
+sh "$root/scripts/go-install-proxy.sh" "$work/proxy" "$version" >/dev/null
 
 # Install from outside the checkout so the current go.mod cannot influence the
 # module graph. Only the two file proxies are consulted.
@@ -103,6 +97,24 @@ expected="cirewind ${version#v} (commit unknown, built unknown)"
 actual=$(cd "$work/cwd" && "$binary" version)
 if [ "$actual" != "$expected" ]; then
   printf '%s\n' "installed binary reported: $actual" "expected:                 $expected" >&2
+  exit 1
+fi
+
+# Warm pass: the caches left by the cold install must reproduce the same
+# executable identity without touching the proxies again for the module.
+rm -f -- "$binary"
+(
+  cd "$work/cwd"
+  env -i \
+    PATH="$goroot/bin:/usr/bin:/bin" HOME="$work/home" \
+    GOTOOLCHAIN=local GOFLAGS= GOPROXY="file://$work/proxy,file://$local_cache" \
+    GOSUMDB=off GONOSUMDB="$module" GOMODCACHE="$work/modcache" GOPATH="$work/gopath" \
+    GOBIN="$work/bin" GOCACHE="$work/gocache" GOTMPDIR="$work/tmp" CGO_ENABLED=0 \
+    "$go_exact" install "$module/cmd/cirewind@$version"
+)
+warm=$(cd "$work/cwd" && "$binary" version)
+if [ "$warm" != "$expected" ]; then
+  printf '%s\n' "warm install reported: $warm" "expected:              $expected" >&2
   exit 1
 fi
 
