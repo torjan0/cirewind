@@ -261,6 +261,16 @@ and the dependency on `SITE-003`'s human review. Maintainer-owned fixed banners 
 
 - [ ] **ADO-031 — Measure the two north-star paths before activation.** Record zero-install navigation from the exact immutable tagged README preview to public Pages and measure the documented installation command plus demo on the launch-blocking reference systems. `T_demo` begins when the installed binary is invoked; `T_total` begins when the documented installation command is invoked. Both stop only after every required case output exists and case-manifest verification succeeds. Use Ubuntu 24.04 amd64 with 2 vCPU/4 GiB RAM and macOS 15 arm64 with Homebrew already installed; run five clean trials per lane with a new output directory and no CIRewind cache. Browser opening is a separate smoke. Reserve a post-activation landing-page smoke for `DIST-009`; Windows 11 amd64 results are informational. **Done when:** each measurement records OS/arch/hardware, installation lane, cache/network state, version, transcript, every trial, and manifest result; each launch-blocking lane has `T_demo` p50 at most 15 seconds and no run over 30 seconds, plus `T_total` p50 at most 120 seconds and no run over 180 seconds; failure blocks activation/launch and requires a new reviewed RC if frozen public wording must change. *(Tests: five-trial repeatable timing protocol with clean outputs/no CIRewind cache and separate browser smoke; dependencies: `ADO-015`, `SITE-008`, `DIST-005`, `DIST-010`.)*
 
+Consistency preparation (2026-09-03): an assisted cold-reader and visual pass
+over the README candidate, sample site, graph, and report produced editorial
+fixes on the site branch (headline bounded to retained evidence, release-lane
+wording, single from-source section, inline glosses, pack hash on the versioned
+page, SVG per-lane pointer, graph root description with the legend, shorter
+verdict-free banner alt text, landing page product sentence). The gate itself
+remains open: the accepted `SYNTHETIC — PARTIAL COVERAGE` label and the graph
+legend keep their spec-pinned wording, and only an actual skeptical maintainer
+review closes this task.
+
 - [ ] **ADO-099 — Run the pre-publication v0.2 semantic and documentation consistency gate.** Compare code, schemas, outputs, frozen site/README, reviewed packs, public-lab record, tasks, and release notes against the frozen evidence model. **Done when:** exact-string checks cover all states/provenance/invariants, no v0.1 predicate is weakened, no attack-path/causal/secret/cloud overclaim exists, all significant new platform claims cite current primary docs, generated counts/files agree everywhere, exact-RC human visual hashes from `ADO-026` match, and an actual skeptical maintainer records review. **Automation cannot complete the maintainer-review criterion.** *(Tests: repository-wide consistency scripts plus skeptical maintainer review; dependencies: `ADO-015`, `ADO-026`, `ADO-032`, `PACK-070`, `SITE-005`, `LAB-PUBLIC-010`, `DIST-006`.)*
 
 ### Real incident-pack governance and candidates

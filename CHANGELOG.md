@@ -35,6 +35,15 @@ All notable changes to CIRewind are documented here. The format follows
   slots whose recorded SHA-256 values are drift checked, with alt text naming
   every element the image encodes.
 
+- README candidate and sample-site wording after a cold-reader and visual
+  review: the headline binds the claim to retained evidence with gaps visible,
+  the release lane states what its verification does and does not certify,
+  the from-source path is one section, jargon is glossed inline, the
+  versioned page names the canonical pack hash beside the pack version and
+  points at the standalone SVG's per-lane descriptions, and the graph's root
+  description now states the lane and line-style encoding for readers who
+  cannot see it.
+
 ### Documentation
 
 - Record the completed protected v0.1.1 draft, publication, and anonymous
