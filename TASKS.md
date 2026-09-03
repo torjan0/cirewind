@@ -368,9 +368,37 @@ release, and sample indexes.
 
 - [ ] **PACK-032 — Obtain Reviewdog human approvals.** Request review on the exact final candidate under the two-non-author-maintainer plus at-least-one-independent-outside policy. **Done when:** actual qualifying humans approve exact C through GitHub PR review, `review.json` and generated `REVIEW.md` bind the exact hashes without self-certifying them, immutable identity reproduction is recorded, security review passes, and promotion succeeds without material content change. A non-author outside reviewer may also fill another release review role. **This task cannot be completed by an automated session.** *(Dependencies: `PACK-019`, `PACK-031`; external gate.)*
 
-- [ ] **PACK-040 — Revalidate tj-actions primary sources and build its claim matrix.** Explicitly retrieve/hash sources and resolve the malicious object, date-level period, example-tag scope, patched/known-good conflict, and contextual literals without decoding output. **Done when:** date precision/any conservative expansion is explicit, disputed patched/known-good values are omitted or human-resolved, example tags are not called exhaustive, and common domains are not high-confidence standalone IOCs. *(Tests: source ledger/claims coverage; dependencies: `PACK-024`.)*
+- [x] **PACK-040 — Revalidate tj-actions primary sources and build its claim matrix.** Explicitly retrieve/hash sources and resolve the malicious object, date-level period, example-tag scope, patched/known-good conflict, and contextual literals without decoding output. **Done when:** date precision/any conservative expansion is explicit, disputed patched/known-good values are omitted or human-resolved, example tags are not called exhaustive, and common domains are not high-confidence standalone IOCs. *(Tests: source ledger/claims coverage; dependencies: `PACK-024`.)*
 
-- [ ] **PACK-041 — Prepare the tj-actions candidate packet and fixtures.** Add exact-object, source-precision window, tag, boundary, known-good-negative-if-verified, download-only, gap, current-reference, and contradiction fixtures. **Done when:** the candidate-content manifest/tests pass, every match preserves source precision, registry status remains `candidate`, and no real victim/log payload data is present. *(Tests: candidate golden, boundary/provenance cap, replay determinism; dependencies: `PACK-040`.)*
+- [x] **PACK-041 — Prepare the tj-actions candidate packet and fixtures.** Add exact-object, source-precision window, tag, boundary, known-good-negative-if-verified, download-only, gap, current-reference, and contradiction fixtures. **Done when:** the candidate-content manifest/tests pass, every match preserves source precision, registry status remains `candidate`, and no real victim/log payload data is present. *(Tests: candidate golden, boundary/provenance cap, replay determinism; dependencies: `PACK-040`.)*
+
+tj-actions candidate checkpoint (2026-09-03): the primary sources were
+re-retrieved on 2026-09-03 (maintainer advisory GHSA-mw4p-6x4p-x5m5 via the
+GitHub REST advisory object, the pinned GitHub Advisory Database record
+GHSA-mrrh-fwg8-r2c3 at `fa95208a`, and the v46.0.1 release note), each with a
+UTC retrieval instant, byte length, and SHA-256 in the packet source ledger;
+the malicious commit object `0e58ed8671d6b60d0890c21b07f8835ace038e67` is no
+longer served by the GitHub API because the maintainers removed it, so its
+identity rests on the advisory statements and the packet says so. The
+candidate `review-packets/CIR-TJ-ACTIONS-CHANGED-FILES-2025/1.0.0` encodes the
+component, the full object, and the three maintainer-named example tags as
+mutable refs that are explicitly not an exhaustive inventory, bound to the
+day-precision window `[2025-03-14T00:00:00Z, 2025-03-16T00:00:00Z)` labeled
+`conservative-expanded` with the original claim retained; the 46.0.0 versus
+46.0.1 patched-version disagreement is an excluded conflict linked to the
+known-good omission; the payload command string and
+`gist.githubusercontent.com` are recorded as deliberately omitted indicators
+rather than encoded; and every material field and closed omission has a claim
+row. `PACK-040` is closed on that matrix. The mutable-tag fixture family
+generates the same twelve scenarios for this pack, replayed into an oracle in
+which the three example tags surface in the gap scenarios and the declared
+example tag drives the in-window rows, with forbidden-state rows for every
+promotion that must never happen; `validate-unit`, `validate-candidate-tree`,
+and `validate-governance` pass. `PACK-041` is closed: the candidate material
+lands in its own stacked pull request whose registry `research` and
+`candidate` records bind the freezing commit, the status remains `candidate`,
+no human review exists, and the maintainer must re-transcribe the sources
+before freezing the candidate for review.
 
 - [ ] **PACK-042 — Obtain tj-actions human approvals.** Request review on exact final bytes under the two-non-author-maintainer plus at-least-one-independent-outside policy. **Done when:** actual qualifying humans approve exact C through GitHub PR review, `review.json` and generated `REVIEW.md` bind all hashes/conflict decisions and immutable identities without self-certifying them, and deterministic promotion succeeds without material content change. A non-author outside reviewer may also fill another release review role. **This task cannot be completed by an automated session.** *(Dependencies: `PACK-019`, `PACK-041`; external gate.)*
 
