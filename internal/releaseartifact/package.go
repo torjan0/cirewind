@@ -29,6 +29,9 @@ type ArtifactDescriptor struct {
 	Binary        FileRecord    `json:"binary"`
 	SBOM          FileRecord    `json:"sbom"`
 	Build         BuildMetadata `json:"build"`
+	// ReviewedPacks lists the registry-marked reviewed incident packs bundled
+	// by exact bytes; an empty list states that no reviewed real pack shipped.
+	ReviewedPacks []ReviewedPack `json:"reviewedPacks"`
 }
 
 type targetBuildMetadata struct {
@@ -99,6 +102,11 @@ func PackageTarget(options PackageOptions) (ArtifactDescriptor, error) {
 		{Name: "sbom.spdx.json", Data: sbom, Mode: 0o644},
 	}
 	files = append(files, repositoryReleaseFiles()...)
+	reviewedPacks, reviewedFiles, err := reviewedArchiveFiles(options.Root)
+	if err != nil {
+		return ArtifactDescriptor{}, fmt.Errorf("reviewed-pack release contract: %w", err)
+	}
+	files = append(files, reviewedFiles...)
 	for i := range files {
 		if files[i].Data != nil {
 			continue
@@ -132,12 +140,14 @@ func PackageTarget(options PackageOptions) (ArtifactDescriptor, error) {
 		Binary:        FileRecord{Name: options.Target.BinaryName(), SHA256: binaryDigest, Bytes: int64(len(binary))},
 		SBOM:          FileRecord{Name: sbomName, SHA256: digestHex(sbom), Bytes: int64(len(sbom))},
 		Build:         options.Build,
+		ReviewedPacks: reviewedPacks,
 	}, nil
 }
 
 // repositoryReleaseFiles is the closed checked-in distribution allowlist.
-// Candidate packs and review packets are deliberately absent; a reviewed-pack
-// release contract will be added only after the independent-review gate exists.
+// Candidate packs and review packets are deliberately absent. Reviewed real
+// packs enter only through the registry-bound reviewed-pack contract in
+// reviewedpacks.go, never through this list.
 func repositoryReleaseFiles() []ArchiveFile {
 	return []ArchiveFile{
 		{Name: "README.md", Mode: 0o644},

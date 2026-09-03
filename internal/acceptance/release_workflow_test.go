@@ -41,7 +41,8 @@ type workflowDocument struct {
 
 type workflowJob struct {
 	If          string            `yaml:"if"`
-	Environment string            `yaml:"environment"`
+	Needs       any               `yaml:"needs"`
+	Environment any               `yaml:"environment"`
 	RunsOn      string            `yaml:"runs-on"`
 	Permissions map[string]string `yaml:"permissions"`
 	Outputs     map[string]string `yaml:"outputs"`
@@ -126,7 +127,7 @@ func TestActionPinsCoverEveryWorkflowAction(t *testing.T) {
 	if err := decoder.Decode(&ledger); err != nil {
 		t.Fatalf("decode action pin ledger: %v", err)
 	}
-	if ledger.SchemaVersion != 1 || ledger.RetrievedAt != "2026-08-21" || ledger.VerificationMethod == "" {
+	if ledger.SchemaVersion != 1 || ledger.RetrievedAt != "2026-09-03" || ledger.VerificationMethod == "" {
 		t.Fatalf("action pin ledger metadata is incomplete: %+v", ledger)
 	}
 
@@ -543,7 +544,7 @@ func TestCandidatePolicyUsesTrustedBaseWorkflowAndInertExactHead(t *testing.T) {
 		t.Fatalf("candidate policy permissions are not read-only: %v", workflow.Permissions)
 	}
 	job := requiredWorkflowJob(t, workflow, "candidate-change-contract")
-	if job.RunsOn != "ubuntu-24.04" || job.Environment != "" || len(job.Steps) != 3 {
+	if job.RunsOn != "ubuntu-24.04" || job.Environment != nil || len(job.Steps) != 3 {
 		t.Fatalf("candidate policy job is outside its fixed ephemeral three-step shape: %+v", job)
 	}
 	for _, required := range []string{

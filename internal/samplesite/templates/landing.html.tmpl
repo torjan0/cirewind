@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="{{.CSP}}">
+<meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="light">
+<title>CIRewind synthetic sample {{.Version}}</title>
+<style>{{.Stylesheet}}</style>
+</head>
+<body>
+<main>
+<header>
+<h1>Reconstruct which GitHub Action commit actually ran—even after a mutable tag was restored.</h1>
+<p class="lede">CIRewind is an experimental, evidence-first command-line tool that rebuilds historical GitHub Actions execution from retained evidence. This deterministic synthetic sample is not a real incident.</p>
+</header>
+
+<div class="hero">
+<section id="temporal-evidence-path">
+<h2>Temporal evidence path</h2>
+<div class="visual" role="region" aria-label="Temporal evidence path, scrollable visual" tabindex="0">
+<img src="./graph.svg" alt="Temporal evidence path for the synthetic case: one lane per finding showing exact observations as solid lines, inferences as dashed lines, temporal correlation as dotted lines, contradictions as heavy lines, and evidence gaps as interrupted lines, each labeled with its relationship and evidence references." width="{{.SVGWidth}}" height="{{.SVGHeight}}">
+</div>
+<p><a href="./graph.svg">Open the standalone SVG</a>. The visual is a projection of the case database; it is not an attack graph and it adds no evidence.</p>
+</section>
+<div>
+<section id="results">
+<h2>Result counts</h2>
+<p class="label">SYNTHETIC — PARTIAL COVERAGE</p>
+<div class="scroll" role="region" aria-label="Result counts, scrollable at narrow widths" tabindex="0">
+<table class="counts">
+<caption>{{.Total}} findings across the ten canonical states</caption>
+<thead><tr><th scope="col">Canonical state</th><th scope="col">Count</th><th scope="col">Canonical state</th><th scope="col">Count</th></tr></thead>
+<tbody>
+{{range .CountPairs}}<tr><th scope="row"><code>{{.Left.State}}</code></th><td>{{.Left.Count}}</td><th scope="row"><code>{{.Right.State}}</code></th><td>{{.Right.Count}}</td></tr>
+{{end}}</tbody>
+</table>
+</div>
+</section>
+<section id="actions">
+<h2>Sample case</h2>
+<ul>
+<li><a href="./sample-case/report.html">Open the sample report</a></li>
+<li><a href="./downloads/{{.ArchiveName}}">Download the verified sample case</a> and its <a href="./downloads/SHA256SUMS">SHA256SUMS</a></li>
+<li><a href="./sample-case/manifest.sha256">View the case manifest</a>, the <a href="./site-manifest.sha256">site manifest</a>, <a href="./findings.json">findings.json</a>, and <a href="./summary.md">summary.md</a></li>
+</ul>
+</section>
+<section id="local">
+<h2>Two-minute local run</h2>
+<pre><code>brew install torjan0/tap/cirewind
+cirewind demo --out cirewind-demo
+cirewind verify cirewind-demo</code></pre>
+<p>The demo needs no credential, network access, or repository clone.</p>
+</section>
+</div>
+</div>
+
+<section id="demonstrates">
+<h2>What the A-to-B-to-A case demonstrates</h2>
+<ul>
+<li>A mutable <code>v1</code> tag that resolved to commit B: the exact B lifecycle start supports <code>CONFIRMED_EXECUTED</code>.</li>
+<li>B downloaded without execution: preparation completed but no step began, so the state stays <code>CONFIRMED_DOWNLOADED</code>.</li>
+<li>Rerun attempts remain separate by <code>run_id + run_attempt + job_id</code>; the restored-A attempt is a comparison lane, not an affected run.</li>
+<li>Restoring the tag to A does not rewrite the historical B evidence.</li>
+<li>Missing logs stay <code>UNKNOWN_EVIDENCE_GAP</code>; they never become a clean result.</li>
+<li>Context relationships are reported as capability or relationship, never as proven access: {{.WriteTokenJobs}} affected job with a write-capable <code>GITHUB_TOKEN</code> permission, {{.NamedSecretFlows}} named-secret flow to an affected step, {{.OIDCJobs}} affected job with OIDC minting capability, {{.SelfHostedJobs}} affected job on a self-hosted runner, and {{.DeploymentsAfter}} deployment observed after an affected step with causation not established.</li>
+</ul>
+</section>
+
+<section id="invariants">
+<h2>Mandatory distinctions</h2>
+<ul>
+{{range .Invariants}}<li><code>{{.}}</code></li>
+{{end}}</ul>
+</section>
+
+<section id="install">
+<h2>Installation lanes</h2>
+<p>The fast evaluation lane above relies on Homebrew for integrity. With the supported Go toolchain, the module ecosystem provides the same evaluation build:</p>
+<pre><code>go install github.com/torjan0/cirewind/cmd/cirewind@v{{.Version}}
+cirewind demo --out cirewind-demo
+cirewind verify cirewind-demo</code></pre>
+<p>The high-assurance lane downloads the reproducible release archives from the <a href="{{.ReleaseURL}}" rel="noreferrer">{{.Version}} release page</a>, verifies build-provenance attestations, <code>SHA256SUMS</code>, and per-target SPDX documents before extraction, and remains the recommended path for forensic use. Release binaries report their exact version, source revision, and build time; an evaluation build reports the module version and an unknown commit rather than inventing one.</p>
+</section>
+
+<section id="limits">
+<h2>Experimental qualification and limitations</h2>
+<p>CIRewind {{.Version}} is experimental. Its controlled qualification covers GitHub.com explicit-repository collection for direct, downloaded-only, composite, reusable, matrix, and rerun scenarios. Organization completeness at GitHub's result ceiling, every credential type, every runner grammar, and full downstream resource inventories remain limitations. This sample deliberately reports partial coverage: an evidence gap is shown as a gap.</p>
+<p>GitHub evidence alone cannot prove that a secret value was read, that a cloud role was used, that a runner kept state, or that a later deployment was intended by anyone. CIRewind reports capabilities, relationships, and temporal order, and it separates each from causation.</p>
+</section>
+
+<section id="privacy">
+<h2>Privacy and provenance</h2>
+<ul>
+<li>Every identity on this site is synthetic. No real repository, run, secret, or person appears.</li>
+<li>The project adds no analytics, telemetry, cookies, storage, forms, or uploads to this site, and it never receives a visitor's case. GitHub logs visitor IP addresses for Pages sites for security purposes.</li>
+<li>Generated from source revision <code>{{.SourceCommit}}</code> with <code>{{.GoVersion}}</code>, demo bundle <code>{{.DemoBundleID}}</code>, synthetic pack version <code>{{.FixtureVersion}}</code>.</li>
+<li>Case manifest SHA-256 <code>{{.CaseManifestSHA256}}</code>; archive SHA-256 <code>{{.ArchiveSHA256}}</code>; the site manifest covers every versioned file. Manifest checks support integrity, not authenticity or legal custody.</li>
+<li>Regenerate locally with <code>make sample-site SITE_VERSION={{.Version}} SITE_OUT=DIR</code> from the same source revision; the output is byte-identical.</li>
+<li>Source: <a href="{{.ProjectURL}}" rel="noreferrer">{{.ProjectURL}}</a>. Independent reproductions of the public laboratory are indexed at <a href="{{.LabIndexURL}}" rel="noreferrer">{{.LabIndexURL}}</a>; an empty index makes no reproduction claim.</li>
+</ul>
+</section>
+</main>
+</body>
+</html>

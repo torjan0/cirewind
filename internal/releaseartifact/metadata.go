@@ -23,7 +23,7 @@ import (
 const (
 	ModulePath    = "github.com/torjan0/cirewind"
 	ToolName      = "CIRewind release tooling"
-	FormatVersion = 1
+	FormatVersion = 2
 )
 
 var (

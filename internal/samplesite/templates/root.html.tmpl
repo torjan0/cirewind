@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="{{.CSP}}">
+<meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="light">
+<title>CIRewind synthetic sample</title>
+<style>{{.Stylesheet}}</style>
+</head>
+<body>
+<main>
+<h1>CIRewind synthetic sample</h1>
+<p>The current experimental sample is version {{.Version}}. Each versioned tree is immutable once published.</p>
+<ul>
+<li><a href="./{{.VersionPath}}/">Open the {{.Version}} sample</a></li>
+<li><a href="./{{.VersionPath}}/sample-case/report.html">Open the {{.Version}} sample report</a></li>
+</ul>
+</main>
+</body>
+</html>

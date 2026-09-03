@@ -239,6 +239,24 @@ local automated evidence only; no external review or reproduction is claimed.
 
 - [ ] **ADO-030 — Prepare the README redesign above the fold.** Build the reviewable content/layout using trusted typed slots for the eventual versioned sample and install URLs: temporal value proposition, generated SVG, synthetic counts/partial label, two-minute command, experimental warning in the first screen, and the retained high-assurance lane. Do not advertise unresolved slots on the default branch. **Done when:** generated values/counts and local links pass, no visual/result overclaims, the final-slot inventory is explicit, high-assurance installation remains available, and an actual human cold reader can explain downloaded versus executed. **Automation cannot satisfy the cold-reader criterion.** *(Tests: template/link/count/wording audit and responsive render; dependencies: `SITE-003`.)*
 
+README candidate checkpoint (2026-09-03): `internal/samplesite` renders a
+staged `site/generated/README.candidate.md` from the verified demo case with
+trusted typed slots (version, predictable Pages and release URLs, install
+commands, oracle-checked counts), a README preview viewport of `graph.svg`
+that changes only the root viewport and appends one sentence to the root
+accessible description, a byte-identical graph copy, and an explicit
+`README.slots.json` inventory that marks each slot resolved now, at release,
+or at deployment. Tests cover determinism, first-screen order (headline,
+visual, synthetic partial-coverage counts, sample links, two-minute command,
+experimental warning, then the retained high-assurance lane), invariants,
+prohibited language, repository-relative link existence, the fixed external
+destinations, and drift detection; `make readme-candidate-check` runs in the
+site validation workflow. The candidate is never `README.md`, its banner says
+the lower sections are carried from the v0.1.1 README pending `ADO-099`, and
+the `--final` rendering is reserved for `ADO-032`. Open: the actual human
+cold-reader criterion, a GitHub-rendered responsive review of the candidate,
+and the dependency on `SITE-003`'s human review.
+
 - [ ] **ADO-032 — Materialize and freeze the exact release README bytes.** After public URL shapes, lab stable index, Pages workflow, and formula contract are fixed, render every trusted slot for v0.2.0 and place the exact final README on the RC release branch while the default branch remains at its leased prior tip. **Done when:** no placeholder/unresolved slot remains; every predictable versioned URL, install command, generated visual/count, external-lab allowlisted link, and high-assurance instruction passes local audit; the byte hash is recorded; and a later activation requires no source edit. *(Tests: unresolved-slot rejection, exact URL/command/hash golden, link allowlist; dependencies: `ADO-030`, `DIST-003`, `SITE-005`, `LAB-PUBLIC-007`.)*
 
 - [ ] **ADO-031 — Measure the two north-star paths before activation.** Record zero-install navigation from the exact immutable tagged README preview to public Pages and measure the documented installation command plus demo on the launch-blocking reference systems. `T_demo` begins when the installed binary is invoked; `T_total` begins when the documented installation command is invoked. Both stop only after every required case output exists and case-manifest verification succeeds. Use Ubuntu 24.04 amd64 with 2 vCPU/4 GiB RAM and macOS 15 arm64 with Homebrew already installed; run five clean trials per lane with a new output directory and no CIRewind cache. Browser opening is a separate smoke. Reserve a post-activation landing-page smoke for `DIST-009`; Windows 11 amd64 results are informational. **Done when:** each measurement records OS/arch/hardware, installation lane, cache/network state, version, transcript, every trial, and manifest result; each launch-blocking lane has `T_demo` p50 at most 15 seconds and no run over 30 seconds, plus `T_total` p50 at most 120 seconds and no run over 180 seconds; failure blocks activation/launch and requires a new reviewed RC if frozen public wording must change. *(Tests: five-trial repeatable timing protocol with clean outputs/no CIRewind cache and separate browser smoke; dependencies: `ADO-015`, `SITE-008`, `DIST-005`, `DIST-010`.)*
@@ -369,15 +387,81 @@ final workflow review on that history. No real incident pack is reviewed.
 
 ### Static sample site and Pages
 
-- [ ] **SITE-001 — Implement deterministic sample-site staging.** Build two demo cases from an exact source revision, verify/byte-compare them, generate two allowlisted site trees and deterministic complete case archives, and compare all bytes. Publish the complete synthetic raw-disabled case as audited individual files and archive; source prior version trees/tombstones only from checked-in or hash-locked local inputs, never the deployed site. **Done when:** the case manifest and distinct versioned `site-manifest.sha256` both verify, no wall clock/temp path/host data enters output, all site/case/archive hashes match, and unsafe/unexpected/link entries fail closed. *(Tests: double-generation, case/site manifest tamper, prior-version input, archive metadata, allowlist/path/size/privacy tests; dependencies: `ADO-015`, `ADO-025`.)*
+- [x] **SITE-001 — Implement deterministic sample-site staging.** Build two demo cases from an exact source revision, verify/byte-compare them, generate two allowlisted site trees and deterministic complete case archives, and compare all bytes. Publish the complete synthetic raw-disabled case as audited individual files and archive; source prior version trees/tombstones only from checked-in or hash-locked local inputs, never the deployed site. **Done when:** the case manifest and distinct versioned `site-manifest.sha256` both verify, no wall clock/temp path/host data enters output, all site/case/archive hashes match, and unsafe/unexpected/link entries fail closed. *(Tests: double-generation, case/site manifest tamper, prior-version input, archive metadata, allowlist/path/size/privacy tests; dependencies: `ADO-015`, `ADO-025`.)*
 
 - [ ] **SITE-002 — Implement the exact landing hierarchy and sample links.** Generate the headline, visible SVG, synthetic partial counts, report/download/manifest links, demo command, A-to-B-to-A explanation, eight invariants, installation lanes, limitations, and privacy/provenance sections. **Done when:** counts come from validated output; sample-content links are fixed relative paths; only policy-allowlisted fixed project/release and lab reproduction-index HTTPS links are external and pass redirect auditing; the first viewport includes value/visual/counts/command/experimental label; and no candidate/real incident is presented as reviewed. *(Tests: HTML golden, content order, counts, link/redirect checker, responsive render; dependencies: `SITE-001`.)*
 
 - [ ] **SITE-003 — Harden site CSP, privacy, hostile fields, and accessibility.** Use no JavaScript/remote assets/forms/storage/analytics, embed SVG only as same-origin image, and enforce hashed style plus deny-by-default meta CSP. **Done when:** offline/browser/network audits pass, hostile labels remain inert, platform logging is described honestly, and automated checks plus an actual human design-stage keyboard/screen-reader/zoom/contrast review pass; the final integrated bytes remain gated by `ADO-026`. **Automation cannot complete the manual-review criterion.** *(Tests: CSP/remote URL/DOM/injection/privacy/accessibility suite; dependencies: `SITE-002`.)*
 
-- [ ] **SITE-004 — Add read-only Pages validation CI.** On PR/main, build and audit the site without deploying, using top-level no permissions and job-level `contents: read`. **Done when:** no `pull_request_target` or write permission exists, all introduced Actions are source-verified full-SHA pins in the pin registry, fork tests cannot deploy, and checks are eligible/recommended for required-check configuration; actual repository setting changes remain `SITE-006`. *(Tests: workflow/pin/permissions trigger audit; dependencies: `SITE-003`.)*
+Sample-site engineering checkpoint (2026-09-03): `internal/samplesite` and
+`tools/samplesite` on the `site/v0.2-sample-site` branch implement the
+deterministic synthetic sample-site generator: verified-case loading compared
+against the embedded demo oracle, byte-identical case copies, a deterministic
+USTAR/gzip archive with `SHA256SUMS`, a distinct versioned
+`site-manifest.sha256`, a `provenance.json` without wall-clock, run, or host
+data, hash-locked prior version trees and tombstones from local inputs only, and
+a fail-closed tree audit (exact allowlist; no links or executable bits; type and
+64 MiB aggregate budgets; `raw/`, credential-shape, and host-path rejection;
+inert-SVG vocabulary; exact meta CSP; three fixed external URLs; prohibited
+language). `scripts/build-sample-site.sh` generates two demo cases and two sites
+and byte-compares them before publishing one copy, and `make sample-site-check`
+runs the package tests plus an end-to-end build, verify, and tamper check.
+`SITE-001` is closed on that evidence. `SITE-002` stays open: the landing
+hierarchy, oracle-derived counts, fixed relative links, first-viewport content,
+and overclaim scan are implemented and tested, but redirect auditing of the
+release and lab reproduction-index links cannot pass until those targets exist
+(`DIST-008`, `LAB-PUBLIC-007`); the responsive render is exercised by the
+browser audit below. `SITE-003` stays open: the CSP, no-script/form/storage/
+remote-asset rules, same-origin SVG embedding, hostile-field inertness, and
+honest platform-logging wording are enforced mechanically, and
+`make sample-site-browser-audit` loads the built site in sandboxed, DNS-denied
+Chromium behind a loopback server under a project Pages base path to check the
+applied hashed policy, zero non-loopback requests, every relative link, the
+three fixed external links with `rel="noreferrer"`, first-viewport content,
+heading order, visible keyboard focus, no horizontal overflow from 320 px to
+1440 px and at 200% zoom, forced-colors and dark-scheme legibility, text
+equivalents with images blocked, storage and service-worker absence, and the
+report and standalone SVG pages. The actual human keyboard, screen-reader,
+zoom, and contrast review remains outstanding. Nothing is deployed; `SITE-004`
+and `SITE-005` have not started.
+
+- [x] **SITE-004 — Add read-only Pages validation CI.** On PR/main, build and audit the site without deploying, using top-level no permissions and job-level `contents: read`. **Done when:** no `pull_request_target` or write permission exists, all introduced Actions are source-verified full-SHA pins in the pin registry, fork tests cannot deploy, and checks are eligible/recommended for required-check configuration; actual repository setting changes remain `SITE-006`. *(Tests: workflow/pin/permissions trigger audit; dependencies: `SITE-003`.)*
+
+Validation workflow checkpoint (2026-09-03): `.github/workflows/site-validate.yml`
+runs on pull requests, pushes to `main`, and manual dispatch with top-level
+`permissions: {}`, one `contents: read` job, a credential-free checkout, and
+only the ledger-pinned checkout and setup-go actions; it builds the site twice,
+verifies and tamper-tests it, drift-checks the README candidate, and runs the
+sandboxed Chromium audit. It never uses `pull_request_target` and has no
+deployment step, so a fork cannot deploy. Hosted run
+[33714520397](https://github.com/torjan0/cirewind/actions/runs/33714520397)
+passed on the pull-request head, including the browser audit with the runner's
+Google Chrome 151 and matching ChromeDriver.
+`TestSiteValidationWorkflowIsReadOnlyAndNeverDeploys` and the pin ledger test
+pin the contract, and the job name "Build, verify, and audit the sample site"
+is stable for required-check configuration, which remains `SITE-006`.
 
 - [ ] **SITE-005 — Add protected exact-tag Pages deployment workflow.** Land the dispatch/deployment workflow in the pre-activation default-branch base, then have it revalidate annotated tag/commit, upload the exact audited site once under a unique trusted artifact name, record the returned `artifact_id` plus CIRewind's locally computed site-tree/site-manifest hash, and make deployment depend on that producer while passing the documented artifact name to `deploy-pages`; use only justified Pages/OIDC permissions. **Done when:** default-branch presence and tagged-ref dispatch are tested, workflow text does not call the local site hash an uploaded-artifact digest or claim deployment is ID-addressed, wrong ref/commit/name/local hash/environment fails closed, any optional API download/digest check is separately permissioned/live-qualified, PR branches cannot invoke production deployment, and no deployment rebuild changes bytes. *(Tests: mocked workflow contract, default-branch/trigger fixtures, and local policy preflight; dependencies: `SITE-004`, `DIST-006`.)*
+
+Deployment workflow checkpoint (2026-09-03): `.github/workflows/site-deploy.yml`
+is landed but never dispatched. It is `workflow_dispatch`-only with a required
+tag input, denies permissions by default, validates the dispatch ref before
+checkout, checks out the exact tag without stored credentials, revalidates the
+annotated tag and checked-out commit through `verify-release-ref.sh`, requires
+a published non-draft release for the tag, fails closed unless the
+`github-pages` environment is protected, builds the site twice from the exact
+commit and byte-compares, cross-checks the committed README graph copy against
+the built site, verifies the tree, records the local site-manifest and archive
+hashes, uploads once under a run-unique trusted artifact name with
+`contents: read` only, and deploys that name from a separate job holding only
+`pages: write` and `id-token: write`. The workflow text states that the
+returned artifact identifier is not a digest and that deployment is addressed
+by artifact name. The Pages actions are pinned to source-verified commits
+recorded in `.github/actions-pins.json` (rechecked 2026-09-03), and
+`TestSiteDeploymentWorkflowIsExactTagAndLeastPrivilege` pins the contract.
+Open: the mocked end-to-end contract test of the inline validation steps, the
+default-branch presence that only a merge provides, the protected environment
+itself (`SITE-006`), and the `DIST-006` dependency.
 
 - [ ] **SITE-006 — Authorize/configure GitHub Pages and repository policy.** Enable Actions publishing, approve selected full-SHA Pages Actions, and protect `github-pages`; do not pre-authorize an artifact that has not yet been frozen. **Done when:** Maksim records each settings decision, workflow eligibility is confirmed without weakening repository policy, and exact deployment authorization remains `SITE-007`. **This task cannot be completed by local implementation alone.** *(Dependencies: `SITE-005`; maintainer external-state gate.)*
 
@@ -464,6 +548,27 @@ public-proxy claim is made; reference-host timing remains `ADO-031`.
 - [ ] **DIST-005 — Publish and anonymously qualify the Homebrew lane.** After v0.2 assets exist, publish exact formula hashes and test `brew install torjan0/tap/cirewind`, version, demo, and verify on supported clean hosts. **Done when:** anonymous installs use the exact public assets, every host passes, and the frozen README remains off the default-branch landing page on failure. **Requires maintainer publication authorization.** *(Dependencies: `DIST-004`, `DIST-008`.)*
 
 - [ ] **DIST-006 — Integrate demo/SVG/site and generic reviewed-pack plumbing into reproducible release qualification.** Extend release archives/smokes/SBOM/licenses/attestation subjects and exact-file comparisons without weakening protected draft/publish flow; produce deterministic local candidate release subjects for distribution tests. Exercise reviewed-pack inclusion and candidate exclusion with synthetic policy fixtures rather than waiting for real approvals. **Done when:** two release builds are byte-identical, candidate archive hashes are stable, all new files are expected/hashed, candidates are absent, release binaries demo/verify outside checkout, and all workflow Actions remain verified full-SHA pins. *(Tests: release-contract double build, synthetic reviewed/candidate exclusion, six-target smoke as supported, SPDX/provenance/pin audits; dependencies: `ADO-015`, `ADO-025`, `PACK-024`, `SITE-004`.)*
+
+Release integration checkpoint (2026-09-03): the native, container, and Wine
+release smokes now run `cirewind demo` twice from the extracted release
+binary outside the checkout, require every v0.2 case file including
+`graph.svg`, compare both runs byte for byte, and reject raw materialization;
+the release contract test additionally builds the sample site twice from the
+release binary's own demo output, byte-compares the trees, and verifies one.
+Archives carry a registry-bound reviewed-pack contract
+(`internal/releaseartifact/reviewedpacks.go`, distribution format version 2):
+only packs whose latest `review-registry.json` record is `reviewed` enter, by
+exact bytes bound to the recorded original-pack hash, with an
+`incidents/reviewed/index.json` that carries registry, promotion-commit,
+policy-profile, and approval identifiers; candidate copies, review packets, and
+superseded or withdrawn versions are rejected by the packager and by archive
+verification, the reviewed set must be identical across all six targets, and
+synthetic registry fixtures exercise inclusion, exclusion, tampering, aliasing,
+and malformed records. The smokes validate each bundled reviewed pack offline.
+The repository registry is still empty, so no real pack ships. Open: the
+reference-host measurements (`ADO-015`), the human visual review (`ADO-025`),
+review-safety CI (`PACK-024`), and the hosted six-target smoke of the new
+steps.
 
 - [ ] **DIST-007 — Freeze and deeply qualify the exact v0.2 release candidate locally.** After required reviewed packs and the authorized public lab/index land, freeze one commit containing the exact staged README/site links, record the expected old default-branch tip and begin a merge freeze, build its release subjects twice with separately fixed intended-final metadata (`0.2.0`, exact commit, deterministic build time), render/test the final unmerged Homebrew formula from those exact subject hashes, and run full tests, vet, race, fuzz seeds, vulnerability/license scans, offline safety, browser/SVG/site audits, secret/private-data/history scans, clean-clone reproduction, demo timing, pack records, local-proxy/formula installs, and release comparison twice. Prepare—but do not remotely publish—a bounded RC acquisition record containing that metadata, Go/toolchain identity, reproducible build command, release-subject and binary SHA-256 values, plus the allowed immutable artifact fields. **Done when:** release subjects, final formula bytes, README bytes, acquisition-record bytes, RC commit, intended-final metadata, and expected old default tip are frozen locally; required workflows already exist in the pre-activation default-branch base; independent local technical passes are green with no forensic/security waiver; and all evidence binds one immutable commit/binary digest. *(Tests: exact-subject double build, explicit-version-not-ref-name vector, local clean-clone byte match, default-tip ancestry/lease and workflow-presence checks, final-formula hash/install, and all pre-external repository preflight/release gates; dependencies: `ADO-015`, `ADO-025`, `ADO-032`, `DIST-002`, `DIST-003`, `DIST-006`, `PACK-070`, `SITE-005`, `LAB-PUBLIC-007`.)*
 

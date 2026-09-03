@@ -1,0 +1,56 @@
+name: Sample site validation
+
+# Read-only validation of the deterministic synthetic sample site. This
+# workflow builds and audits the site and never deploys it; the protected
+# exact-tag deployment workflow is a separate, later change (SITE-005).
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: site-validate-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GOFLAGS: -mod=readonly
+
+jobs:
+  validate:
+    name: Build, verify, and audit the sample site
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Build twice, verify, and tamper-test the sample site
+        run: make sample-site-check
+      - name: Reject README candidate drift
+        run: make readme-candidate-check
+      - name: Audit the sample site in sandboxed, network-denied Chromium
+        # The runner image ships Google Chrome with its setuid sandbox helper
+        # and a matching ChromeDriver, while its Chromium snapshot lacks the
+        # helper and never exits in headless mode; prefer Chrome when present.
+        run: |
+          if command -v google-chrome >/dev/null 2>&1; then
+            CIREWIND_CHROME="$(command -v google-chrome)"
+            export CIREWIND_CHROME
+          fi
+          if [ -n "${CHROMEWEBDRIVER:-}" ] && [ -x "$CHROMEWEBDRIVER/chromedriver" ]; then
+            export CIREWIND_CHROMEDRIVER="$CHROMEWEBDRIVER/chromedriver"
+          fi
+          make sample-site-browser-audit

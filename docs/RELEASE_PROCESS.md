@@ -70,6 +70,14 @@ Unix targets use deterministic `.tar.gz` files; Windows targets use deterministi
 - the platform executable;
 - `README.md`, `LICENSE`, `SECURITY.md`, and `THIRD_PARTY_NOTICES.md`;
 - the harmless synthetic demonstration incident pack;
+- `incidents/reviewed/index.json`, the reviewed-pack index, plus every pack
+  whose latest append-only `review-registry.json` record is `reviewed`, at its
+  fixed `incidents/reviewed/<incident>/<version>.yaml` path with bytes bound to
+  the registry's original-pack hash and the registry, promotion-commit, policy
+  profile, and approval identifiers carried in the index; candidate copies,
+  review packets, and superseded or withdrawn versions never enter an archive,
+  and an empty index states that no reviewed real pack shipped (format
+  version 2);
 - `build-metadata.json` with `authenticated: false`;
 - `sbom.spdx.json`; and
 - a target-filtered `licenses/index.json` plus every complete indexed license,
