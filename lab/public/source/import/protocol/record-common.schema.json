@@ -1,0 +1,238 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "record-common.schema.json",
+  "title": "CIRewind public laboratory record primitives v1alpha1",
+  "description": "Closed, bounded primitives for public, raw-log-disabled CIRewind laboratory records. These definitions do not approve or independently verify a reproduction.",
+  "type": "object",
+  "additionalProperties": false,
+  "maxProperties": 0,
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "positiveID": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "nonNegativeCount": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "stableID": {
+      "description": "A stable identifier safe as one cross-platform filename component.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$",
+      "allOf": [
+        { "not": { "pattern": "\\.$" } },
+        {
+          "not": {
+            "pattern": "^(?:[Cc][Oo][Nn]|[Pp][Rr][Nn]|[Aa][Uu][Xx]|[Nn][Uu][Ll]|[Cc][Oo][Mm][1-9]|[Ll][Pp][Tt][1-9])(?:\\..*)?$"
+          }
+        }
+      ]
+    },
+    "safeText": {
+      "description": "Bounded inert multiline text. LF is the only permitted control; HTML angle brackets, directional controls, C0/C1 controls, DEL, and BOM are forbidden.",
+      "type": "string",
+      "maxLength": 4096,
+      "pattern": "^[^\u0000-\u0009\u000b-\u001f\u007f-\u009f\u200e\u200f\u202a-\u202e\u2066-\u2069\ufeff<>]*$"
+    },
+    "nonEmptySafeText": {
+      "allOf": [
+        { "$ref": "#/$defs/safeText" },
+        { "minLength": 1, "pattern": "^\\S(?:[\\s\\S]*\\S)?$" }
+      ]
+    },
+    "singleLineSafeText": {
+      "description": "Bounded inert single-line text with terminal, directional, and HTML controls excluded.",
+      "type": "string",
+      "maxLength": 1024,
+      "pattern": "^[^\u0000-\u001f\u007f-\u009f\u200e\u200f\u2028\u2029\u202a-\u202e\u2066-\u2069\ufeff<>]*$"
+    },
+    "nonEmptySingleLineSafeText": {
+      "allOf": [
+        { "$ref": "#/$defs/singleLineSafeText" },
+        { "minLength": 1, "pattern": "^\\S(?:.*\\S)?$" }
+      ]
+    },
+    "utcTimestamp": {
+      "type": "string",
+      "format": "date-time",
+      "minLength": 20,
+      "maxLength": 30,
+      "pattern": "^[0-9]{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\\.[0-9]{0,8}[1-9])?Z$"
+    },
+    "gitObject": {
+      "description": "A complete lowercase Git object ID whose length is bound to its declared object-format algorithm.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "objectId"],
+      "properties": {
+        "algorithm": { "enum": ["sha1", "sha256"] },
+        "objectId": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "algorithm": { "const": "sha1" } },
+            "required": ["algorithm"]
+          },
+          "then": {
+            "properties": { "objectId": { "pattern": "^[0-9a-f]{40}$" } }
+          }
+        },
+        {
+          "if": {
+            "properties": { "algorithm": { "const": "sha256" } },
+            "required": ["algorithm"]
+          },
+          "then": {
+            "properties": { "objectId": { "pattern": "^[0-9a-f]{64}$" } }
+          }
+        }
+      ]
+    },
+    "githubRepository": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 201,
+      "pattern": "^[A-Za-z0-9_.-]{1,100}/[A-Za-z0-9_.-]{1,100}$",
+      "not": { "pattern": "\\.\\." }
+    },
+    "githubActor": {
+      "description": "A public GitHub login; normalized GitHub App bot logins may retain [bot].",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 44,
+      "pattern": "^[a-z0-9]([a-z0-9-]{0,37}[a-z0-9])?(\\[bot\\])?$"
+    },
+    "publicHTTPSURL": {
+      "description": "A public stable HTTPS URL without userinfo, query parameters, or fragments. Signed or token-bearing URLs are forbidden.",
+      "type": "string",
+      "format": "uri",
+      "minLength": 9,
+      "maxLength": 2048,
+      "pattern": "^https://[^/?#@\\s]+/[^?#\\s]*$"
+    },
+    "githubRepositoryURL": {
+      "allOf": [
+        { "$ref": "#/$defs/publicHTTPSURL" },
+        {
+          "pattern": "^https://github\\.com/[A-Za-z0-9_.-]{1,100}/[A-Za-z0-9_.-]{1,100}/?$"
+        }
+      ]
+    },
+    "githubRunURL": {
+      "allOf": [
+        { "$ref": "#/$defs/publicHTTPSURL" },
+        {
+          "pattern": "^https://github\\.com/[A-Za-z0-9_.-]{1,100}/[A-Za-z0-9_.-]{1,100}/actions/runs/[1-9][0-9]*$"
+        }
+      ]
+    },
+    "githubImmutableBlobURL": {
+      "allOf": [
+        { "$ref": "#/$defs/publicHTTPSURL" },
+        {
+          "pattern": "^https://github\\.com/[A-Za-z0-9_.-]{1,100}/[A-Za-z0-9_.-]{1,100}/blob/[0-9a-f]{40}([0-9a-f]{24})?/[A-Za-z0-9._/-]+$"
+        }
+      ]
+    },
+    "workflowPath": {
+      "type": "string",
+      "minLength": 23,
+      "maxLength": 4096,
+      "pattern": "^\\.github/workflows/[A-Za-z0-9][A-Za-z0-9._+/-]*\\.ya?ml$",
+      "allOf": [
+        { "not": { "pattern": "(^|/)\\.\\.?(/|$)" } },
+        { "not": { "pattern": "//" } },
+        { "not": { "pattern": "\\\\" } }
+      ]
+    },
+    "evidenceID": {
+      "type": "string",
+      "pattern": "^ev1:[0-9a-f]{64}$"
+    },
+    "coverageAssessmentID": {
+      "type": "string",
+      "pattern": "^cova1:[0-9a-f]{64}$"
+    },
+    "findingState": {
+      "enum": [
+        "CONFIRMED_EXECUTED",
+        "CONFIRMED_DOWNLOADED",
+        "CONFIRMED_CALLED_WORKFLOW",
+        "DECLARED_AT_RUN_SHA",
+        "RUN_IN_WINDOW_MUTABLE_REF",
+        "POTENTIAL_TRANSITIVE",
+        "CURRENT_REFERENCE_ONLY",
+        "NO_MATCH_CONFIRMED",
+        "UNKNOWN_EVIDENCE_GAP",
+        "CONTRADICTORY_EVIDENCE"
+      ]
+    },
+    "provenanceLevel": {
+      "enum": ["L4_CERTAIN", "L3_STRONG", "L2_PROBABLE", "L1_POSSIBLE", "L0_UNKNOWN"]
+    },
+    "observationTime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["observedAt", "eventSource", "sourcePrecision", "approximation"],
+      "properties": {
+        "observedAt": { "$ref": "#/$defs/utcTimestamp" },
+        "eventSource": {
+          "enum": [
+            "github-rest-api",
+            "github-graphql-api",
+            "github-actions-event",
+            "git-ls-remote",
+            "github-web-ui",
+            "cirewind-collection"
+          ]
+        },
+        "sourcePrecision": { "enum": ["second", "minute", "hour", "day", "unknown"] },
+        "approximation": { "enum": ["exact", "source-rounded", "conservative-expanded", "unknown"] }
+      }
+    },
+    "structuredIssue": {
+      "description": "A sanitized coverage gap or error. It contains no raw API/log text.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "scope", "summary"],
+      "properties": {
+        "code": { "$ref": "#/$defs/stableID" },
+        "scope": { "$ref": "#/$defs/nonEmptySingleLineSafeText" },
+        "summary": { "$ref": "#/$defs/nonEmptySafeText" }
+      }
+    },
+    "privacyAttestation": {
+      "description": "Machine-checkable exclusion declarations; these are submitter assertions, not an independent privacy audit.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rawLogsIncluded",
+        "tokensOrCookiesIncluded",
+        "secretValuesIncluded",
+        "privateRepositoryNamesIncluded",
+        "localPathsIncluded",
+        "privateUserDataIncluded"
+      ],
+      "properties": {
+        "rawLogsIncluded": { "const": false },
+        "tokensOrCookiesIncluded": { "const": false },
+        "secretValuesIncluded": { "const": false },
+        "privateRepositoryNamesIncluded": { "const": false },
+        "localPathsIncluded": { "const": false },
+        "privateUserDataIncluded": { "const": false }
+      }
+    }
+  }
+}

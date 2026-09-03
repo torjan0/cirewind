@@ -1,0 +1,25 @@
+name: Two-axis matrix fixture
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  matrix:
+    name: Matrix ${{ matrix.axis }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        axis:
+          - alpha
+          - beta
+        shard:
+          - one
+          - two
+    steps:
+      - name: Invoke mutable marker
+        uses: {{LAB_REPOSITORY}}/actions/marker@v1

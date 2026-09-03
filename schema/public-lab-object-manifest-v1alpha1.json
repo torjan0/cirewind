@@ -1,0 +1,205 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cirewind.dev/schema/public-lab-object-manifest-v1alpha1.json",
+  "title": "CIRewind public laboratory object manifest v1alpha1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "repository",
+    "objectFormat",
+    "bundle",
+    "identity",
+    "commits",
+    "tags",
+    "refs",
+    "objects",
+    "importFiles",
+    "verification"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "cirewind.public-lab-object-manifest/v1alpha1" },
+    "repository": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 201,
+      "pattern": "^[A-Za-z0-9._-]{1,100}/[A-Za-z0-9._-]{1,100}$",
+      "not": { "pattern": "\\.\\." }
+    },
+    "objectFormat": { "const": "sha1" },
+    "bundle": { "$ref": "#/$defs/bundle" },
+    "identity": { "$ref": "#/$defs/identity" },
+    "commits": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "items": { "$ref": "#/$defs/commit" }
+    },
+    "tags": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": { "$ref": "#/$defs/tag" }
+    },
+    "refs": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": { "$ref": "#/$defs/ref" }
+    },
+    "objects": {
+      "type": "array",
+      "minItems": 12,
+      "maxItems": 512,
+      "items": { "$ref": "#/$defs/object" }
+    },
+    "importFiles": {
+      "type": "array",
+      "minItems": 12,
+      "maxItems": 192,
+      "items": { "$ref": "#/$defs/importFile" }
+    },
+    "verification": { "$ref": "#/$defs/verification" }
+  },
+  "$defs": {
+    "sha1": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "email"],
+      "properties": {
+        "name": { "const": "torjan0" },
+        "email": { "const": "38338151+torjan0@users.noreply.github.com" }
+      }
+    },
+    "bundle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["filename", "format", "byteLength", "sha256"],
+      "properties": {
+        "filename": { "const": "cirewind-lab.bundle" },
+        "format": { "const": "git-bundle-v2" },
+        "byteLength": { "type": "integer", "minimum": 1, "maximum": 16777216 },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "commit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "role",
+        "objectId",
+        "treeObjectId",
+        "parentObjects",
+        "subject",
+        "author",
+        "authorTime",
+        "committer",
+        "committerTime"
+      ],
+      "properties": {
+        "role": { "enum": ["governance", "marker-a", "marker-b", "wrapper", "reusable", "import"] },
+        "objectId": { "$ref": "#/$defs/sha1" },
+        "treeObjectId": { "$ref": "#/$defs/sha1" },
+        "parentObjects": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 1,
+          "items": { "$ref": "#/$defs/sha1" }
+        },
+        "subject": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "pattern": "^[^\\r\\n\\x00-\\x1f\\x7f]+$"
+        },
+        "author": { "$ref": "#/$defs/identity" },
+        "authorTime": { "$ref": "#/$defs/time" },
+        "committer": { "$ref": "#/$defs/identity" },
+        "committerTime": { "$ref": "#/$defs/time" }
+      }
+    },
+    "tag": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "kind", "objectId", "peeledCommitId", "tagger", "taggedAt"],
+      "properties": {
+        "name": { "enum": ["fixture-a", "fixture-b"] },
+        "kind": { "const": "annotated" },
+        "objectId": { "$ref": "#/$defs/sha1" },
+        "peeledCommitId": { "$ref": "#/$defs/sha1" },
+        "tagger": { "$ref": "#/$defs/identity" },
+        "taggedAt": { "$ref": "#/$defs/time" }
+      }
+    },
+    "ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "objectId", "kind", "peeledCommitId"],
+      "properties": {
+        "name": {
+          "enum": ["HEAD", "refs/heads/main", "refs/tags/fixture-a", "refs/tags/fixture-b", "refs/tags/v1"]
+        },
+        "objectId": { "$ref": "#/$defs/sha1" },
+        "kind": { "enum": ["bundle-head", "branch", "annotated-tag", "lightweight-tag"] },
+        "peeledCommitId": { "$ref": "#/$defs/sha1" }
+      }
+    },
+    "object": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["objectId", "type", "byteLength"],
+      "properties": {
+        "objectId": { "$ref": "#/$defs/sha1" },
+        "type": { "enum": ["blob", "tree", "commit", "tag"] },
+        "byteLength": { "type": "integer", "minimum": 0, "maximum": 1048576 }
+      }
+    },
+    "importFile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "mode", "blobObjectId", "byteLength", "sha256"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096,
+          "pattern": "^[A-Za-z0-9._+/-]+$",
+          "allOf": [
+            { "not": { "pattern": "^/" } },
+            { "not": { "pattern": "(^|/)\\.\\.?(/|$)" } },
+            { "not": { "pattern": "//" } },
+            { "not": { "pattern": "\\\\" } }
+          ]
+        },
+        "mode": { "enum": ["100644", "100755"] },
+        "blobObjectId": { "$ref": "#/$defs/sha1" },
+        "byteLength": { "type": "integer", "minimum": 0, "maximum": 524288 },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bundleVerifyExpected", "fsckExpected", "prerequisiteCount", "independentImports"],
+      "properties": {
+        "bundleVerifyExpected": { "const": true },
+        "fsckExpected": { "const": true },
+        "prerequisiteCount": { "const": 0 },
+        "independentImports": { "const": 2 }
+      }
+    },
+    "time": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    }
+  }
+}

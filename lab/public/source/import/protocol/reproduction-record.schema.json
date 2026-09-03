@@ -1,0 +1,500 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "reproduction-record.schema.json",
+  "title": "CIRewind independent public laboratory reproduction submission v1alpha1",
+  "description": "A closed, privacy-bounded submission record. A matching result is the reproducer's claim only; this record cannot approve itself or establish maintainer acceptance.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "reproduction_id",
+    "claimed_result",
+    "reproducer",
+    "lab_binding",
+    "qualified_binary",
+    "run_record",
+    "public_runs",
+    "sanitized_command_shapes",
+    "case_archive",
+    "finding_counts",
+    "scenario_checks",
+    "oracle_comparison",
+    "outputs",
+    "platform_versions",
+    "coverage_issues",
+    "submitted_at",
+    "safety",
+    "privacy_statement",
+    "privacy"
+  ],
+  "properties": {
+    "schema_version": { "const": "cirewind.lab-reproduction/v1alpha1" },
+    "reproduction_id": { "$ref": "record-common.schema.json#/$defs/stableID" },
+    "claimed_result": { "enum": ["matches-qualified-oracle", "does-not-match-qualified-oracle"] },
+    "reproducer": { "$ref": "#/$defs/reproducer" },
+    "lab_binding": { "$ref": "#/$defs/labBinding" },
+    "qualified_binary": { "$ref": "#/$defs/qualifiedBinary" },
+    "run_record": { "$ref": "#/$defs/runRecordBinding" },
+    "public_runs": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "items": { "$ref": "#/$defs/publicRun" }
+    },
+    "sanitized_command_shapes": {
+      "description": "Only placeholder command shapes are accepted. Exact local paths, environment values, tokens, cookies, and headers are neither requested nor permitted.",
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 3,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "cirewind investigate --repo PUBLIC_LAB_REPOSITORY --incident SYNTHETIC_INCIDENT_PACK --from WINDOW_START --to WINDOW_END --out CASE_DIRECTORY",
+          "cirewind verify --case CASE_DIRECTORY",
+          "cirewind version"
+        ]
+      },
+      "allOf": [
+        {
+          "contains": {
+            "const": "cirewind investigate --repo PUBLIC_LAB_REPOSITORY --incident SYNTHETIC_INCIDENT_PACK --from WINDOW_START --to WINDOW_END --out CASE_DIRECTORY"
+          }
+        },
+        { "contains": { "const": "cirewind verify --case CASE_DIRECTORY" } }
+      ]
+    },
+    "case_archive": { "$ref": "#/$defs/caseArchive" },
+    "finding_counts": { "$ref": "#/$defs/findingCounts" },
+    "scenario_checks": { "$ref": "#/$defs/scenarioChecks" },
+    "oracle_comparison": { "$ref": "#/$defs/oracleComparison" },
+    "outputs": { "$ref": "#/$defs/outputs" },
+    "platform_versions": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "items": { "$ref": "#/$defs/platformVersion" }
+    },
+    "coverage_issues": {
+      "type": "array",
+      "maxItems": 500,
+      "items": { "$ref": "record-common.schema.json#/$defs/structuredIssue" }
+    },
+    "submitted_at": { "$ref": "record-common.schema.json#/$defs/utcTimestamp" },
+    "safety": { "$ref": "#/$defs/safety" },
+    "privacy_statement": {
+      "const": "Do not include tokens, cookies, signed URLs, authentication headers, raw logs, secret values, private repository names, exact local paths, or private user data."
+    },
+    "privacy": { "$ref": "record-common.schema.json#/$defs/privacyAttestation" }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "claimed_result": { "const": "matches-qualified-oracle" } },
+        "required": ["claimed_result"]
+      },
+      "then": {
+        "properties": {
+          "scenario_checks": {
+            "properties": {
+              "direct_b_executed": { "const": true },
+              "composite_b_executed": { "const": true },
+              "reusable_b_executed": { "const": true },
+              "skipped_b_not_executed": { "const": true },
+              "matrix_jobs_kept_distinct": { "const": true },
+              "rerun_attempts_kept_distinct": { "const": true },
+              "present_tag_did_not_rewrite_history": { "const": true },
+              "called_workflow_identity_kept_separate": { "const": true }
+            }
+          },
+          "oracle_comparison": {
+            "properties": {
+              "result": { "const": "match" },
+              "deviations": { "maxItems": 0 }
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "oracle_comparison": {
+            "properties": {
+              "result": { "const": "mismatch" },
+              "deviations": { "minItems": 1 }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "reproducer": {
+      "description": "Public identity and conflict declaration supplied by the reproducer. Automation cannot be the reproducer or approver.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "github_login",
+        "github_database_id",
+        "conflict_disclosure",
+        "authored_cirewind_implementation",
+        "authored_lab_source",
+        "authored_expected_oracle",
+        "authored_this_record_before_reproduction"
+      ],
+      "properties": {
+        "github_login": { "$ref": "record-common.schema.json#/$defs/githubActor" },
+        "github_database_id": { "$ref": "record-common.schema.json#/$defs/positiveID" },
+        "conflict_disclosure": { "$ref": "record-common.schema.json#/$defs/nonEmptySafeText" },
+        "authored_cirewind_implementation": { "const": false },
+        "authored_lab_source": { "const": false },
+        "authored_expected_oracle": { "const": false },
+        "authored_this_record_before_reproduction": { "const": false }
+      }
+    },
+    "tagBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target_commit", "observation"],
+      "properties": {
+        "target_commit": { "$ref": "record-common.schema.json#/$defs/gitObject" },
+        "observation": { "$ref": "record-common.schema.json#/$defs/observationTime" }
+      }
+    },
+    "labBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repository",
+        "repository_database_id",
+        "public_url",
+        "source_commit",
+        "source_manifest_sha256",
+        "marker_a_commit",
+        "marker_b_commit",
+        "fixture_a_tag_object",
+        "fixture_a_peeled_commit",
+        "fixture_b_tag_object",
+        "fixture_b_peeled_commit",
+        "v1_before",
+        "v1_during",
+        "v1_after"
+      ],
+      "properties": {
+        "repository": { "$ref": "record-common.schema.json#/$defs/githubRepository" },
+        "repository_database_id": { "$ref": "record-common.schema.json#/$defs/positiveID" },
+        "public_url": { "$ref": "record-common.schema.json#/$defs/githubRepositoryURL" },
+        "source_commit": { "$ref": "record-common.schema.json#/$defs/gitObject" },
+        "source_manifest_sha256": { "$ref": "record-common.schema.json#/$defs/sha256" },
+        "marker_a_commit": { "$ref": "record-common.schema.json#/$defs/gitObject" },
+        "marker_b_commit": { "$ref": "record-common.schema.json#/$defs/gitObject" },
+        "fixture_a_tag_object": { "$ref": "record-common.schema.json#/$defs/gitObject" },
+        "fixture_a_peeled_commit": { "$ref": "record-common.schema.json#/$defs/gitObject" },
+        "fixture_b_tag_object": { "$ref": "record-common.schema.json#/$defs/gitObject" },
+        "fixture_b_peeled_commit": { "$ref": "record-common.schema.json#/$defs/gitObject" },
+        "v1_before": { "$ref": "#/$defs/tagBinding" },
+        "v1_during": { "$ref": "#/$defs/tagBinding" },
+        "v1_after": { "$ref": "#/$defs/tagBinding" }
+      }
+    },
+    "sourceBuildAcquisition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "source_url",
+        "source_commit",
+        "go_version",
+        "build_recipe_id",
+        "byte_matched_project_rc"
+      ],
+      "properties": {
+        "kind": { "const": "independent-reproducible-source-build" },
+        "source_url": { "$ref": "record-common.schema.json#/$defs/publicHTTPSURL" },
+        "source_commit": { "$ref": "record-common.schema.json#/$defs/gitObject" },
+        "go_version": {
+          "type": "string",
+          "pattern": "^go[1-9][0-9]*\\.[0-9]+(?:\\.[0-9]+)?$",
+          "maxLength": 64
+        },
+        "build_recipe_id": { "$ref": "record-common.schema.json#/$defs/stableID" },
+        "byte_matched_project_rc": { "const": true }
+      }
+    },
+    "ciArtifactAcquisition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "workflow_run_url",
+        "workflow_run_id",
+        "workflow_run_attempt",
+        "artifact_id",
+        "artifact_sha256",
+		"source_commit",
+		"accessed_at",
+        "provenance_verified"
+      ],
+      "properties": {
+        "kind": { "const": "immutable-ci-artifact" },
+        "workflow_run_url": { "$ref": "record-common.schema.json#/$defs/githubRunURL" },
+        "workflow_run_id": { "$ref": "record-common.schema.json#/$defs/positiveID" },
+        "workflow_run_attempt": { "$ref": "record-common.schema.json#/$defs/positiveID" },
+        "artifact_id": { "$ref": "record-common.schema.json#/$defs/positiveID" },
+        "artifact_sha256": { "$ref": "record-common.schema.json#/$defs/sha256" },
+		"source_commit": { "$ref": "record-common.schema.json#/$defs/gitObject" },
+		"accessed_at": { "$ref": "record-common.schema.json#/$defs/utcTimestamp" },
+        "provenance_verified": { "const": true }
+      }
+    },
+    "releaseAcquisition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "release_url", "asset_sha256", "source_commit", "accessed_at", "provenance_verified"],
+      "properties": {
+        "kind": { "const": "published-release-recheck" },
+        "release_url": { "$ref": "record-common.schema.json#/$defs/publicHTTPSURL" },
+        "asset_sha256": { "$ref": "record-common.schema.json#/$defs/sha256" },
+		"source_commit": { "$ref": "record-common.schema.json#/$defs/gitObject" },
+		"accessed_at": { "$ref": "record-common.schema.json#/$defs/utcTimestamp" },
+        "provenance_verified": { "const": true }
+      }
+    },
+    "qualifiedBinary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "source_revision", "binary_sha256", "acquisition"],
+      "properties": {
+        "version": {
+          "type": "string",
+          "pattern": "^0\\.2\\.0(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$",
+          "maxLength": 128
+        },
+        "source_revision": { "$ref": "record-common.schema.json#/$defs/gitObject" },
+        "binary_sha256": { "$ref": "record-common.schema.json#/$defs/sha256" },
+        "acquisition": {
+          "oneOf": [
+            { "$ref": "#/$defs/sourceBuildAcquisition" },
+            { "$ref": "#/$defs/ciArtifactAcquisition" },
+            { "$ref": "#/$defs/releaseAcquisition" }
+          ]
+        }
+      }
+    },
+    "runRecordBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["record_id", "public_url", "sha256", "byte_length"],
+      "properties": {
+        "record_id": { "$ref": "record-common.schema.json#/$defs/stableID" },
+        "public_url": { "$ref": "record-common.schema.json#/$defs/publicHTTPSURL" },
+        "sha256": { "$ref": "record-common.schema.json#/$defs/sha256" },
+        "byte_length": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10485760
+        }
+      }
+    },
+    "publicRunAttempt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["run_attempt", "job_ids"],
+      "properties": {
+        "run_attempt": { "$ref": "record-common.schema.json#/$defs/positiveID" },
+        "job_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100,
+          "uniqueItems": true,
+          "items": { "$ref": "record-common.schema.json#/$defs/positiveID" }
+        }
+      }
+    },
+    "publicRun": {
+      "description": "Every job identity is run_id + run_attempt + job_id; display names are deliberately absent.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scenario_id", "run_id", "run_url", "attempts"],
+      "properties": {
+        "scenario_id": {
+          "enum": [
+            "PUBLIC-DIRECT",
+            "PUBLIC-COMPOSITE",
+            "PUBLIC-REUSABLE",
+            "PUBLIC-SKIPPED",
+            "PUBLIC-MATRIX",
+            "PUBLIC-RERUN-FULL",
+            "PUBLIC-RERUN-JOB"
+          ]
+        },
+        "run_id": { "$ref": "record-common.schema.json#/$defs/positiveID" },
+        "run_url": { "$ref": "record-common.schema.json#/$defs/githubRunURL" },
+        "attempts": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "items": { "$ref": "#/$defs/publicRunAttempt" }
+        }
+      }
+    },
+    "caseArchive": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "public_anonymous_url",
+        "archive_sha256",
+        "archive_byte_length",
+        "case_manifest_sha256",
+        "anonymous_download_verified",
+        "manifest_verification_result",
+        "raw_directory_present",
+        "files"
+      ],
+      "properties": {
+        "public_anonymous_url": { "$ref": "record-common.schema.json#/$defs/publicHTTPSURL" },
+        "archive_sha256": { "$ref": "record-common.schema.json#/$defs/sha256" },
+        "archive_byte_length": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1073741824
+        },
+        "case_manifest_sha256": { "$ref": "record-common.schema.json#/$defs/sha256" },
+        "anonymous_download_verified": { "const": true },
+        "manifest_verification_result": { "const": "verified" },
+        "raw_directory_present": { "const": false },
+        "files": {
+          "type": "array",
+          "minItems": 10,
+          "maxItems": 10,
+          "prefixItems": [
+            { "const": "affected-runs.csv" },
+            { "const": "case.db" },
+            { "const": "collection-metadata.json" },
+            { "const": "evidence.jsonl" },
+            { "const": "findings.json" },
+            { "const": "graph.json" },
+            { "const": "graph.svg" },
+            { "const": "manifest.sha256" },
+            { "const": "report.html" },
+            { "const": "summary.md" }
+          ],
+          "items": false
+        }
+      }
+    },
+    "findingCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "CONFIRMED_EXECUTED",
+        "CONFIRMED_DOWNLOADED",
+        "CONFIRMED_CALLED_WORKFLOW",
+        "DECLARED_AT_RUN_SHA",
+        "RUN_IN_WINDOW_MUTABLE_REF",
+        "POTENTIAL_TRANSITIVE",
+        "CURRENT_REFERENCE_ONLY",
+        "NO_MATCH_CONFIRMED",
+        "UNKNOWN_EVIDENCE_GAP",
+        "CONTRADICTORY_EVIDENCE"
+      ],
+      "properties": {
+        "CONFIRMED_EXECUTED": { "$ref": "record-common.schema.json#/$defs/nonNegativeCount" },
+        "CONFIRMED_DOWNLOADED": { "$ref": "record-common.schema.json#/$defs/nonNegativeCount" },
+        "CONFIRMED_CALLED_WORKFLOW": { "$ref": "record-common.schema.json#/$defs/nonNegativeCount" },
+        "DECLARED_AT_RUN_SHA": { "$ref": "record-common.schema.json#/$defs/nonNegativeCount" },
+        "RUN_IN_WINDOW_MUTABLE_REF": { "$ref": "record-common.schema.json#/$defs/nonNegativeCount" },
+        "POTENTIAL_TRANSITIVE": { "$ref": "record-common.schema.json#/$defs/nonNegativeCount" },
+        "CURRENT_REFERENCE_ONLY": { "$ref": "record-common.schema.json#/$defs/nonNegativeCount" },
+        "NO_MATCH_CONFIRMED": { "$ref": "record-common.schema.json#/$defs/nonNegativeCount" },
+        "UNKNOWN_EVIDENCE_GAP": { "$ref": "record-common.schema.json#/$defs/nonNegativeCount" },
+        "CONTRADICTORY_EVIDENCE": { "$ref": "record-common.schema.json#/$defs/nonNegativeCount" }
+      }
+    },
+    "scenarioChecks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "direct_b_executed",
+        "composite_b_executed",
+        "reusable_b_executed",
+        "skipped_b_not_executed",
+        "matrix_jobs_kept_distinct",
+        "rerun_attempts_kept_distinct",
+        "present_tag_did_not_rewrite_history",
+        "called_workflow_identity_kept_separate"
+      ],
+      "properties": {
+        "direct_b_executed": { "type": "boolean" },
+        "composite_b_executed": { "type": "boolean" },
+        "reusable_b_executed": { "type": "boolean" },
+        "skipped_b_not_executed": { "type": "boolean" },
+        "matrix_jobs_kept_distinct": { "type": "boolean" },
+        "rerun_attempts_kept_distinct": { "type": "boolean" },
+        "present_tag_did_not_rewrite_history": { "type": "boolean" },
+        "called_workflow_identity_kept_separate": { "type": "boolean" }
+      }
+    },
+    "oracleComparison": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["oracle_sha256", "result", "deviations"],
+      "properties": {
+        "oracle_sha256": { "$ref": "record-common.schema.json#/$defs/sha256" },
+        "result": { "enum": ["match", "mismatch"] },
+        "deviations": {
+          "type": "array",
+          "maxItems": 100,
+          "uniqueItems": true,
+          "items": { "$ref": "record-common.schema.json#/$defs/nonEmptySafeText" }
+        }
+      }
+    },
+    "outputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["report_url", "graph_svg_url"],
+      "properties": {
+        "report_url": { "$ref": "record-common.schema.json#/$defs/publicHTTPSURL" },
+        "graph_svg_url": { "$ref": "record-common.schema.json#/$defs/publicHTTPSURL" }
+      }
+    },
+    "platformVersion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["component", "version"],
+      "properties": {
+        "component": {
+          "enum": [
+            "operating-system",
+            "architecture",
+            "github-runner",
+            "github-api",
+            "cirewind-log-parser",
+            "cirewind-workflow-parser"
+          ]
+        },
+        "version": { "$ref": "record-common.schema.json#/$defs/nonEmptySingleLineSafeText" }
+      }
+    },
+    "safety": {
+      "description": "Required reproducer assertions. They do not replace the maintainer's independent download, manifest verification, and privacy review.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "used_only_public_lab_repository",
+        "used_no_real_secrets",
+        "used_no_production_resources",
+        "used_no_exfiltration_behavior",
+        "case_is_raw_log_disabled",
+        "permission_to_link_publicly"
+      ],
+      "properties": {
+        "used_only_public_lab_repository": { "const": true },
+        "used_no_real_secrets": { "const": true },
+        "used_no_production_resources": { "const": true },
+        "used_no_exfiltration_behavior": { "const": true },
+        "case_is_raw_log_disabled": { "const": true },
+        "permission_to_link_publicly": { "const": true }
+      }
+    }
+  }
+}

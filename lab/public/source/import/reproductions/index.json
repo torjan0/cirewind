@@ -1,0 +1,6 @@
+{
+  "schema_version": "cirewind.lab-reproductions-index/v1alpha1",
+  "status": "awaiting-independent-reproduction",
+  "notice": "Only records independently downloaded, manifest-verified, evidence-checked, and accepted by a human maintainer appear here. An empty list makes no independent-reproduction claim.",
+  "records": []
+}

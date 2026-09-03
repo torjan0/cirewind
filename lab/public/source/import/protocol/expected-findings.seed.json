@@ -1,0 +1,214 @@
+{
+  "schema_version": "cirewind.lab-expected-findings-seed/v1alpha1",
+  "status": "requires-live-qualification",
+  "identity_binding": "No live run, attempt, job, time, or evidence identity is present. Qualification must replace this seed with observations from the authorized public laboratory.",
+  "scenario_requirements": [
+    {
+      "scenario_id": "PUBLIC-COMPOSITE",
+      "qualification_required": true,
+      "required_findings": [
+        {
+          "subject_role": "affected-marker-b",
+          "occurrence_role": "any",
+          "required_state": "CONFIRMED_EXECUTED",
+          "provenance_ceiling": "L4_CERTAIN",
+          "minimum_occurrences": 1,
+          "required_support": [
+            "exact-action-source-sha",
+            "same-job-attempt-lifecycle-start",
+            "transitive-chain-with-evidence-ids"
+          ]
+        }
+      ],
+      "required_context": [
+        "composite-wrapper-chain-retained",
+        "no-runtime-claim-without-evidence-ids",
+        "v1-declaration-retained-as-mutable-ref"
+      ]
+    },
+    {
+      "scenario_id": "PUBLIC-DIRECT",
+      "qualification_required": true,
+      "required_findings": [
+        {
+          "subject_role": "affected-marker-b",
+          "occurrence_role": "any",
+          "required_state": "CONFIRMED_EXECUTED",
+          "provenance_ceiling": "L4_CERTAIN",
+          "minimum_occurrences": 1,
+          "required_support": [
+            "exact-action-source-sha",
+            "same-job-attempt-lifecycle-start"
+          ]
+        }
+      ],
+      "required_context": [
+        "no-runtime-claim-without-evidence-ids",
+        "v1-declaration-retained-as-mutable-ref"
+      ]
+    },
+    {
+      "scenario_id": "PUBLIC-MATRIX",
+      "qualification_required": true,
+      "required_findings": [
+        {
+          "subject_role": "affected-marker-b",
+          "occurrence_role": "any",
+          "required_state": "CONFIRMED_EXECUTED",
+          "provenance_ceiling": "L4_CERTAIN",
+          "minimum_occurrences": 4,
+          "required_support": [
+            "distinct-run-attempt-job-identity",
+            "exact-action-source-sha",
+            "same-job-attempt-lifecycle-start"
+          ]
+        }
+      ],
+      "required_context": [
+        "display-name-not-used-as-job-identity",
+        "matrix-jobs-distinct-by-run-attempt-job-identity",
+        "no-runtime-claim-without-evidence-ids"
+      ]
+    },
+    {
+      "scenario_id": "PUBLIC-RERUN-FULL",
+      "qualification_required": true,
+      "required_findings": [
+        {
+          "subject_role": "affected-marker-b",
+          "occurrence_role": "original",
+          "required_state": "CONFIRMED_EXECUTED",
+          "provenance_ceiling": "L4_CERTAIN",
+          "minimum_occurrences": 1,
+          "required_support": [
+            "distinct-run-attempt-job-identity",
+            "exact-action-source-sha",
+            "same-job-attempt-lifecycle-start"
+          ]
+        }
+      ],
+      "required_context": [
+        "exact-a-resolution-retained-after-tag-restoration",
+        "exact-b-resolution-retained-after-tag-restoration",
+        "original-and-rerun-attempts-distinct"
+      ]
+    },
+    {
+      "scenario_id": "PUBLIC-RERUN-JOB",
+      "qualification_required": true,
+      "required_findings": [
+        {
+          "subject_role": "affected-marker-b",
+          "occurrence_role": "original",
+          "required_state": "CONFIRMED_EXECUTED",
+          "provenance_ceiling": "L4_CERTAIN",
+          "minimum_occurrences": 1,
+          "required_support": [
+            "distinct-run-attempt-job-identity",
+            "exact-action-source-sha",
+            "same-job-attempt-lifecycle-start"
+          ]
+        }
+      ],
+      "required_context": [
+        "exact-a-resolution-retained-after-tag-restoration",
+        "exact-b-resolution-retained-after-tag-restoration",
+        "original-and-rerun-attempts-distinct"
+      ]
+    },
+    {
+      "scenario_id": "PUBLIC-REUSABLE",
+      "qualification_required": true,
+      "required_findings": [
+        {
+          "subject_role": "affected-marker-b",
+          "occurrence_role": "any",
+          "required_state": "CONFIRMED_EXECUTED",
+          "provenance_ceiling": "L4_CERTAIN",
+          "minimum_occurrences": 1,
+          "required_support": [
+            "exact-action-source-sha",
+            "same-job-attempt-lifecycle-start",
+            "transitive-chain-with-evidence-ids"
+          ]
+        }
+      ],
+      "required_context": [
+        "called-workflow-sha-kept-separate-from-action-sha",
+        "caller-workflow-sha-kept-separate-from-called-workflow-sha",
+        "composite-wrapper-chain-retained"
+      ]
+    },
+    {
+      "scenario_id": "PUBLIC-SKIPPED",
+      "qualification_required": true,
+      "required_findings": [
+        {
+          "subject_role": "affected-marker-b",
+          "occurrence_role": "any",
+          "required_state": "CONFIRMED_DOWNLOADED",
+          "provenance_ceiling": "L4_CERTAIN",
+          "minimum_occurrences": 1,
+          "required_support": [
+            "absence-of-lifecycle-start-after-completed-preparation",
+            "exact-action-source-sha",
+            "preparation-completed"
+          ]
+        }
+      ],
+      "required_context": [
+        "no-runtime-claim-without-evidence-ids",
+        "step-never-started"
+      ]
+    }
+  ],
+  "prohibited_outcomes": [
+    {
+      "code": "downloaded-only-promoted-to-executed",
+      "scope": "PUBLIC-SKIPPED",
+      "state": "CONFIRMED_EXECUTED",
+      "rationale": "The skipped marker lifecycle must never be called executed merely because preparation completed."
+    },
+    {
+      "code": "attempts-or-matrix-jobs-merged-by-display-name",
+      "scope": "ALL-SCENARIOS",
+      "rationale": "The material identity is run_id + run_attempt + job_id, never a display name."
+    },
+    {
+      "code": "head-sha-used-as-action-or-workflow-identity",
+      "scope": "ALL-SCENARIOS",
+      "rationale": "Trigger SHA, caller workflow SHA, called workflow SHA, and Action source SHA remain separate."
+    },
+    {
+      "code": "current-a-clears-historical-b",
+      "scope": "ALL-SCENARIOS",
+      "rationale": "The restored current tag cannot downgrade exact historical B evidence."
+    },
+    {
+      "code": "reusable-wrapper-relabeled-as-marker-b",
+      "scope": "PUBLIC-REUSABLE",
+      "rationale": "The called reusable-workflow commit and affected marker Action commit are different identities."
+    },
+    {
+      "code": "temporal-order-promoted-to-causation",
+      "scope": "ALL-SCENARIOS",
+      "rationale": "A rerun or later resource event must not be attributed to an attacker or to marker B without direct causal evidence."
+    },
+    {
+      "code": "credential-or-persistence-overclaim",
+      "scope": "ALL-SCENARIOS",
+      "rationale": "This lab supports no claim of secret access, cloud-role assumption, runner persistence, or deployment causation."
+    },
+    {
+      "code": "runtime-result-without-stable-evidence-and-coverage",
+      "scope": "ALL-SCENARIOS",
+      "rationale": "Every public runtime result must retain stable evidence IDs and collection coverage."
+    },
+    {
+      "code": "missing-evidence-promoted-to-no-match",
+      "scope": "ALL-SCENARIOS",
+      "state": "NO_MATCH_CONFIRMED",
+      "rationale": "A missing required evidence class must produce UNKNOWN_EVIDENCE_GAP rather than a clean negative conclusion."
+    }
+  ]
+}

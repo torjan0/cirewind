@@ -1,0 +1,135 @@
+name: Independent reproduction record
+description: Submit a public, privacy-bounded reproduction of the harmless CIRewind A-to-B-to-A laboratory.
+title: "reproduction: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This form is for the public, harmless CIRewind laboratory only. A submission does not approve itself; a human maintainer must anonymously download the case, verify its manifest, inspect its evidence chains, and accept or reject the separate machine-readable reproduction record.
+
+        **Do not paste or upload tokens, cookies, signed URLs, Authorization headers, raw logs, secret values, private repository names, exact local paths, private case files, or private user data.** Use only public lab URLs and placeholder command shapes. If sensitive data was exposed, stop and follow the private reporting instructions in `SECURITY.md`; do not quote it into a follow-up comment.
+  - type: textarea
+    id: independence
+    attributes:
+      label: Public identity and independence disclosure
+      description: State your public GitHub login, any relevant conflict, and confirm you did not author the CIRewind implementation, lab source, expected oracle, or this candidate record before running the reproduction. Automation may assist but cannot be the reproducer.
+      placeholder: |
+        Public GitHub login: example-reproducer
+        Conflict disclosure: none
+        I did not author the implementation, lab source, expected oracle, or candidate record: yes
+    validations:
+      required: true
+  - type: textarea
+    id: source_binding
+    attributes:
+      label: Public lab source and tag observations
+      description: Provide only the public lab URL, exact reviewed source commit and manifest SHA-256, full A/B commit IDs, immutable fixture-tag object IDs and peeled commits, and v1 targets before/during/after with public observation sources, UTC times, and source precision.
+      placeholder: |
+        Public lab URL:
+        Reviewed source commit:
+        Source manifest SHA-256:
+        A commit / fixture-a tag object / peeled commit:
+        B commit / fixture-b tag object / peeled commit:
+        v1 before target / public observation / UTC time / precision:
+        v1 during target / public observation / UTC time / precision:
+        v1 after target / public observation / UTC time / precision:
+    validations:
+      required: true
+  - type: textarea
+    id: binary_binding
+    attributes:
+      label: Exact qualified CIRewind binary
+      description: Bind the exact v0.2 release-candidate source commit, intended final version metadata, binary SHA-256, and approved acquisition path. Do not provide credentials, ephemeral download URLs, or local paths.
+      placeholder: |
+        CIRewind version:
+        Exact source commit:
+        Binary SHA-256:
+        Acquisition: independent reproducible build OR immutable CI artifact
+        Public immutable source/run/artifact identity:
+        Reproducible byte match or provenance verification result:
+    validations:
+      required: true
+  - type: textarea
+    id: run_identities
+    attributes:
+      label: Public workflow execution identities
+      description: List public run URLs and every material run_id + run_attempt + job_id tuple for direct, composite, reusable, skipped, matrix, and rerun scenarios. Do not substitute job display names or head_sha for these identities.
+      placeholder: |
+        PUBLIC-DIRECT: public URL; run_id; run_attempt; job_id
+        PUBLIC-COMPOSITE: public URL; run_id; run_attempt; job_id
+        PUBLIC-REUSABLE: public URL; run_id; run_attempt; job_id
+        PUBLIC-SKIPPED: public URL; run_id; run_attempt; job_id
+        PUBLIC-MATRIX: public URL; each run_id; run_attempt; job_id
+        PUBLIC-RERUN-FULL: public URL; each run_id; run_attempt; job_id
+        PUBLIC-RERUN-JOB: public URL; each run_id; run_attempt; job_id
+    validations:
+      required: true
+  - type: textarea
+    id: case_binding
+    attributes:
+      label: Anonymous raw-disabled case and verification
+      description: Provide a stable public URL requiring no token, cookie, signature, or membership; archive SHA-256 and byte length; case-manifest SHA-256; and the verified result after anonymous download. The archive must have exactly the fixed v0.2 case files and no raw directory.
+      placeholder: |
+        Stable anonymous case archive URL:
+        Archive SHA-256 / byte length:
+        Case manifest SHA-256:
+        Anonymous download manifest verification: verified
+        Raw directory present: no
+        Machine reproduction-record URL / SHA-256 (if already prepared):
+    validations:
+      required: true
+  - type: textarea
+    id: results
+    attributes:
+      label: Canonical results and oracle comparison
+      description: Give counts for all ten canonical states, confirm the scenario checks, and describe every discrepancy. Missing evidence is UNKNOWN_EVIDENCE_GAP, never a clean no-match. A failure or discrepancy is useful and must not be hidden.
+      placeholder: |
+        CONFIRMED_EXECUTED:
+        CONFIRMED_DOWNLOADED:
+        CONFIRMED_CALLED_WORKFLOW:
+        DECLARED_AT_RUN_SHA:
+        RUN_IN_WINDOW_MUTABLE_REF:
+        POTENTIAL_TRANSITIVE:
+        CURRENT_REFERENCE_ONLY:
+        NO_MATCH_CONFIRMED:
+        UNKNOWN_EVIDENCE_GAP:
+        CONTRADICTORY_EVIDENCE:
+
+        Skipped B was not CONFIRMED_EXECUTED:
+        Matrix jobs remained distinct by run_id + run_attempt + job_id:
+        Original and rerun attempts remained separate:
+        Exact called-workflow identity remained separate from Action identity:
+        Qualified-oracle comparison and deviations:
+    validations:
+      required: true
+  - type: textarea
+    id: outputs_and_coverage
+    attributes:
+      label: Public outputs, sanitized command shapes, and coverage
+      description: Link report.html and graph.svg; list parser/API/runner/platform versions, collection coverage, missing logs, and gaps. Commands must use placeholders such as PUBLIC_LAB_REPOSITORY and CASE_DIRECTORY rather than exact local paths.
+      placeholder: |
+        report.html public URL:
+        graph.svg public URL:
+        Command shape: cirewind investigate --repo PUBLIC_LAB_REPOSITORY --incident SYNTHETIC_INCIDENT_PACK --from WINDOW_START --to WINDOW_END --out CASE_DIRECTORY
+        Verification shape: cirewind verify --case CASE_DIRECTORY
+        Operating system / architecture:
+        GitHub runner / API / parser versions:
+        Coverage summary:
+        Missing, denied, truncated, or malformed evidence:
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety, privacy, and publication confirmation
+      options:
+        - label: I used only the public harmless lab; no private repository or production resource was involved.
+          required: true
+        - label: I used no real secret, cloud credential, self-hosted runner, exfiltration behavior, or destructive behavior.
+          required: true
+        - label: The shared case is raw-log-disabled and contains no token, cookie, signed URL, authentication header, secret value, exact local path, or private user data.
+          required: true
+        - label: I verified the case manifest after downloading the case anonymously.
+          required: true
+        - label: I give permission to link the sanitized reproduction record and public outputs from the lab index and CIRewind materials.
+          required: true

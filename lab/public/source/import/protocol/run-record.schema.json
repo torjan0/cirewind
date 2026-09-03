@@ -1,0 +1,548 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "run-record.schema.json",
+  "title": "CIRewind public A-to-B-to-A laboratory run record v1alpha1",
+  "description": "A closed, bounded context record for one controlled public laboratory qualification. It is not a substitute for CIRewind evidence objects and does not independently certify a reproduction.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "record_id",
+    "lab_repository",
+    "protocol",
+    "fixture_objects",
+    "mutable_tag",
+    "workflow_runs",
+    "rerun_requests",
+    "collector",
+    "collection",
+    "privacy_statement",
+    "privacy"
+  ],
+  "properties": {
+    "schema_version": { "const": "cirewind.lab-run-record/v1alpha1" },
+    "record_id": { "$ref": "record-common.schema.json#/$defs/stableID" },
+    "lab_repository": { "$ref": "#/$defs/labRepository" },
+    "protocol": { "$ref": "#/$defs/protocol" },
+    "fixture_objects": { "$ref": "#/$defs/fixtureObjects" },
+    "mutable_tag": { "$ref": "#/$defs/mutableTag" },
+    "workflow_runs": {
+      "$comment": "Canonical records sort by scenario_id, run_id, and workflow_path. Semantic validation rejects duplicate run identities.",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "items": { "$ref": "#/$defs/workflowRun" }
+    },
+    "rerun_requests": {
+      "type": "array",
+      "maxItems": 20,
+      "items": { "$ref": "#/$defs/rerunRequest" }
+    },
+    "collector": { "$ref": "#/$defs/collector" },
+    "collection": { "$ref": "#/$defs/collection" },
+    "privacy_statement": {
+      "const": "This public record contains no raw logs, token material, secret values, private repository names, local paths, or private user data."
+    },
+    "privacy": { "$ref": "record-common.schema.json#/$defs/privacyAttestation" }
+  },
+  "$defs": {
+    "labRepository": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["database_id", "full_name", "public_url"],
+      "properties": {
+        "database_id": { "$ref": "record-common.schema.json#/$defs/positiveID" },
+        "full_name": { "$ref": "record-common.schema.json#/$defs/githubRepository" },
+        "public_url": { "$ref": "record-common.schema.json#/$defs/githubRepositoryURL" }
+      }
+    },
+    "protocol": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "source_commit", "source_manifest_sha256"],
+      "properties": {
+        "version": { "const": "public-a-b-a/v1" },
+        "source_commit": { "$ref": "record-common.schema.json#/$defs/gitObject" },
+        "source_manifest_sha256": { "$ref": "record-common.schema.json#/$defs/sha256" }
+      }
+    },
+    "annotatedTag": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ref", "tag_object", "peeled_commit"],
+      "properties": {
+        "ref": { "enum": ["refs/tags/fixture-a", "refs/tags/fixture-b"] },
+        "tag_object": { "$ref": "record-common.schema.json#/$defs/gitObject" },
+        "peeled_commit": { "$ref": "record-common.schema.json#/$defs/gitObject" }
+      }
+    },
+    "fixtureObjects": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["marker_a_commit", "marker_b_commit", "fixture_a_tag", "fixture_b_tag"],
+      "properties": {
+        "marker_a_commit": { "$ref": "record-common.schema.json#/$defs/gitObject" },
+        "marker_b_commit": { "$ref": "record-common.schema.json#/$defs/gitObject" },
+        "fixture_a_tag": {
+          "allOf": [
+            { "$ref": "#/$defs/annotatedTag" },
+            {
+              "properties": { "ref": { "const": "refs/tags/fixture-a" } },
+              "required": ["ref"]
+            }
+          ]
+        },
+        "fixture_b_tag": {
+          "allOf": [
+            { "$ref": "#/$defs/annotatedTag" },
+            {
+              "properties": { "ref": { "const": "refs/tags/fixture-b" } },
+              "required": ["ref"]
+            }
+          ]
+        }
+      }
+    },
+    "tagObservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target_commit", "observation"],
+      "properties": {
+        "target_commit": { "$ref": "record-common.schema.json#/$defs/gitObject" },
+        "observation": { "$ref": "record-common.schema.json#/$defs/observationTime" }
+      }
+    },
+    "mutableTag": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ref", "before", "during", "after"],
+      "properties": {
+        "ref": { "const": "refs/tags/v1" },
+        "before": { "$ref": "#/$defs/tagObservation" },
+        "during": { "$ref": "#/$defs/tagObservation" },
+        "after": { "$ref": "#/$defs/tagObservation" }
+      }
+    },
+    "workflowRun": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scenario_id",
+        "workflow_path",
+        "workflow_definition_commit",
+        "event_type",
+        "actor",
+        "triggering_actor",
+        "event_time",
+        "run_id",
+        "run_url",
+        "attempts"
+      ],
+      "properties": {
+        "scenario_id": {
+          "enum": [
+            "PUBLIC-DIRECT",
+            "PUBLIC-COMPOSITE",
+            "PUBLIC-REUSABLE",
+            "PUBLIC-SKIPPED",
+            "PUBLIC-MATRIX",
+            "PUBLIC-RERUN-FULL",
+            "PUBLIC-RERUN-JOB"
+          ]
+        },
+        "workflow_path": { "$ref": "record-common.schema.json#/$defs/workflowPath" },
+        "workflow_definition_commit": { "$ref": "record-common.schema.json#/$defs/gitObject" },
+        "event_type": { "enum": ["workflow_dispatch", "workflow_call"] },
+        "actor": { "$ref": "record-common.schema.json#/$defs/githubActor" },
+        "triggering_actor": { "$ref": "record-common.schema.json#/$defs/githubActor" },
+        "event_time": { "$ref": "record-common.schema.json#/$defs/observationTime" },
+        "run_id": { "$ref": "record-common.schema.json#/$defs/positiveID" },
+        "run_url": { "$ref": "record-common.schema.json#/$defs/githubRunURL" },
+        "attempts": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "items": { "$ref": "#/$defs/runAttempt" }
+        }
+      }
+    },
+    "runAttempt": {
+      "description": "The containing workflow run supplies run_id; run_attempt plus each nested job_id form the material job-execution identity.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["run_attempt", "jobs"],
+      "properties": {
+        "run_attempt": { "$ref": "record-common.schema.json#/$defs/positiveID" },
+        "jobs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100,
+          "items": { "$ref": "#/$defs/job" }
+        }
+      }
+    },
+    "job": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "job_id",
+        "display_name",
+        "conclusion",
+        "action_observations",
+        "called_workflow_observations",
+        "dependency_chain",
+        "findings"
+      ],
+      "properties": {
+        "job_id": { "$ref": "record-common.schema.json#/$defs/positiveID" },
+        "rerun_of_job_id": { "$ref": "record-common.schema.json#/$defs/positiveID" },
+        "display_name": { "$ref": "record-common.schema.json#/$defs/nonEmptySingleLineSafeText" },
+        "conclusion": {
+          "enum": [
+            "success",
+            "failure",
+            "cancelled",
+            "skipped",
+            "timed_out",
+            "action_required",
+            "neutral",
+            "stale",
+            "startup_failure",
+            "unknown"
+          ]
+        },
+        "action_observations": {
+          "type": "array",
+          "maxItems": 200,
+          "items": { "$ref": "#/$defs/actionObservation" }
+        },
+        "called_workflow_observations": {
+          "type": "array",
+          "maxItems": 50,
+          "items": { "$ref": "#/$defs/calledWorkflowObservation" }
+        },
+        "dependency_chain": {
+          "description": "An ordered, exact historical dependency path. It is evidence reconstruction only and never authorizes executing fetched code.",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10,
+          "items": { "$ref": "#/$defs/dependencyLink" }
+        },
+        "findings": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100,
+          "items": { "$ref": "#/$defs/finding" }
+        }
+      }
+    },
+    "actionObservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action_repository",
+		"action_path",
+        "declared_ref",
+        "source_commit",
+        "lifecycle",
+        "step_identity",
+        "evidence_ids"
+      ],
+      "properties": {
+        "action_repository": { "$ref": "record-common.schema.json#/$defs/githubRepository" },
+		"action_path": {
+		  "type": "string",
+		  "minLength": 1,
+		  "maxLength": 4096,
+		  "pattern": "^[A-Za-z0-9.][A-Za-z0-9._+/-]*$",
+		  "allOf": [
+		    { "not": { "pattern": "(^|/)\\.\\.?(/|$)" } },
+		    { "not": { "pattern": "//" } },
+		    { "not": { "pattern": "\\\\" } }
+		  ]
+		},
+        "declared_ref": {
+          "allOf": [
+            { "$ref": "record-common.schema.json#/$defs/nonEmptySingleLineSafeText" },
+            { "maxLength": 256 }
+          ]
+        },
+        "source_commit": { "$ref": "record-common.schema.json#/$defs/gitObject" },
+        "lifecycle": {
+          "enum": [
+            "DECLARED",
+            "RESOLUTION_OBSERVED",
+            "DOWNLOAD_ANNOUNCED",
+            "PREPARATION_COMPLETED",
+            "PREPARATION_FAILED",
+            "CONDITION_SKIPPED",
+            "LIFECYCLE_STARTED",
+            "LIFECYCLE_COMPLETED",
+            "RUNTIME_IOC_OBSERVED"
+          ]
+        },
+        "step_identity": { "$ref": "record-common.schema.json#/$defs/nonEmptySingleLineSafeText" },
+        "evidence_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 50,
+          "uniqueItems": true,
+          "items": { "$ref": "record-common.schema.json#/$defs/evidenceID" }
+        }
+      }
+    },
+    "calledWorkflowObservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "workflow_path", "called_workflow_commit", "evidence_ids"],
+      "properties": {
+        "repository": { "$ref": "record-common.schema.json#/$defs/githubRepository" },
+        "workflow_path": { "$ref": "record-common.schema.json#/$defs/workflowPath" },
+        "called_workflow_commit": { "$ref": "record-common.schema.json#/$defs/gitObject" },
+        "evidence_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 50,
+          "uniqueItems": true,
+          "items": { "$ref": "record-common.schema.json#/$defs/evidenceID" }
+        }
+      }
+    },
+    "dependencyEndpoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "repository", "path", "commit"],
+      "properties": {
+        "kind": {
+          "enum": ["WORKFLOW_DEFINITION", "REUSABLE_WORKFLOW_DEFINITION", "ACTION_DEFINITION"]
+        },
+        "repository": { "$ref": "record-common.schema.json#/$defs/githubRepository" },
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096,
+          "pattern": "^[A-Za-z0-9.][A-Za-z0-9._+/-]*$",
+          "allOf": [
+            { "not": { "pattern": "(^|/)\\.\\.?(/|$)" } },
+            { "not": { "pattern": "//" } },
+            { "not": { "pattern": "\\\\" } }
+          ]
+        },
+        "commit": { "$ref": "record-common.schema.json#/$defs/gitObject" }
+      }
+    },
+    "dependencyLink": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["relationship", "from", "to", "evidence_ids"],
+      "properties": {
+        "relationship": {
+          "enum": ["WORKFLOW_DECLARED_ACTION", "WORKFLOW_CALLED_WORKFLOW", "ACTION_CONTAINS_ACTION"]
+        },
+        "from": { "$ref": "#/$defs/dependencyEndpoint" },
+        "to": { "$ref": "#/$defs/dependencyEndpoint" },
+        "evidence_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 50,
+          "uniqueItems": true,
+          "items": { "$ref": "record-common.schema.json#/$defs/evidenceID" }
+        }
+      }
+    },
+    "finding": {
+      "description": "The containing workflow run, run attempt, and job supply run_id + run_attempt + job_id; no display name participates in execution identity.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "finding_id",
+        "finding_revision_id",
+        "indicator_id",
+        "step_identity",
+        "state",
+        "provenance",
+        "conclusion",
+        "evidence_ids",
+        "coverage_assessment_ids",
+        "evidence_gap_codes"
+      ],
+      "properties": {
+        "finding_id": { "type": "string", "pattern": "^find1:[0-9a-f]{64}$" },
+        "finding_revision_id": { "type": "string", "pattern": "^frev1:[0-9a-f]{64}$" },
+        "indicator_id": { "$ref": "record-common.schema.json#/$defs/stableID" },
+        "step_identity": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "record-common.schema.json#/$defs/nonEmptySingleLineSafeText" }
+          ]
+        },
+        "state": { "$ref": "record-common.schema.json#/$defs/findingState" },
+        "provenance": { "$ref": "record-common.schema.json#/$defs/provenanceLevel" },
+        "conclusion": { "$ref": "record-common.schema.json#/$defs/nonEmptySafeText" },
+        "evidence_ids": {
+          "type": "array",
+          "maxItems": 200,
+          "uniqueItems": true,
+          "items": { "$ref": "record-common.schema.json#/$defs/evidenceID" }
+        },
+        "coverage_assessment_ids": {
+          "type": "array",
+          "maxItems": 200,
+          "uniqueItems": true,
+          "items": { "$ref": "record-common.schema.json#/$defs/coverageAssessmentID" }
+        },
+        "evidence_gap_codes": {
+          "type": "array",
+          "maxItems": 100,
+          "uniqueItems": true,
+          "items": { "$ref": "record-common.schema.json#/$defs/stableID" }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "state": { "const": "UNKNOWN_EVIDENCE_GAP" } },
+            "required": ["state"]
+          },
+          "then": {
+            "properties": { "evidence_gap_codes": { "minItems": 1 } }
+          },
+          "else": {
+            "properties": { "evidence_ids": { "minItems": 1 } }
+          }
+        },
+        {
+          "if": {
+            "properties": { "state": { "const": "NO_MATCH_CONFIRMED" } },
+            "required": ["state"]
+          },
+          "then": {
+            "properties": {
+              "evidence_ids": { "minItems": 1 },
+              "coverage_assessment_ids": { "minItems": 1 },
+              "evidence_gap_codes": { "maxItems": 0 }
+            }
+          }
+        }
+      ]
+    },
+    "rerunRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["original_run_id", "kind", "requested_by", "operator_action_time"],
+      "properties": {
+        "original_run_id": { "$ref": "record-common.schema.json#/$defs/positiveID" },
+        "kind": { "enum": ["full-workflow", "failed-jobs", "single-job"] },
+        "job_id": { "$ref": "record-common.schema.json#/$defs/positiveID" },
+        "requested_by": { "$ref": "record-common.schema.json#/$defs/githubActor" },
+        "operator_action_time": { "$ref": "record-common.schema.json#/$defs/observationTime" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "kind": { "const": "single-job" } },
+            "required": ["kind"]
+          },
+          "then": { "required": ["job_id"] },
+          "else": { "not": { "required": ["job_id"] } }
+        }
+      ]
+    },
+    "collector": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "source_revision", "binary_sha256"],
+      "properties": {
+        "version": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 128,
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"
+        },
+        "source_revision": { "$ref": "record-common.schema.json#/$defs/gitObject" },
+        "binary_sha256": { "$ref": "record-common.schema.json#/$defs/sha256" }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repositories_requested",
+        "repositories_accessible",
+        "repositories_denied",
+        "runs_enumerated",
+        "attempts_enumerated",
+        "jobs_enumerated",
+        "logs_retrieved",
+        "logs_missing",
+        "workflow_definitions_retrieved",
+        "action_definitions_retrieved",
+        "optional_capabilities_denied",
+        "truncated_evidence_objects"
+      ],
+      "properties": {
+        "repositories_requested": { "$ref": "record-common.schema.json#/$defs/nonNegativeCount" },
+        "repositories_accessible": { "$ref": "record-common.schema.json#/$defs/nonNegativeCount" },
+        "repositories_denied": { "$ref": "record-common.schema.json#/$defs/nonNegativeCount" },
+        "runs_enumerated": { "$ref": "record-common.schema.json#/$defs/nonNegativeCount" },
+        "attempts_enumerated": { "$ref": "record-common.schema.json#/$defs/nonNegativeCount" },
+        "jobs_enumerated": { "$ref": "record-common.schema.json#/$defs/nonNegativeCount" },
+        "logs_retrieved": { "$ref": "record-common.schema.json#/$defs/nonNegativeCount" },
+        "logs_missing": { "$ref": "record-common.schema.json#/$defs/nonNegativeCount" },
+        "workflow_definitions_retrieved": { "$ref": "record-common.schema.json#/$defs/nonNegativeCount" },
+        "action_definitions_retrieved": { "$ref": "record-common.schema.json#/$defs/nonNegativeCount" },
+        "optional_capabilities_denied": { "$ref": "record-common.schema.json#/$defs/nonNegativeCount" },
+        "truncated_evidence_objects": { "$ref": "record-common.schema.json#/$defs/nonNegativeCount" }
+      }
+    },
+    "versionRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["component", "version"],
+      "properties": {
+        "component": { "$ref": "record-common.schema.json#/$defs/stableID" },
+        "version": { "$ref": "record-common.schema.json#/$defs/nonEmptySingleLineSafeText" }
+      }
+    },
+    "collection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "window_start",
+        "window_end",
+        "collected_at",
+        "case_manifest_sha256",
+        "case_manifest_verified",
+        "coverage",
+        "parser_versions",
+        "api_versions",
+        "issues"
+      ],
+      "properties": {
+        "window_start": { "$ref": "record-common.schema.json#/$defs/utcTimestamp" },
+        "window_end": { "$ref": "record-common.schema.json#/$defs/utcTimestamp" },
+        "collected_at": { "$ref": "record-common.schema.json#/$defs/utcTimestamp" },
+        "case_manifest_sha256": { "$ref": "record-common.schema.json#/$defs/sha256" },
+        "case_manifest_verified": { "const": true },
+        "coverage": { "$ref": "#/$defs/coverage" },
+        "parser_versions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100,
+          "items": { "$ref": "#/$defs/versionRecord" }
+        },
+        "api_versions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "items": { "$ref": "#/$defs/versionRecord" }
+        },
+        "issues": {
+          "type": "array",
+          "maxItems": 500,
+          "items": { "$ref": "record-common.schema.json#/$defs/structuredIssue" }
+        }
+      }
+    }
+  }
+}

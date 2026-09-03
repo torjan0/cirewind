@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "tag-move-record.schema.json",
+  "title": "CIRewind public laboratory exact mutable-tag observation v1alpha1",
+  "description": "A bounded record emitted by the reviewed tag-control tool. It records exact remote readbacks without authentication material and does not claim that a readback alone proves causation.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "record_id",
+    "lab_repository",
+    "repository_database_id_basis",
+    "protocol_source_commit",
+    "fixture_objects",
+    "move",
+    "before",
+    "after",
+    "verified",
+    "outcome",
+    "recovery",
+    "recorded_at",
+    "privacy_statement",
+    "privacy"
+  ],
+  "properties": {
+    "schema_version": { "const": "cirewind.lab-tag-move-record/v1alpha1" },
+    "record_id": { "$ref": "record-common.schema.json#/$defs/stableID" },
+    "lab_repository": { "$ref": "run-record.schema.json#/$defs/labRepository" },
+    "repository_database_id_basis": {
+      "description": "The database ID is an operator assertion captured during preflight; Git transport cannot observe it and later GitHub API/run evidence must cross-check it.",
+      "const": "OPERATOR_ASSERTED_PREFLIGHT_REQUIRES_RUN_CROSSCHECK"
+    },
+    "protocol_source_commit": { "$ref": "record-common.schema.json#/$defs/gitObject" },
+    "fixture_objects": { "$ref": "run-record.schema.json#/$defs/fixtureObjects" },
+    "move": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ref", "direction", "expected_old", "new_target"],
+      "properties": {
+        "ref": { "const": "refs/tags/v1" },
+        "direction": { "enum": ["INSTALL_AFFECTED_MARKER", "RESTORE_KNOWN_GOOD"] },
+        "expected_old": { "$ref": "record-common.schema.json#/$defs/gitObject" },
+        "new_target": { "$ref": "record-common.schema.json#/$defs/gitObject" }
+      }
+    },
+    "before": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "run-record.schema.json#/$defs/tagObservation" }
+      ]
+    },
+    "after": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "run-record.schema.json#/$defs/tagObservation" }
+      ]
+    },
+    "verified": { "type": "boolean" },
+    "outcome": {
+      "enum": [
+        "CONFIRMED_APPLIED",
+        "PRECONDITION_FAILED",
+        "FAILED_UNCHANGED",
+        "REMOTE_TARGET_REACHED_UNCONFIRMED",
+        "OUTCOME_UNKNOWN",
+        "CONCURRENT_CHANGE",
+        "INTERRUPTED",
+        "RESTORE_FAILED"
+      ]
+    },
+    "recovery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "required",
+        "ref",
+        "observed_target",
+        "known_good_target",
+        "restore_expected_old",
+        "restore_target",
+        "restore_acknowledgement"
+      ],
+      "properties": {
+        "required": { "type": "boolean" },
+        "ref": { "const": "refs/tags/v1" },
+        "observed_target": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "record-common.schema.json#/$defs/gitObject" }
+          ]
+        },
+        "known_good_target": { "$ref": "record-common.schema.json#/$defs/gitObject" },
+        "restore_expected_old": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "record-common.schema.json#/$defs/gitObject" }
+          ]
+        },
+        "restore_target": { "$ref": "record-common.schema.json#/$defs/gitObject" },
+        "restore_acknowledgement": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "record-common.schema.json#/$defs/nonEmptySingleLineSafeText" }
+          ]
+        }
+      }
+    },
+    "recorded_at": { "$ref": "record-common.schema.json#/$defs/utcTimestamp" },
+    "privacy_statement": {
+      "const": "This tag-move record contains only public synthetic Git identities and exact remote-ref observations; it contains no remote URL, command output, authentication material, secret values, local paths, or private user data."
+    },
+    "privacy": { "$ref": "record-common.schema.json#/$defs/privacyAttestation" }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "outcome": { "const": "CONFIRMED_APPLIED" } },
+        "required": ["outcome"]
+      },
+      "then": {
+        "properties": {
+          "before": { "$ref": "run-record.schema.json#/$defs/tagObservation" },
+          "after": { "$ref": "run-record.schema.json#/$defs/tagObservation" },
+          "verified": { "const": true },
+          "recovery": {
+            "properties": { "required": { "const": false } },
+            "required": ["required"]
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "_template_notice": "This is intentionally schema-invalid until an outside human supplies every required public binding after independently reproducing the lab. Automation cannot be the reproducer or approver; never invent an identity, run, hash, time, finding, or review.",
+  "schema_version": "cirewind.lab-reproduction/v1alpha1",
+  "reproduction_id": null,
+  "claimed_result": null,
+  "reproducer": null,
+  "lab_binding": null,
+  "qualified_binary": null,
+  "run_record": null,
+  "public_runs": [],
+  "sanitized_command_shapes": [
+    "cirewind investigate --repo PUBLIC_LAB_REPOSITORY --incident SYNTHETIC_INCIDENT_PACK --from WINDOW_START --to WINDOW_END --out CASE_DIRECTORY",
+    "cirewind verify --case CASE_DIRECTORY"
+  ],
+  "case_archive": null,
+  "finding_counts": null,
+  "scenario_checks": null,
+  "oracle_comparison": null,
+  "outputs": null,
+  "platform_versions": [],
+  "coverage_issues": [],
+  "submitted_at": null,
+  "safety": null,
+  "privacy_statement": "Do not include tokens, cookies, signed URLs, authentication headers, raw logs, secret values, private repository names, exact local paths, or private user data.",
+  "privacy": null
+}

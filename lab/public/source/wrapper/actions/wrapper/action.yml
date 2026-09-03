@@ -1,0 +1,7 @@
+name: CIRewind lab wrapper
+description: Invoke the deliberately mutable marker reference for the public lab
+runs:
+  using: composite
+  steps:
+    - name: Invoke mutable marker
+      uses: {{LAB_REPOSITORY}}/actions/marker@v1
