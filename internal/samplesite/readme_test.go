@@ -37,12 +37,12 @@ func TestReadmeCandidateFirstScreenAndLinks(t *testing.T) {
 	if !strings.HasPrefix(page, "<!--\nSTAGED v0.2.0 README CANDIDATE.") || !strings.Contains(page, "Do not copy this file to README.md on the default branch.") {
 		t.Fatal("candidate README lacks the staged-candidate banner")
 	}
-	banner := "![" + readmeBannerAlt + "](site/assets/" + ReadmeBannerName + "#gh-dark-mode-only)\n\n# CIRewind\n"
+	banner := "![" + readmeBannerAlt + "](site/assets/" + ReadmeBannerName + "#gh-dark-mode-only)\n![" + readmeBannerAlt + "](site/assets/" + ReadmeBannerLightName + "#gh-light-mode-only)\n\n# CIRewind\n"
 	if !strings.Contains(page, banner) || strings.Index(page, banner) > strings.Index(page, "# CIRewind") {
-		t.Fatal("candidate README must show the fixed banner with its alt text immediately above the heading")
+		t.Fatal("candidate README must show both fixed banner variants with their alt text immediately above the heading")
 	}
-	if strings.Count(page, "#gh-dark-mode-only") != 1 || strings.Contains(page, "#gh-light-mode-only") {
-		t.Fatal("only the dark-theme banner variant exists; the README must not reference a light variant")
+	if strings.Count(page, "#gh-dark-mode-only") != 1 || strings.Count(page, "#gh-light-mode-only") != 1 {
+		t.Fatal("each banner theme variant must be referenced exactly once")
 	}
 	order := []string{
 		"# CIRewind",
@@ -130,19 +130,20 @@ func TestReadmeCandidateFirstScreenAndLinks(t *testing.T) {
 	if inventory.SchemaVersion != readmeSlotsSchema || !inventory.Candidate || inventory.SiteVersion != testVersion || len(inventory.Slots) < 11 {
 		t.Fatalf("inventory=%+v", inventory)
 	}
-	bannerBytes := mustRead(t, filepath.Join(testAssetsDir, ReadmeBannerName))
-	bannerSum := sha256.Sum256(bannerBytes)
-	bannerSlot := false
-	for _, slot := range inventory.Slots {
-		if slot.Name == "banner-image" {
-			bannerSlot = true
-			if slot.Value != "site/assets/"+ReadmeBannerName || slot.Resolution != "resolved-now" || !strings.HasSuffix(slot.Note, hex.EncodeToString(bannerSum[:])) {
-				t.Fatalf("banner slot does not bind the asset digest: %+v", slot)
+	for slotName, asset := range map[string]string{"banner-image": ReadmeBannerName, "banner-image-light": ReadmeBannerLightName} {
+		sum := sha256.Sum256(mustRead(t, filepath.Join(testAssetsDir, asset)))
+		found := false
+		for _, slot := range inventory.Slots {
+			if slot.Name == slotName {
+				found = true
+				if slot.Value != "site/assets/"+asset || slot.Resolution != "resolved-now" || !strings.HasSuffix(slot.Note, hex.EncodeToString(sum[:])) {
+					t.Fatalf("slot %s does not bind the asset digest: %+v", slotName, slot)
+				}
 			}
 		}
-	}
-	if !bannerSlot {
-		t.Fatal("inventory lacks the banner-image slot")
+		if !found {
+			t.Fatalf("inventory lacks the %s slot", slotName)
+		}
 	}
 	unresolved := 0
 	for _, slot := range inventory.Slots {
@@ -165,7 +166,7 @@ func TestReadmeCandidateFirstScreenAndLinks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, ok := final.Files[ReadmeFinalName]; !ok || bytes.Contains(final.Files[ReadmeFinalName], []byte("STAGED")) || !bytes.HasPrefix(final.Files[ReadmeFinalName], []byte("!["+readmeBannerAlt+"](site/assets/"+ReadmeBannerName+"#gh-dark-mode-only)\n\n# CIRewind\n")) {
+	if _, ok := final.Files[ReadmeFinalName]; !ok || bytes.Contains(final.Files[ReadmeFinalName], []byte("STAGED")) || !bytes.HasPrefix(final.Files[ReadmeFinalName], []byte("!["+readmeBannerAlt+"](site/assets/"+ReadmeBannerName+"#gh-dark-mode-only)\n!["+readmeBannerAlt+"](site/assets/"+ReadmeBannerLightName+"#gh-light-mode-only)\n\n# CIRewind\n")) {
 		t.Fatal("final README rendering must drop the staged notice, keep the banner, and use README.md")
 	}
 	if !bytes.Equal(candidate.Files[ReadmeGraphName], mustRead(t, filepath.Join(sharedDemoCase, "graph.svg"))) {
@@ -275,5 +276,12 @@ func TestReadmeCandidateRejectsBadBannerAssets(t *testing.T) {
 	}
 	if _, err := BuildReadmeCandidate(ctx, sharedDemoCase, ReadmeSlots{Version: testVersion, AssetsDir: dir}); err == nil {
 		t.Fatal("a banner asset with the wrong dimensions was accepted")
+	}
+	// A valid dark asset alone is not enough: the light variant is bound too.
+	if err := os.WriteFile(filepath.Join(dir, ReadmeBannerName), mustRead(t, filepath.Join(testAssetsDir, ReadmeBannerName)), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := BuildReadmeCandidate(ctx, sharedDemoCase, ReadmeSlots{Version: testVersion, AssetsDir: dir}); err == nil {
+		t.Fatal("a missing light banner asset was accepted")
 	}
 }

@@ -37,8 +37,9 @@ const (
 	// ReadmeBannerName is the maintainer-owned fixed banner shown above the
 	// heading on GitHub's dark theme. It is not generated; its digest is
 	// recorded in the slot inventory so the drift check binds its exact bytes.
-	ReadmeBannerName = "cirewind-banner-dark.png"
-	readmeAssetsDir  = "site/assets"
+	ReadmeBannerName      = "cirewind-banner-dark.png"
+	ReadmeBannerLightName = "cirewind-banner-light.png"
+	readmeAssetsDir       = "site/assets"
 	// readmeBannerAlt names every element whose meaning the banner encodes by
 	// shape and color, so the image adds nothing a screen reader cannot hear.
 	readmeBannerAlt = "CIRewind wordmark over a schematic GitHub Actions run: blue job nodes in a chain, an orange dashed node with a question mark where evidence is missing, a red node where a compromised action ran, a green node where a verified action ran, and a green dashed arrow from the red node back to the start, showing the run reconstructed from evidence"
@@ -99,6 +100,7 @@ type readmeView struct {
 	CountPairs       []CountPair
 	PreviewPath      string
 	BannerPath       string
+	BannerLightPath  string
 	BannerAlt        string
 	GraphPath        string
 	GraphURL         string
@@ -117,7 +119,7 @@ func VersionedPagesURL(version string) string {
 	return PagesURL + "v" + version + "/"
 }
 
-func readmeInventory(slots ReadmeSlots, bannerSHA256 string) ReadmeInventory {
+func readmeInventory(slots ReadmeSlots, bannerSHA256, bannerLightSHA256 string) ReadmeInventory {
 	pages := VersionedPagesURL(slots.Version)
 	return ReadmeInventory{
 		SchemaVersion: readmeSlotsSchema,
@@ -125,7 +127,8 @@ func readmeInventory(slots ReadmeSlots, bannerSHA256 string) ReadmeInventory {
 		Candidate:     !slots.Final,
 		Slots: []ReadmeSlot{
 			{Name: "version", Value: slots.Version, Resolution: "resolved-now", Note: "canonical SemVer without a v prefix; also fixes every versioned URL and install command below"},
-			{Name: "banner-image", Value: readmeAssetsDir + "/" + ReadmeBannerName, Resolution: "resolved-now", Note: "maintainer-owned fixed asset, 1800 by 600 palette PNG shown only on GitHub's dark theme; the light theme shows the heading alone until a light variant exists; sha256 " + bannerSHA256},
+			{Name: "banner-image", Value: readmeAssetsDir + "/" + ReadmeBannerName, Resolution: "resolved-now", Note: "maintainer-owned fixed asset, 1800 by 600 palette PNG shown on GitHub's dark theme; sha256 " + bannerSHA256},
+			{Name: "banner-image-light", Value: readmeAssetsDir + "/" + ReadmeBannerLightName, Resolution: "resolved-now", Note: "maintainer-owned fixed asset, 1800 by 600 palette PNG shown on GitHub's light theme; sha256 " + bannerLightSHA256},
 			{Name: "preview-image", Value: readmeGeneratedDir + "/" + ReadmePreviewName, Resolution: "resolved-now", Note: "viewport crop of the generated graph.svg from the verified demo case, regenerated and drift-checked"},
 			{Name: "graph-copy", Value: readmeGeneratedDir + "/" + ReadmeGraphName, Resolution: "resolved-now", Note: "byte-identical copy of the demo graph.svg"},
 			{Name: "counts", Value: "from findings.json of the verified demo case, compared with the embedded oracle", Resolution: "resolved-now"},
@@ -169,6 +172,7 @@ func RenderReadme(summary CaseSummary, slots ReadmeSlots) ([]byte, error) {
 		CountPairs:       pairs,
 		PreviewPath:      readmeGeneratedDir + "/" + ReadmePreviewName,
 		BannerPath:       readmeAssetsDir + "/" + ReadmeBannerName,
+		BannerLightPath:  readmeAssetsDir + "/" + ReadmeBannerLightName,
 		BannerAlt:        readmeBannerAlt,
 		GraphPath:        readmeGeneratedDir + "/" + ReadmeGraphName,
 		GraphURL:         pages + "graph.svg",
@@ -288,11 +292,15 @@ func BuildReadmeCandidate(ctx context.Context, caseDir string, slots ReadmeSlots
 	if err != nil {
 		return ReadmeCandidate{}, err
 	}
-	bannerSHA256, err := loadReadmeBanner(slots.AssetsDir)
+	bannerSHA256, err := loadReadmeBanner(slots.AssetsDir, ReadmeBannerName)
 	if err != nil {
 		return ReadmeCandidate{}, err
 	}
-	inventory, err := json.MarshalIndent(readmeInventory(slots, bannerSHA256), "", "  ")
+	bannerLightSHA256, err := loadReadmeBanner(slots.AssetsDir, ReadmeBannerLightName)
+	if err != nil {
+		return ReadmeCandidate{}, err
+	}
+	inventory, err := json.MarshalIndent(readmeInventory(slots, bannerSHA256, bannerLightSHA256), "", "  ")
 	if err != nil {
 		return ReadmeCandidate{}, err
 	}
@@ -308,19 +316,19 @@ func BuildReadmeCandidate(ctx context.Context, caseDir string, slots ReadmeSlots
 	}}, nil
 }
 
-// loadReadmeBanner checks the fixed banner asset (a regular, bounded PNG with
+// loadReadmeBanner checks one fixed banner asset (a regular, bounded PNG with
 // the fixed 3:1 dimensions) and returns its SHA-256 for the slot inventory.
-func loadReadmeBanner(assetsDir string) (string, error) {
+func loadReadmeBanner(assetsDir, name string) (string, error) {
 	if assetsDir == "" {
 		assetsDir = readmeAssetsDir
 	}
-	path := filepath.Join(assetsDir, ReadmeBannerName)
+	path := filepath.Join(assetsDir, name)
 	data, err := readBoundedRegular(path, maxBannerBytes)
 	if err != nil {
-		return "", fmt.Errorf("README banner asset: %w", err)
+		return "", fmt.Errorf("README banner asset %s: %w", name, err)
 	}
 	if len(data) < 24 || !bytes.HasPrefix(data, []byte("\x89PNG\r\n\x1a\n")) || string(data[12:16]) != "IHDR" {
-		return "", fmt.Errorf("README banner asset %s is not a PNG image", ReadmeBannerName)
+		return "", fmt.Errorf("README banner asset %s is not a PNG image", name)
 	}
 	width := int(data[16])<<24 | int(data[17])<<16 | int(data[18])<<8 | int(data[19])
 	height := int(data[20])<<24 | int(data[21])<<16 | int(data[22])<<8 | int(data[23])

@@ -92,15 +92,14 @@ and contrast review recorded by a person is still required by `SITE-003`.
 ## Fixed assets
 
 `site/assets/` holds locally owned fixed assets that are not generated:
-today only `cirewind-banner-dark.png`, the 1800 by 600 palette PNG banner the
-README candidate shows above its heading on GitHub's dark theme. The banner
-carries no text other than the wordmark, encodes every meaning by shape as well
-as color, and has alt text naming each element. The README generator checks
-that the file is a bounded PNG of exactly those dimensions and records its
-SHA-256 in `README.slots.json`, so `make readme-candidate-check` fails if the
-asset changes without a regenerated candidate. A light-theme variant is added
-the same way when one exists; until then the light theme shows the heading
-alone.
+`cirewind-banner-dark.png` and `cirewind-banner-light.png`, the 1800 by 600
+palette PNG banners the README candidate shows above its heading on GitHub's
+dark and light themes. Each banner carries no text other than the wordmark,
+encodes every meaning by shape as well as color, and shares one alt text that
+names each element. The README generator checks that both files are bounded
+PNGs of exactly those dimensions and records each SHA-256 in
+`README.slots.json`, so `make readme-candidate-check` fails if either asset
+changes without a regenerated candidate.
 
 ## README candidate
 

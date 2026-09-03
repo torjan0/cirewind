@@ -29,10 +29,11 @@ All notable changes to CIRewind are documented here. The format follows
   Release smokes run the demo twice from the release binary and the release
   contract test builds the sample site twice from that output.
 
-- README candidate banner: a maintainer-owned fixed asset
-  (`site/assets/cirewind-banner-dark.png`) rendered above the heading on
-  GitHub's dark theme through a typed slot whose recorded SHA-256 is drift
-  checked, with alt text naming every element the image encodes.
+- README candidate banner: maintainer-owned fixed assets
+  (`site/assets/cirewind-banner-dark.png` and `cirewind-banner-light.png`)
+  rendered above the heading for GitHub's dark and light themes through typed
+  slots whose recorded SHA-256 values are drift checked, with alt text naming
+  every element the image encodes.
 
 ### Documentation
 
