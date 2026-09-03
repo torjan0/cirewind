@@ -20,6 +20,28 @@ therefore cannot fill any approval slot on them. The registry binds each C and
 manifest hash; if a candidate branch is changed for any material reason, the
 packet is re-assembled, a new C is registered, and every review starts over.
 
+## 0. Freeze the review head first
+
+GitHub records a review against the pull request head at submission time, the
+snapshot workflow refuses a pull request whose head is not C, and
+`check-approvals` rejects an approval recorded on any other commit. The stacked
+candidate branches (#12, #13, #14) carry the registry record and later merges
+after each packet commit, so a review submitted on them as they stand would not
+count. Before requesting reviews:
+
+1. Land the tooling pull request (#11) on `main`.
+2. Give the pack a review pull request whose head is exactly C: either move the
+   candidate branch back to C or open a fresh branch pushed from C, based on
+   `main`. Once the head is C, nothing is merged into that branch until the
+   promotion step.
+3. Review in dependency order, Reviewdog, then tj-actions, then Trivy, because
+   each later packet commit's history contains the earlier packets; a later
+   pack's review pull request shows only its own material once the earlier pack
+   has been promoted and merged.
+4. Keep the `research` and `candidate` registry records off the review head.
+   They are already recorded on the stacked branches after C and travel with the
+   promotion branch, which is rooted at C and may include them.
+
 ## 1. Staff the reviews
 
 - Identify two eligible project maintainers who did not prepare or transcribe
