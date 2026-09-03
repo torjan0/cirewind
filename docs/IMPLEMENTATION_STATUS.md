@@ -155,7 +155,28 @@ demo, manifest, and disposable-clean-tree exact-HEAD checks. The exact local
 scope and remaining hosted/human gates are recorded in
 [`2026-08-30-pack-review-governance-qualification.md`](validation/2026-08-30-pack-review-governance-qualification.md).
 
-No real incident pack has been independently reviewed, promoted, or made
+A Reviewdog `action-setup` candidate packet
+(`review-packets/CIR-REVIEWDOG-ACTION-SETUP-2025/1.0.0`) is prepared from
+primary sources re-retrieved on 2026-09-03: a maintainer-advisory-bound
+component, full malicious object, mutable `v1` ref, and minute-precision window
+with rounded exclusive end; a complete claim matrix including omissions; the
+retag object excluded as an unreviewed known-good candidate; wrapper mappings
+omitted as unverified; twelve generated fixture scenarios replayed into an
+oracle with forbidden-state rows; and structural validation passing. It is a
+candidate with no human review. A tj-actions/changed-files candidate packet
+(`review-packets/CIR-TJ-ACTIONS-CHANGED-FILES-2025/1.0.0`) follows the same
+contract with a day-precision window labeled as a conservative expansion,
+non-exhaustive example tags, an excluded patched-version conflict, and no
+encoded log literal or domain; its malicious commit object is no longer served
+by the GitHub API. A Trivy ecosystem candidate packet
+(`review-packets/CIR-AQUASECURITY-TRIVY-2026/1.0.0`) keeps three components
+and four minute-precision windows apart, encodes publisher-approximated
+endpoints at the stated minute under a visible label, derives the original
+trivy-action tag inventory and the release-asset and image digests through
+sealed mechanical extraction records, and states the network and version
+literals in guidance because the analyzer cannot replay literal indicators from
+a compact archive with a coverage gap code. All three are candidates only. No
+real incident pack has been independently reviewed, promoted, or made
 release-ready. No automated session, local JSON record, deterministic Markdown
 rendering, schema result, manifest, or normalized snapshot counts as an
 independent human approval. Reviewdog and tj-actions still require the accepted

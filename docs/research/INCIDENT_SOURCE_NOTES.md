@@ -94,6 +94,8 @@ Sources: [maintainer advisory](https://github.com/tj-actions/changed-files/secur
 
 The bad SHA and component identity are ready for peer-reviewed transcription. The pack schema can preserve date precision and a labeled conservative expansion, but a high-precision mutable-ref window remains blocked pending exact primary evidence. Reviewers must choose and document the conservative date-boundary policy; patched/known-good values still require conflict resolution.
 
+Candidate status (2026-09-03): the sources above were re-retrieved with recorded hashes and a candidate packet was prepared at `review-packets/CIR-TJ-ACTIONS-CHANGED-FILES-2025/1.0.0` with the dates read as UTC calendar days under a labeled `conservative-expanded` window, the three example tags encoded as non-exhaustive mutable refs, the patched-version disagreement excluded, and no log literal or domain encoded. The malicious commit object is no longer served by the GitHub API. It remains a candidate without human review.
+
 ## Reviewdog transitive compromise, March 2025
 
 ### Verified primary-source facts
@@ -133,6 +135,8 @@ Sources: [maintainer GHSA](https://github.com/reviewdog/reviewdog/security/advis
 ### Pack readiness
 
 The direct component, bad full SHA, ref, and minute-level window are strong candidates. Wrapper version/subpath mappings need repository-by-repository historical verification and deterministic fixtures before the transitive portion is accepted.
+
+Candidate status (2026-09-03): the sources above were re-retrieved with recorded hashes and a candidate packet was prepared at `review-packets/CIR-REVIEWDOG-ACTION-SETUP-2025/1.0.0` encoding only the direct component, full object, `v1` ref, and rounded minute-precision window; wrapper mappings and the retag object are omitted with recorded rationale. It remains a candidate without human review.
 
 ## Trivy ecosystem compromise, March 2026
 
@@ -188,6 +192,8 @@ Sources: [maintainer GHSA](https://github.com/aquasecurity/trivy/security/adviso
 ### Pack readiness
 
 The schema supports component-specific approximate windows and typed digest namespaces. The maintainer source is sufficiently detailed to begin a real pack, but full Action SHA extraction, typed assignment of the large IOC table, boundary decisions, and deterministic source-to-pack review remain required; manual transcription is not sufficient.
+
+Candidate status (2026-09-03): the sources above were retrieved with recorded hashes, together with the current `aquasecurity/trivy-action` tag listing, and a candidate packet was prepared at `review-packets/CIR-AQUASECURITY-TRIVY-2026/1.0.0` under the `trivy-v0.2` profile. It keeps the trivy-action, setup-trivy, binary, and Docker Hub image windows separate at minute precision with every publisher-approximated endpoint encoded at the stated minute under the `source-rounded` label and the original cells retained; encodes 75 original trivy-action tag names (72 derived from the `v`-prefixed replacement tags plus the three unrestored names the advisory lists, against the advisory count of 76) and the seven setup-trivy tags; carries the 26 release-asset and 15 OCI manifest digests from sealed extraction records; and omits known-good identities, Action package digests, and the network and version literals with recorded rationale, stating the literals in guidance because a compact archive cannot evaluate literal indicators with a coverage gap code. It remains a candidate without human review; the profile requires two distinct outside reviewers covering the component-namespace, ioc-extraction, and time scopes.
 
 ## Xygeni mutable-tag compromise, March 2026
 
