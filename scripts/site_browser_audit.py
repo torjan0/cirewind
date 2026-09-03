@@ -104,9 +104,14 @@ def site_chromium_arguments(profile: Path) -> list[str]:
         if argument.startswith("--host-resolver-rules="):
             argument = f"--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE {LOOPBACK}"
             replaced = True
+        elif argument.startswith("--headless"):
+            # Plain --headless is honored by both the stable Chromium the local
+            # audit uses and the hosted runner's snapshot build, which started
+            # a full browser session under --headless=new and never exited.
+            argument = "--headless"
         arguments.append(argument)
-    if not replaced:
-        raise AuditError("report launch policy no longer carries a host-resolver rule")
+    if not replaced or "--headless" not in arguments:
+        raise AuditError("report launch policy no longer carries the host-resolver rule or headless flag")
     if {"--no-sandbox", "--disable-setuid-sandbox"}.intersection(arguments):
         raise AuditError("site browser audit cannot disable Chromium sandboxing")
     return arguments

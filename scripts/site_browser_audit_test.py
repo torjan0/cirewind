@@ -33,6 +33,8 @@ class LaunchPolicyTest(unittest.TestCase):
         self.assertEqual(rules, [f"--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE {LOOPBACK}"])
         self.assertFalse(any("localhost" in item for item in arguments))
         self.assertIn("--proxy-server=direct://", arguments)
+        self.assertIn("--headless", arguments)
+        self.assertFalse(any(item.startswith("--headless=") for item in arguments))
 
     def test_base_path_is_bounded(self) -> None:
         self.assertEqual(validate_base_path("/cirewind/"), "/cirewind/")
