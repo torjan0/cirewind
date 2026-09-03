@@ -84,10 +84,12 @@ func TestVerifyPackInputSourceCommitKeepsMainAtImportAndBindsExactBytes(t *testi
 
 func confirmedProvenanceRecords(t *testing.T, artifact Artifact) ([]byte, []byte, []byte) {
 	t.Helper()
+	// The remote is never contacted; it only has to satisfy the test-only
+	// absolute-path policy on every platform, including Windows drive paths.
 	policy := TagMovePolicy{
 		Repository:               artifact.Model.Repository,
 		RepositoryDatabaseID:     101,
-		RemoteURL:                "/synthetic/absolute/remote.git",
+		RemoteURL:                filepath.Join(t.TempDir(), "synthetic-remote.git"),
 		ReviewedMain:             artifact.Model.Commits[5].ObjectID,
 		CommitA:                  artifact.Model.Commits[1].ObjectID,
 		CommitB:                  artifact.Model.Commits[2].ObjectID,

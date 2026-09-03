@@ -453,9 +453,9 @@ func TestSourceHistoryContainsOnlyPublicSyntheticMaterial(t *testing.T) {
 
 func runGit(t *testing.T, executable string, args ...string) string {
 	t.Helper()
-	gitArgs := append([]string{"-c", "core.hooksPath=", "-c", "init.templateDir=", "-c", "protocol.file.allow=always"}, args...)
+	gitArgs := append([]string{"-c", "core.hooksPath=" + gitNullDevice, "-c", "init.templateDir=", "-c", "protocol.file.allow=always"}, args...)
 	command := exec.CommandContext(context.Background(), executable, gitArgs...)
-	command.Env = append(os.Environ(), "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL="+os.DevNull, "GIT_TERMINAL_PROMPT=0", "LC_ALL=C")
+	command.Env = append(os.Environ(), "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL="+gitNullDevice, "GIT_TERMINAL_PROMPT=0", "LC_ALL=C")
 	output, err := command.CombinedOutput()
 	if err != nil {
 		t.Fatalf("git %s: %v\n%s", strings.Join(args, " "), err, output)
@@ -507,7 +507,7 @@ func assertDCO(t *testing.T, git, repository string, manifest ObjectManifest) {
 			t.Fatalf("commit %s lacks exact DCO trailer: %q", commit.Role, body)
 		}
 		command := exec.Command(git, "interpret-trailers", "--parse")
-		command.Env = append(os.Environ(), "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL="+os.DevNull, "LC_ALL=C")
+		command.Env = append(os.Environ(), "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL="+gitNullDevice, "LC_ALL=C")
 		command.Stdin = strings.NewReader(body)
 		output, err := command.Output()
 		if err != nil || strings.TrimSpace(string(output)) != strings.TrimSpace(want) {

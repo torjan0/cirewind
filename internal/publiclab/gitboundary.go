@@ -59,8 +59,11 @@ func (boundary *LocalGitBoundary) RunGit(ctx context.Context, worktree string, a
 	}
 	// An empty core.hooksPath resolves hooks relative to the filesystem root
 	// rather than disabling them; a null-device path can never contain a hook.
+	// The literal /dev/null is used rather than os.DevNull because Git for
+	// Windows maps that exact spelling to its null device, while some of its
+	// builds reject the native "NUL" spelling with EINVAL.
 	gitArguments := []string{
-		"-c", "core.hooksPath=" + os.DevNull,
+		"-c", "core.hooksPath=" + gitNullDevice,
 		"-c", "core.fsmonitor=false",
 		"-c", "core.untrackedCache=false",
 		"-c", "protocol.ext.allow=never",
@@ -128,11 +131,17 @@ func safeGitEnvironment(input []string) []string {
 	}
 	result = append(result,
 		"LC_ALL=C", "LANG=C", "GIT_TERMINAL_PROMPT=0", "GIT_OPTIONAL_LOCKS=0", "GIT_PAGER=cat",
-		"GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_SYSTEM="+os.DevNull, "GIT_CONFIG_GLOBAL="+os.DevNull,
+		"GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_SYSTEM="+gitNullDevice, "GIT_CONFIG_GLOBAL="+gitNullDevice,
 		"GIT_NO_REPLACE_OBJECTS=1", "GIT_NO_LAZY_FETCH=1", "GIT_ATTR_NOSYSTEM=1",
 	)
 	return result
 }
+
+// gitNullDevice is the null-device spelling Git itself understands on every
+// supported platform. Git for Windows translates the literal /dev/null to its
+// native null device internally, whereas passing the native "NUL" name through
+// GIT_CONFIG_GLOBAL or GIT_CONFIG_SYSTEM fails on some Git for Windows builds.
+const gitNullDevice = "/dev/null"
 
 func allowedGitInvocation(arguments []string) bool {
 	if len(arguments) == 1 && arguments[0] == "--version" {

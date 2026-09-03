@@ -217,12 +217,67 @@ this audit is `$0.00`.
 - Authenticated SSH push through the isolated boundary against GitHub.com.
 - GitHub-hosted preparation of marker B by the exact `skipped.yml` grammar
   (`LAB-PUBLIC-003`).
-- A hosted CI run of this batch. `ci.yml` runs on `main` pushes and pull
-  requests, so a branch-only run requires an authorized dispatch or PR.
-- Anything outside Linux amd64 for the shell-level gates.
+- Anything outside Linux amd64 for the shell-level gates. The hosted CI
+  outcome for the Go suite on all six targets is recorded in the follow-up
+  section below.
 
 ## Gates intentionally still open
 
 `LAB-PUBLIC-003`, `LAB-PUBLIC-006` through `LAB-PUBLIC-011`, and every
 maintainer, publication, outside-human, and final v0.2 release gate remain
 open. No task status changed in `TASKS.md`.
+
+## Hosted CI run and Windows follow-up
+
+The audited batch was committed as `d7075197aef373a1efe456f8e86554a8c79ae3b7`
+with a DCO sign-off, pushed only to `refs/heads/lab/public-a-b-a-source`, and
+exercised by the authorized `workflow_dispatch` run
+[`33705754157`](https://github.com/torjan0/cirewind/actions/runs/33705754157).
+`main` was not changed and no pull request was opened.
+
+| Job | Result |
+| --- | --- |
+| Test (linux-amd64), Test (linux-arm64) | success |
+| Test (darwin-amd64), Test (darwin-arm64) | success |
+| Race detector | success |
+| Reachable vulnerability scan | success |
+| Incident-pack review contract | success |
+| Reproducible release packaging contract | success |
+| Test (windows-amd64) | failure |
+| Test (windows-arm64) | failure |
+
+Only `internal/publiclab` failed, and only on Windows. Two causes, neither in
+a policy, artifact, schema, or record contract:
+
+1. **Null-device spelling.** The tag-control Git boundary and the bundle test
+   helper passed `os.DevNull` (`NUL` on Windows) through `GIT_CONFIG_SYSTEM`
+   and `GIT_CONFIG_GLOBAL`, and the boundary hooks path used the same value.
+   The Git for Windows build on the arm64 runner rejects that with
+   `unable to access 'NUL': Invalid argument`, so every Git-backed test there
+   failed before reaching its assertion; the amd64 build accepted it. Git for
+   Windows translates the literal `/dev/null` to its null device, so the
+   boundary and helper now use that spelling everywhere.
+2. **POSIX-only fixture paths.** The provenance test supplied
+   `/synthetic/absolute/remote.git`, which is not an absolute path on Windows
+   and was correctly rejected by the test-only local-remote policy; the
+   reproduction cross-binding test and two schema-directory helpers
+   concatenated paths with forward slashes, which the clean-path reader
+   rejects on Windows. All now use `filepath.Join`.
+
+Follow-up commit files: `internal/publiclab/gitboundary.go`,
+`internal/publiclab/bundle_test.go`, `internal/publiclab/provenance_test.go`,
+`internal/publiclab/records_test.go`. Artifact identities are unchanged.
+
+| Follow-up check | Result |
+| --- | --- |
+| `gofmt -l internal/publiclab tools/publiclab` | PASS, no output |
+| `go vet` for linux, windows/amd64, and windows/arm64 targets | PASS |
+| `go test -c` for windows/amd64 and windows/arm64 test binaries | PASS, compiles |
+| `go test ./internal/publiclab ./tools/publiclab -count=1` | PASS |
+| `go test -race ./internal/publiclab ./tools/publiclab -count=1` | PASS, 106 s |
+| `go test ./... -count=1`, `go vet ./...`, `go test -race ./... -count=1` | PASS, 40 s, vet PASS, race 180 s |
+| `make PUBLIC_LAB_REQUIRE_ACTIONLINT=1 public-lab-check` | PASS, 13 s |
+| `git diff --check` | PASS |
+
+The Windows runtime behavior of the fix is validated only by the next hosted
+run on the branch; no Windows host is available locally.

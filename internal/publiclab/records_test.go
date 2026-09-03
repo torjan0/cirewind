@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -28,7 +29,7 @@ func TestValidateRecordAppliesCrossFieldSemantics(t *testing.T) {
 		{name: "valid reproduction", kind: RecordReproduction, value: validPublicLabReproductionRecord, ok: true},
 		{name: "valid empty index", kind: RecordReproductionsIdx, value: func() map[string]any {
 			var value map[string]any
-			readPublicLabJSON(t, recordSchemaDir(t)+"/reproductions-index.template.json", &value)
+			readPublicLabJSON(t, filepath.Join(recordSchemaDir(t), "reproductions-index.template.json"), &value)
 			return value
 		}, ok: true},
 		{
@@ -209,7 +210,7 @@ func TestReproductionCrossBindsExactRunRecordBytesAndPublicTuples(t *testing.T) 
 	}
 	reproduction["finding_counts"] = counts
 	reproduction["scenario_checks"] = checks
-	seed, err := readBoundedRegular(recordSchemaDir(t)+"/expected-findings.seed.json", maxRecordBytes)
+	seed, err := readBoundedRegular(filepath.Join(recordSchemaDir(t), "expected-findings.seed.json"), maxRecordBytes)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -640,7 +641,7 @@ func TestRuntimeObservationSchemaUsesCanonicalIdentifiers(t *testing.T) {
 
 func recordSchemaDir(t *testing.T) string {
 	t.Helper()
-	return recordSourceRoot(t) + "/import/protocol"
+	return filepath.Join(recordSourceRoot(t), "import", "protocol")
 }
 
 func firstRecordObject(value map[string]any, key string) map[string]any {
