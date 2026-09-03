@@ -134,6 +134,8 @@ Sources: [maintainer GHSA](https://github.com/reviewdog/reviewdog/security/advis
 
 The direct component, bad full SHA, ref, and minute-level window are strong candidates. Wrapper version/subpath mappings need repository-by-repository historical verification and deterministic fixtures before the transitive portion is accepted.
 
+Candidate status (2026-09-03): the sources above were re-retrieved with recorded hashes and a candidate packet was prepared at `review-packets/CIR-REVIEWDOG-ACTION-SETUP-2025/1.0.0` encoding only the direct component, full object, `v1` ref, and rounded minute-precision window; wrapper mappings and the retag object are omitted with recorded rationale. It remains a candidate without human review.
+
 ## Trivy ecosystem compromise, March 2026
 
 ### Verified primary-source facts

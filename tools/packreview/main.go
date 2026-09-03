@@ -13,9 +13,15 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"regexp"
+	"strconv"
+	"strings"
 	"syscall"
 
 	"github.com/torjan0/cirewind/internal/evidence"
+	"github.com/torjan0/cirewind/internal/incident"
+	"github.com/torjan0/cirewind/internal/packfixtures"
 	"github.com/torjan0/cirewind/internal/packreview"
 	"github.com/torjan0/cirewind/internal/sanitize"
 )
@@ -32,6 +38,7 @@ const usage = `Usage:
   packreview validate-candidate-tree --repository-root DIR --candidate-commit COMMIT
   packreview validate-governance --repository-root DIR
   packreview verify-registry --repository-root DIR --promotion-content-commit COMMIT
+  packreview assemble-candidate --root DIR --repository-root DIR --review-policy-profile PROFILE --preparer LOGIN:ID --authors LOGIN:ID[,...] --source-transcribers LOGIN:ID[,...]
 
 This maintainer tool validates deterministic local records. It performs no
 network request, process execution, Git mutation, approval creation, or factual
@@ -86,6 +93,8 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		result, err = runValidateGovernance(ctx, args[1:])
 	case "verify-registry":
 		result, err = runVerifyRegistry(ctx, args[1:])
+	case "assemble-candidate":
+		result, err = runAssembleCandidate(ctx, args[1:])
 	default:
 		fmt.Fprintf(stderr, "unknown operation %q\n", sanitize.Terminal(args[0], 128))
 		return 2
@@ -318,4 +327,108 @@ func writeError(output io.Writer, err error) {
 func digest(data []byte) string {
 	hash := sha256.Sum256(data)
 	return hex.EncodeToString(hash[:])
+}
+
+func runAssembleCandidate(ctx context.Context, args []string) (any, error) {
+	fs, output := strictFlags("assemble-candidate")
+	root := fs.String("root", "", "review-unit root (review-packets/INCIDENT_ID/PACK_VERSION)")
+	repositoryRoot := fs.String("repository-root", "", "repository root holding pack-review-policy.json")
+	profile := fs.String("review-policy-profile", "", "review policy profile identifier")
+	preparer := fs.String("preparer", "", "preparer as LOGIN:DATABASE_ID")
+	authors := fs.String("authors", "", "comma-separated authors as LOGIN:DATABASE_ID")
+	transcribers := fs.String("source-transcribers", "", "comma-separated source transcribers as LOGIN:DATABASE_ID")
+	if err := parseFlags(fs, output, args); err != nil {
+		return nil, err
+	}
+	preparation, err := parsePreparation(*preparer, *authors, *transcribers)
+	if err != nil {
+		return nil, err
+	}
+	candidate := filepath.Join(*root, "candidate-content")
+	packBytes, err := readBoundedFile(filepath.Join(candidate, "pack.yaml"), 1<<20)
+	if err != nil {
+		return nil, err
+	}
+	validated, err := incident.Validate(ctx, packBytes)
+	if err != nil {
+		return nil, err
+	}
+	generated, err := packfixtures.Generate(ctx, validated.Pack.Metadata.ID, validated.Pack.Metadata.PackVersion)
+	if err != nil {
+		return nil, err
+	}
+	scenarios := make([]packreview.AuthoredScenario, 0, len(generated))
+	for _, scenario := range generated {
+		forbidden := make([]packreview.ForbiddenExpectedFinding, 0, len(scenario.Forbidden))
+		for _, state := range scenario.Forbidden {
+			forbidden = append(forbidden, packreview.ForbiddenStateFor(scenario.ID, state.State, state.Rationale))
+		}
+		scenarios = append(scenarios, packreview.AuthoredScenario{ScenarioID: scenario.ID, Snapshot: scenario.Snapshot, AnalysisTime: scenario.AnalysisTime, Forbidden: forbidden})
+	}
+	packet, err := packreview.AssembleCandidate(ctx, packreview.AuthoringInput{
+		CandidateContent: candidate, RepositoryPolicy: filepath.Join(*repositoryRoot, "pack-review-policy.json"),
+		Scenarios: scenarios, ReviewPolicyProfile: *profile, Preparation: preparation,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return commandResult{SchemaVersion: "cirewind.packreview-command/v1alpha1", Operation: "assemble-candidate", IncidentID: packet.IncidentID, PackVersion: packet.PackVersion, SHA256: packet.CanonicalPackSHA256,
+		Statement: fmt.Sprintf("candidate content assembled deterministically from hand-authored ledgers and %d generated fixture scenarios; no approval, candidate-commit binding, or factual certification is created", len(scenarios))}, nil
+}
+
+func parsePreparation(preparer, authors, transcribers string) (packreview.Preparation, error) {
+	prepared, err := parseIdentity(preparer)
+	if err != nil {
+		return packreview.Preparation{}, fmt.Errorf("preparer: %w", err)
+	}
+	authorList, err := parseIdentityList(authors)
+	if err != nil {
+		return packreview.Preparation{}, fmt.Errorf("authors: %w", err)
+	}
+	transcriberList, err := parseIdentityList(transcribers)
+	if err != nil {
+		return packreview.Preparation{}, fmt.Errorf("source transcribers: %w", err)
+	}
+	return packreview.Preparation{Preparer: prepared, Authors: authorList, SourceTranscribers: transcriberList}, nil
+}
+
+func parseIdentityList(value string) ([]packreview.HumanIdentity, error) {
+	if strings.TrimSpace(value) == "" {
+		return nil, errors.New("at least one LOGIN:DATABASE_ID is required")
+	}
+	parts := strings.Split(value, ",")
+	result := make([]packreview.HumanIdentity, 0, len(parts))
+	for _, part := range parts {
+		identity, err := parseIdentity(strings.TrimSpace(part))
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, identity)
+	}
+	return result, nil
+}
+
+var identityLoginPattern = regexp.MustCompile(`^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$`)
+
+func parseIdentity(value string) (packreview.HumanIdentity, error) {
+	login, id, ok := strings.Cut(value, ":")
+	if !ok || !identityLoginPattern.MatchString(login) {
+		return packreview.HumanIdentity{}, fmt.Errorf("identity %q must be LOGIN:DATABASE_ID", sanitize.Terminal(value, 64))
+	}
+	databaseID, err := strconv.ParseInt(id, 10, 64)
+	if err != nil || databaseID <= 0 {
+		return packreview.HumanIdentity{}, fmt.Errorf("identity %q must carry a positive numeric database ID", sanitize.Terminal(value, 64))
+	}
+	return packreview.HumanIdentity{Login: login, DatabaseID: databaseID}, nil
+}
+
+func readBoundedFile(path string, limit int64) ([]byte, error) {
+	info, err := os.Lstat(path)
+	if err != nil {
+		return nil, err
+	}
+	if !info.Mode().IsRegular() || info.Size() > limit {
+		return nil, fmt.Errorf("%s is not a bounded regular file", sanitize.Terminal(filepath.Base(path), 64))
+	}
+	return os.ReadFile(path)
 }

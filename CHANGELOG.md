@@ -6,6 +6,18 @@ All notable changes to CIRewind are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Reviewdog `action-setup` v1 tag compromise candidate packet
+  (`review-packets/CIR-REVIEWDOG-ACTION-SETUP-2025/1.0.0`) with a full source
+  ledger, claim matrix, conflict ledger, generated fixture scenarios, and
+  replayed expected-finding oracle; it is a candidate only, with no human
+  review, and is absent from reviewed, release, and sample indexes.
+- `packreview assemble-candidate`, which canonicalizes hand-authored packet
+  ledgers, generates fixture snapshots through the shared synthetic archive
+  builder, replays them into the expected-finding oracle, and writes the
+  packet, validation record, and manifests deterministically.
+
 ### Documentation
 
 - Record the completed protected v0.1.1 draft, publication, and anonymous
