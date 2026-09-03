@@ -21,6 +21,7 @@ import (
 
 	"github.com/torjan0/cirewind/internal/evidence"
 	"github.com/torjan0/cirewind/internal/incident"
+	"github.com/torjan0/cirewind/internal/packextract"
 	"github.com/torjan0/cirewind/internal/packfixtures"
 	"github.com/torjan0/cirewind/internal/packreview"
 	"github.com/torjan0/cirewind/internal/sanitize"
@@ -39,6 +40,7 @@ const usage = `Usage:
   packreview validate-governance --repository-root DIR
   packreview verify-registry --repository-root DIR --promotion-content-commit COMMIT
   packreview assemble-candidate --root DIR --repository-root DIR --review-policy-profile PROFILE --preparer LOGIN:ID --authors LOGIN:ID[,...] --source-transcribers LOGIN:ID[,...]
+  packreview extract-indicators --extractor ID --source FILE --out FILE [--unrestored TAG[,...]]
 
 This maintainer tool validates deterministic local records. It performs no
 network request, process execution, Git mutation, approval creation, or factual
@@ -95,6 +97,8 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		result, err = runVerifyRegistry(ctx, args[1:])
 	case "assemble-candidate":
 		result, err = runAssembleCandidate(ctx, args[1:])
+	case "extract-indicators":
+		result, err = runExtractIndicators(ctx, args[1:])
 	default:
 		fmt.Fprintf(stderr, "unknown operation %q\n", sanitize.Terminal(args[0], 128))
 		return 2
@@ -374,6 +378,72 @@ func runAssembleCandidate(ctx context.Context, args []string) (any, error) {
 	}
 	return commandResult{SchemaVersion: "cirewind.packreview-command/v1alpha1", Operation: "assemble-candidate", IncidentID: packet.IncidentID, PackVersion: packet.PackVersion, SHA256: packet.CanonicalPackSHA256,
 		Statement: fmt.Sprintf("candidate content assembled deterministically from hand-authored ledgers and %d generated fixture scenarios; no approval, candidate-commit binding, or factual certification is created", len(scenarios))}, nil
+}
+
+// runExtractIndicators mechanically transforms one pinned primary-source
+// file into a sealed extraction record. It reads exactly one local file,
+// performs no network request, and writes one canonical JSON record whose
+// input and output hashes the candidate claims cite.
+func runExtractIndicators(ctx context.Context, args []string) (any, error) {
+	fs, output := strictFlags("extract-indicators")
+	extractor := fs.String("extractor", "", "extractor identifier: "+packextract.Trivy2026Extractor+" or "+packextract.Trivy2026TagsExtractor)
+	source := fs.String("source", "", "pinned source bytes: the GitHub REST advisory object or the matching-refs tag listing")
+	out := fs.String("out", "", "output extraction record (canonical JSON)")
+	unrestored := fs.String("unrestored", "", "comma-separated original tag names the advisory states were not restored (tag inventory only)")
+	if err := parseFlags(fs, output, args); err != nil {
+		return nil, err
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if *source == "" || *out == "" {
+		return nil, errors.New("--source and --out are required")
+	}
+	data, err := readBoundedFile(*source, 4<<20)
+	if err != nil {
+		return nil, err
+	}
+	var record any
+	var version, inputSHA string
+	var count int
+	switch *extractor {
+	case packextract.Trivy2026Extractor:
+		if *unrestored != "" {
+			return nil, errors.New("--unrestored applies only to the tag inventory extractor")
+		}
+		extraction, err := packextract.ExtractTrivy2026(data)
+		if err != nil {
+			return nil, err
+		}
+		record, version, inputSHA, count = extraction, extraction.ExtractorVersion, extraction.InputSHA256, len(extraction.Digests)+len(extraction.Network.Domains)+len(extraction.Network.IPAddresses)
+	case packextract.Trivy2026TagsExtractor:
+		names := make([]string, 0)
+		for _, part := range strings.Split(*unrestored, ",") {
+			if trimmed := strings.TrimSpace(part); trimmed != "" {
+				names = append(names, trimmed)
+			}
+		}
+		inventory, err := packextract.DeriveTrivy2026TagInventory(data, names)
+		if err != nil {
+			return nil, err
+		}
+		record, version, inputSHA, count = inventory, inventory.ExtractorVersion, inventory.InputSHA256, len(inventory.OriginalTags)
+	default:
+		return nil, fmt.Errorf("unknown extractor %q", sanitize.Terminal(*extractor, 64))
+	}
+	canonical, err := packextract.Canonical(record)
+	if err != nil {
+		return nil, err
+	}
+	if info, err := os.Lstat(*out); err == nil && (info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular()) {
+		return nil, fmt.Errorf("refusing to replace non-regular file %s", sanitize.Terminal(filepath.Base(*out), 64))
+	}
+	if err := os.WriteFile(*out, canonical, 0o644); err != nil {
+		return nil, err
+	}
+	sum := sha256.Sum256(canonical)
+	return commandResult{SchemaVersion: "cirewind.packreview-command/v1alpha1", Operation: "extract-indicators", SHA256: hex.EncodeToString(sum[:]),
+		Statement: fmt.Sprintf("extractor %s version %s transformed %d source bytes (sha256 %s) into %d typed records without network use; the record is review input, not a factual certification", *extractor, version, len(data), inputSHA, count)}, nil
 }
 
 func parsePreparation(preparer, authors, transcribers string) (packreview.Preparation, error) {
