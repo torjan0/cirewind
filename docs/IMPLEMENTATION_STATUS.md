@@ -163,8 +163,13 @@ with rounded exclusive end; a complete claim matrix including omissions; the
 retag object excluded as an unreviewed known-good candidate; wrapper mappings
 omitted as unverified; twelve generated fixture scenarios replayed into an
 oracle with forbidden-state rows; and structural validation passing. It is a
-candidate with no human review. No real incident pack has been independently
-reviewed, promoted, or made release-ready. No automated session, local JSON record, deterministic Markdown
+candidate with no human review. A tj-actions/changed-files candidate packet
+(`review-packets/CIR-TJ-ACTIONS-CHANGED-FILES-2025/1.0.0`) follows the same
+contract with a day-precision window labeled as a conservative expansion,
+non-exhaustive example tags, an excluded patched-version conflict, and no
+encoded log literal or domain; its malicious commit object is no longer served
+by the GitHub API. Both are candidates only. No real incident pack has been
+independently reviewed, promoted, or made release-ready. No automated session, local JSON record, deterministic Markdown
 rendering, schema result, manifest, or normalized snapshot counts as an
 independent human approval. Reviewdog and tj-actions still require the accepted
 outside-human and maintainer gates; Trivy still requires two distinct outside

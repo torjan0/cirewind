@@ -13,6 +13,11 @@ All notable changes to CIRewind are documented here. The format follows
   ledger, claim matrix, conflict ledger, generated fixture scenarios, and
   replayed expected-finding oracle; it is a candidate only, with no human
   review, and is absent from reviewed, release, and sample indexes.
+- tj-actions/changed-files 2025 candidate packet
+  (`review-packets/CIR-TJ-ACTIONS-CHANGED-FILES-2025/1.0.0`) with a
+  day-precision, conservatively expanded window, non-exhaustive example tags,
+  an excluded patched-version conflict, and the same generated fixture family;
+  a candidate only, with no human review.
 - `packreview assemble-candidate`, which canonicalizes hand-authored packet
   ledgers, generates fixture snapshots through the shared synthetic archive
   builder, replays them into the expected-finding oracle, and writes the

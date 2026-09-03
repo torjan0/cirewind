@@ -94,6 +94,8 @@ Sources: [maintainer advisory](https://github.com/tj-actions/changed-files/secur
 
 The bad SHA and component identity are ready for peer-reviewed transcription. The pack schema can preserve date precision and a labeled conservative expansion, but a high-precision mutable-ref window remains blocked pending exact primary evidence. Reviewers must choose and document the conservative date-boundary policy; patched/known-good values still require conflict resolution.
 
+Candidate status (2026-09-03): the sources above were re-retrieved with recorded hashes and a candidate packet was prepared at `review-packets/CIR-TJ-ACTIONS-CHANGED-FILES-2025/1.0.0` with the dates read as UTC calendar days under a labeled `conservative-expanded` window, the three example tags encoded as non-exhaustive mutable refs, the patched-version disagreement excluded, and no log literal or domain encoded. The malicious commit object is no longer served by the GitHub API. It remains a candidate without human review.
+
 ## Reviewdog transitive compromise, March 2025
 
 ### Verified primary-source facts
