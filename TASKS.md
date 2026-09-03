@@ -402,11 +402,47 @@ before freezing the candidate for review.
 
 - [ ] **PACK-042 — Obtain tj-actions human approvals.** Request review on exact final bytes under the two-non-author-maintainer plus at-least-one-independent-outside policy. **Done when:** actual qualifying humans approve exact C through GitHub PR review, `review.json` and generated `REVIEW.md` bind all hashes/conflict decisions and immutable identities without self-certifying them, and deterministic promotion succeeds without material content change. A non-author outside reviewer may also fill another release review role. **This task cannot be completed by an automated session.** *(Dependencies: `PACK-019`, `PACK-041`; external gate.)*
 
-- [ ] **PACK-050 — Revalidate Trivy component sources and typed namespaces.** Retrieve/hash current primary sources and enumerate each Action/binary/package/image component, subpath, window/precision, ref/object/digest namespace, known-good candidate, and conflict separately. **Done when:** no value crosses component namespaces, approximate endpoints remain approximate, and every proposed field/omission has a claim row. *(Tests: component/source claim matrix; dependencies: `PACK-024`.)*
+- [x] **PACK-050 — Revalidate Trivy component sources and typed namespaces.** Retrieve/hash current primary sources and enumerate each Action/binary/package/image component, subpath, window/precision, ref/object/digest namespace, known-good candidate, and conflict separately. **Done when:** no value crosses component namespaces, approximate endpoints remain approximate, and every proposed field/omission has a claim row. *(Tests: component/source claim matrix; dependencies: `PACK-024`.)*
 
-- [ ] **PACK-051 — Build deterministic Trivy IOC extraction and review evidence.** Mechanically transform the reviewed bounded source table into typed sorted candidate records without network use or heuristic namespace guessing. **Done when:** input/extractor/output hashes are recorded, duplicate/conflict handling is explicit, repeated extraction is byte-identical, and synthetic negative fixtures prove cross-namespace strings do not match. *(Tests: extraction golden/property/limit tests; dependencies: `PACK-050`.)*
+- [x] **PACK-051 — Build deterministic Trivy IOC extraction and review evidence.** Mechanically transform the reviewed bounded source table into typed sorted candidate records without network use or heuristic namespace guessing. **Done when:** input/extractor/output hashes are recorded, duplicate/conflict handling is explicit, repeated extraction is byte-identical, and synthetic negative fixtures prove cross-namespace strings do not match. *(Tests: extraction golden/property/limit tests; dependencies: `PACK-050`.)*
 
-- [ ] **PACK-052 — Prepare the Trivy candidate packet and component fixtures.** Write a component-specific candidate with boundary/identity/digest/transitive/gap/contradiction tests and no real payload/victim data. **Done when:** all candidate-content-manifest/replay tests pass, registry status remains `candidate`, every approximation is visible, and the large IOC set stays inside reviewed limits. *(Tests: per-component candidate goldens and deterministic replay; dependencies: `PACK-051`.)*
+- [x] **PACK-052 — Prepare the Trivy candidate packet and component fixtures.** Write a component-specific candidate with boundary/identity/digest/transitive/gap/contradiction tests and no real payload/victim data. **Done when:** all candidate-content-manifest/replay tests pass, registry status remains `candidate`, every approximation is visible, and the large IOC set stays inside reviewed limits. *(Tests: per-component candidate goldens and deterministic replay; dependencies: `PACK-051`.)*
+
+Trivy candidate checkpoint (2026-09-03): the primary sources were retrieved on
+2026-09-03 with UTC retrieval instants, byte lengths, and SHA-256 values in the
+packet source ledger (maintainer advisory GHSA-69fq-xp46-6x23 via the GitHub
+REST advisory object, the pinned GitHub Advisory Database record at
+`fa95208a`, maintainer discussions #10425 and #10462, and the current
+`aquasecurity/trivy-action` tag listing). `PACK-050` is closed: the packet
+keeps three components and four minute-precision windows apart, encodes every
+publisher-approximated endpoint at the stated minute under the visible
+`source-rounded` label with the original cells retained, and carries a claim
+row for every material field and every omitted slot (no known-good identity,
+no Action package digest, no `trivy` ref, no encoded IOC literal). `PACK-051`
+is closed: `internal/packextract` transforms the pinned advisory bytes into
+typed, sorted release-asset and OCI manifest digest records, network literals,
+and verbatim window rows, and derives the original trivy-action tag inventory
+from the current `v`-prefixed replacement tags plus the three unrestored names
+the advisory states; each sealed record carries the input hash, extractor
+version, every normalization, and its own output hash, repeated extraction is
+byte-identical, duplicates and malformed rows are rejected rather than
+skipped, and unit tests prove that a digest is never found outside the
+namespace its table denotes. The derivation recovers 75 original tag names
+against the advisory count of 76, and the packet records the missing name as
+unknown. `PACK-052` is closed: the candidate at
+`review-packets/CIR-AQUASECURITY-TRIVY-2026/1.0.0` (123 indicators, 785
+claims, two conflicts) lands in its own stacked pull request with fourteen
+generated scenarios replayed into the oracle under the `trivy-v0.2` profile,
+`validate-unit`, `validate-governance`, and `validate-candidate-tree` pass, the
+registry status remains `candidate`, and no human review exists. Two engine
+observations surfaced by the oracle are recorded for the maintainers rather
+than changed by the candidate work: a runtime observation that resolves an
+affected mutable ref inside its window to an unpublished object derives no
+finding, because only declaration facts drive `RUN_IN_WINDOW_MUTABLE_REF`; and
+literal-scan indicators (domain, address, release version) replayed from a
+compact archive derive `UNKNOWN_EVIDENCE_GAP` with no coverage gap code, which
+the oracle rejects, so the Trivy network and version literals are stated in
+guidance and in the sealed extraction record instead of being encoded.
 
 - [ ] **PACK-053 — Obtain two independent outside Trivy reviews and maintainer approvals.** Have two distinct outside humans independently reproduce component/window/IOC extraction checks on exact C, in addition to the existing two-non-author-maintainer gate. **Done when:** all qualifying humans approve exact C through GitHub PR review; canonical `review.json` and generated `REVIEW.md` bind the exact hashes without self-certifying them; conflicts/limitations are accepted explicitly; and unchanged bytes promote. A non-author reviewer may also fill another release review role, but the two outside Trivy reviewers remain distinct. **This task cannot be completed by an automated session.** *(Dependencies: `PACK-019`, `PACK-052`; external gate.)*
 
