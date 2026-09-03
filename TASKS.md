@@ -255,7 +255,7 @@ site validation workflow. The candidate is never `README.md`, its banner says
 the lower sections are carried from the v0.1.1 README pending `ADO-099`, and
 the `--final` rendering is reserved for `ADO-032`. Open: the actual human
 cold-reader criterion, a GitHub-rendered responsive review of the candidate,
-and the dependency on `SITE-003`'s human review.
+and the dependency on `SITE-003`'s human review. A maintainer-owned fixed banner (`site/assets/cirewind-banner-dark.png`, 1800 by 600 palette PNG, wordmark only) is rendered above the heading on GitHub's dark theme through a typed slot whose SHA-256 is recorded in the inventory and drift checked; the generator rejects a missing, non-PNG, or wrongly sized asset, the alt text names every element the image encodes, and the light theme shows the heading alone until a light variant exists.
 
 - [ ] **ADO-032 — Materialize and freeze the exact release README bytes.** After public URL shapes, lab stable index, Pages workflow, and formula contract are fixed, render every trusted slot for v0.2.0 and place the exact final README on the RC release branch while the default branch remains at its leased prior tip. **Done when:** no placeholder/unresolved slot remains; every predictable versioned URL, install command, generated visual/count, external-lab allowlisted link, and high-assurance instruction passes local audit; the byte hash is recorded; and a later activation requires no source edit. *(Tests: unresolved-slot rejection, exact URL/command/hash golden, link allowlist; dependencies: `ADO-030`, `DIST-003`, `SITE-005`, `LAB-PUBLIC-007`.)*
 
