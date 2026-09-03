@@ -149,6 +149,20 @@ brew-formula-check:
 	sh -n scripts/test-brew-formula.sh
 	sh ./scripts/test-brew-formula.sh "$(BREW_WORK_ROOT)"
 
+rc-freeze:
+	@test -n "$(RC_OUT)" || { echo "RC_OUT is required" >&2; exit 2; }
+	@test -n "$(RC_COMMIT)" || { echo "RC_COMMIT=<full commit> is required" >&2; exit 2; }
+	@test -n "$(RC_VERSION)" || { echo "RC_VERSION=MAJOR.MINOR.PATCH is required" >&2; exit 2; }
+	@test -n "$(RC_EXPECTED_DEFAULT_TIP)" || { echo "RC_EXPECTED_DEFAULT_TIP=<full commit> is required" >&2; exit 2; }
+	CIREWIND_RC_VERSION="$(RC_VERSION)" CIREWIND_RC_EXPECTED_DEFAULT_TIP="$(RC_EXPECTED_DEFAULT_TIP)" CIREWIND_RELEASE_WORK_ROOT="$(RELEASE_WORK_ROOT)" sh ./scripts/freeze-rc.sh "$(RC_OUT)" "$(RC_COMMIT)"
+
+rc-freeze-check:
+	@test -n "$(RELEASE_WORK_ROOT)" || { echo "RELEASE_WORK_ROOT is required" >&2; exit 2; }
+	sh -n scripts/freeze-rc.sh
+	sh -n scripts/test-freeze-rc.sh
+	$(GO_EXACT) test ./internal/releaseartifact -run 'Acquisition|SuiteLedger'
+	sh ./scripts/test-freeze-rc.sh "$(RELEASE_WORK_ROOT)"
+
 preflight:
 	sh ./scripts/preflight.sh
 

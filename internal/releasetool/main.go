@@ -23,7 +23,7 @@ func main() {
 
 func run(args []string, stdout, stderr io.Writer) error {
 	if len(args) == 0 {
-		return errors.New("expected build-date, ldflags, package, finalize, verify, compare, or formula")
+		return errors.New("expected build-date, ldflags, package, finalize, verify, compare, formula, acquisition-record, or verify-acquisition-record")
 	}
 	switch args[0] {
 	case "build-date", "ldflags":
@@ -47,6 +47,10 @@ func run(args []string, stdout, stderr io.Writer) error {
 		return runCompare(args[1:], stdout, stderr)
 	case "formula":
 		return runFormula(args[1:], stdout, stderr)
+	case "acquisition-record":
+		return runAcquisitionRecord(args[1:], stdout, stderr)
+	case "verify-acquisition-record":
+		return runVerifyAcquisitionRecord(args[1:], stdout, stderr)
 	default:
 		return fmt.Errorf("unknown command %q", args[0])
 	}
@@ -227,6 +231,111 @@ func runCompare(args []string, stdout, stderr io.Writer) error {
 	}
 	fmt.Fprintln(stdout, "release distributions are byte-for-byte reproducible")
 	return nil
+}
+
+// runAcquisitionRecord composes the bounded release-candidate identity record
+// of a locally frozen candidate. It reads the verified distribution, the
+// final formula and README bytes, and the gate ledger the freeze driver wrote;
+// it publishes nothing and fills no immutable artifact field.
+func runAcquisitionRecord(args []string, stdout, stderr io.Writer) error {
+	fs := flag.NewFlagSet("acquisition-record", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	var directory, out, version, commit, tip, hostOS, hostArch, formula, readme, suites string
+	var epoch int64
+	fs.StringVar(&directory, "dist", "", "verified release distribution directory")
+	fs.StringVar(&out, "out", "", "new record file to write")
+	fs.StringVar(&version, "version", "", "intended final version, plain MAJOR.MINOR.PATCH")
+	fs.StringVar(&commit, "commit", "", "frozen source commit")
+	fs.StringVar(&tip, "expected-default-tip", "", "recorded old default-branch tip for the merge freeze")
+	fs.Int64Var(&epoch, "source-date-epoch", -1, "fixed source date epoch")
+	fs.StringVar(&hostOS, "host-os", "", "host operating system that ran the freeze")
+	fs.StringVar(&hostArch, "host-arch", "", "host architecture that ran the freeze")
+	fs.StringVar(&formula, "formula", "", "final rendered formula file")
+	fs.StringVar(&readme, "readme", "", "frozen README file")
+	fs.StringVar(&suites, "suites", "", "tab-separated gate ledger written by the freeze driver")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if directory == "" || out == "" || version == "" || commit == "" || tip == "" || epoch < 0 || hostOS == "" || hostArch == "" || formula == "" || readme == "" || suites == "" || fs.NArg() != 0 {
+		return errors.New("acquisition-record requires --dist, --out, --version, --commit, --expected-default-tip, --source-date-epoch, --host-os, --host-arch, --formula, --readme, and --suites")
+	}
+	formulaRecord, err := releaseartifact.HashFileRecord(formula)
+	if err != nil {
+		return err
+	}
+	readmeRecord, err := releaseartifact.HashFileRecord(readme)
+	if err != nil {
+		return err
+	}
+	ledger, err := readBoundedFile(suites, 1<<20)
+	if err != nil {
+		return err
+	}
+	results, err := releaseartifact.ParseSuiteLedger(ledger)
+	if err != nil {
+		return err
+	}
+	record, err := releaseartifact.AcquisitionRecordFromDistribution(directory, releaseartifact.AcquisitionInput{
+		IntendedVersion: version, SourceCommit: commit, ExpectedDefaultTip: tip, SourceDateEpoch: epoch,
+		HostOS: hostOS, HostArch: hostArch, Formula: formulaRecord, Readme: readmeRecord, Suites: results,
+	})
+	if err != nil {
+		return err
+	}
+	encoded, err := releaseartifact.EncodeAcquisitionRecord(record)
+	if err != nil {
+		return err
+	}
+	if err := writeExclusive(out, encoded); err != nil {
+		return err
+	}
+	if err := os.Chmod(out, 0o644); err != nil {
+		return err
+	}
+	fmt.Fprintf(stdout, "release-candidate acquisition record written: %s (qualification complete: %t; not published, not authenticated, not approved)\n", out, record.Qualification.Complete)
+	return nil
+}
+
+// runVerifyAcquisitionRecord recomputes a distribution's subject digests
+// against a record.
+func runVerifyAcquisitionRecord(args []string, stdout, stderr io.Writer) error {
+	fs := flag.NewFlagSet("verify-acquisition-record", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	var directory, recordPath string
+	fs.StringVar(&directory, "dist", "", "release distribution directory")
+	fs.StringVar(&recordPath, "record", "", "acquisition record file")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if directory == "" || recordPath == "" || fs.NArg() != 0 {
+		return errors.New("verify-acquisition-record requires --dist and --record")
+	}
+	data, err := readBoundedFile(recordPath, 1<<20)
+	if err != nil {
+		return err
+	}
+	var record releaseartifact.AcquisitionRecord
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&record); err != nil {
+		return fmt.Errorf("decode record: %w", err)
+	}
+	if err := releaseartifact.VerifyAcquisitionRecord(record, directory); err != nil {
+		return err
+	}
+	fmt.Fprintf(stdout, "acquisition record matches the distribution subjects for %s at %s (identity only; publication, authentication, and approval are not established)\n", record.IntendedVersion, record.SourceCommit)
+	return nil
+}
+
+func readBoundedFile(path string, limit int64) ([]byte, error) {
+	info, err := os.Lstat(path)
+	if err != nil {
+		return nil, err
+	}
+	if !info.Mode().IsRegular() || info.Size() > limit {
+		return nil, fmt.Errorf("%s is not a bounded regular file", path)
+	}
+	return os.ReadFile(path)
 }
 
 func writeExclusive(path string, contents []byte) error {

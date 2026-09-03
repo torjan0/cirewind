@@ -285,7 +285,14 @@ its reference-host, human-review, and review-safety CI dependencies. The
 Homebrew evaluation-lane formula generator renders only from verified release
 subjects and passed style, strict audit, install, and test against synthetic
 subjects with a portable Linux Homebrew; the final formula is rendered from the
-frozen release-candidate subjects and published only after the release.
+frozen release-candidate subjects and published only after the release. The
+local release-candidate freeze (`make rc-freeze`) is automated: explicit
+intended-final metadata rather than a ref name, three byte-compared builds
+including one from a fresh clone, the final formula, a gate ledger that records
+every skipped prerequisite, and a bounded acquisition record whose immutable
+artifact fields stay empty until an authorized hosted qualification. `DIST-007`
+itself remains open on reviewed packs, the authorized public lab, and human
+review of the frozen bytes.
 
 ## CLI status
 
