@@ -1,0 +1,16 @@
+name: Composite wrapper fixture
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  composite:
+    name: Stable composite wrapper
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Invoke stable wrapper
+        uses: {{LAB_REPOSITORY}}/actions/wrapper@{{WRAPPER_COMMIT}}

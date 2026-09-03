@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pack-input-record.schema.json",
+  "title": "CIRewind public A-to-B-to-A synthetic incident-pack input v1alpha1",
+  "description": "A pre-case, manifest-bound record of exact public repository and mutable-tag observations. It contains no workflow finding, CIRewind case hash, or collector result and therefore cannot certify the later qualification.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "record_id",
+    "lab_repository",
+    "repository_database_id_basis",
+    "protocol",
+    "fixture_objects",
+    "mutable_tag",
+    "derivation_inputs",
+    "created_at",
+    "privacy_statement",
+    "privacy"
+  ],
+  "properties": {
+    "schema_version": { "const": "cirewind.lab-pack-input-record/v1alpha1" },
+    "record_id": { "$ref": "record-common.schema.json#/$defs/stableID" },
+    "lab_repository": { "$ref": "run-record.schema.json#/$defs/labRepository" },
+    "repository_database_id_basis": {
+      "description": "Inherited operator assertion from both tag-move records; later GitHub API/run evidence must cross-check it.",
+      "const": "OPERATOR_ASSERTED_PREFLIGHT_REQUIRES_RUN_CROSSCHECK"
+    },
+    "protocol": { "$ref": "run-record.schema.json#/$defs/protocol" },
+    "fixture_objects": { "$ref": "run-record.schema.json#/$defs/fixtureObjects" },
+    "mutable_tag": { "$ref": "run-record.schema.json#/$defs/mutableTag" },
+    "derivation_inputs": {
+      "description": "Exact content identities of the confirmed install and restore tag-move records, in protocol order.",
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["record_id", "sha256"],
+        "properties": {
+          "record_id": { "$ref": "record-common.schema.json#/$defs/stableID" },
+          "sha256": { "$ref": "record-common.schema.json#/$defs/sha256" }
+        }
+      }
+    },
+    "created_at": { "$ref": "record-common.schema.json#/$defs/utcTimestamp" },
+    "privacy_statement": {
+      "const": "This pack-input record contains only public synthetic Git identities and tag observations; it contains no raw logs, token material, secret values, private repository names, local paths, private user data, findings, or case hashes."
+    },
+    "privacy": { "$ref": "record-common.schema.json#/$defs/privacyAttestation" }
+  }
+}

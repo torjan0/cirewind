@@ -10,8 +10,10 @@ RELEASE_TAG ?=
 RELEASE_WORK_ROOT ?=
 SPDX_VALIDATOR ?=
 SPDX_TOOLS_VERSION ?=
+PUBLIC_LAB_REQUIRE_ACTIONLINT ?= 0
+PUBLIC_LAB_WORK_ROOT ?=
 
-.PHONY: build test vet race vuln licenses demo browser-audit safety-audit pack-review-check pack-review-clean release release-test release-verify release-spdx release-workflow-audit preflight clean
+.PHONY: build test vet race vuln licenses demo browser-audit safety-audit public-lab-build public-lab-check public-lab-syscall-audit pack-review-check pack-review-clean release release-test release-verify release-spdx release-workflow-audit preflight clean
 
 build:
 	mkdir -p "$(dir $(BINARY))"
@@ -40,6 +42,21 @@ browser-audit:
 
 safety-audit:
 	sh ./scripts/offline-safety-audit.sh
+
+public-lab-build:
+	sh -n ./scripts/public-lab-artifacts.sh
+	sh -n ./scripts/public-lab-marker-audit.sh
+	GO="$(GO)" GOTOOLCHAIN="$(GO_TOOLCHAIN)" CIREWIND_PUBLIC_LAB_WORK_ROOT="$(PUBLIC_LAB_WORK_ROOT)" sh ./scripts/public-lab-artifacts.sh build
+
+public-lab-check:
+	sh -n ./scripts/public-lab-artifacts.sh
+	sh -n ./scripts/public-lab-marker-audit.sh
+	sh -n ./scripts/test-public-lab-artifacts.sh
+	GO="$(GO)" GOTOOLCHAIN="$(GO_TOOLCHAIN)" CIREWIND_PUBLIC_LAB_WORK_ROOT="$(PUBLIC_LAB_WORK_ROOT)" CIREWIND_PUBLIC_LAB_REQUIRE_ACTIONLINT="$(PUBLIC_LAB_REQUIRE_ACTIONLINT)" sh ./scripts/public-lab-artifacts.sh check
+	GO="$(GO)" GOTOOLCHAIN="$(GO_TOOLCHAIN)" sh ./scripts/test-public-lab-artifacts.sh
+
+public-lab-syscall-audit:
+	sh ./scripts/public-lab-marker-audit.sh
 
 pack-review-check:
 	bash -n scripts/pack-review-git-guard.sh

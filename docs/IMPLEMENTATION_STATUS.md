@@ -1,7 +1,7 @@
 # CIRewind implementation status
 
 Published-release status snapshot: **2026-08-22**. Unreleased v0.2 worktree note
-updated **2026-08-30**.
+updated **2026-09-02**.
 
 Release decision: **GO and published for experimental v0.1.1 inside
 [`ADR 0011`](adr/0011-experimental-v0-1-qualification-envelope.md)'s bounded
@@ -164,6 +164,80 @@ reviewers in addition to the maintainer policy; Xygeni remains nonblocking and
 excluded by default. `PACK-022` and `PACK-023` remain open because their accepted
 criteria require an actual qualifying GitHub human approval against C and a real
 C-to-P-to-later-registry history, respectively.
+
+### Exportable public-lab source
+
+The current uncommitted v0.2 worktree contains an offline exportable source
+package for the separate harmless A-to-B-to-A laboratory. It does not create or
+configure a GitHub repository. The local implementation includes:
+
+- deterministic owner/repository-specialized Git history, a Git bundle and
+  sidecar object-manifest contract, immutable marker A/B commits and annotated
+  fixture tags, a lightweight disposable `v1`, Apache-2.0 licensing, DCO text,
+  and minimal read-only workflow permissions;
+- direct, composite, reusable, skipped, matrix, and rerun workflow definitions,
+  with only the synthetic marker reference mutable and no secret, environment,
+  self-hosted runner, external service, or third-party Action requirement;
+- an exact-object tag-move tool that accepts only a repository-matching
+  GitHub.com remote in production, pre-reserves its observation record before a
+  mutation, requires an exact old-object lease and literal acknowledgement,
+  preserves uncertain outcomes as uncertain, and emits exact restoration
+  guidance rather than claiming success from an interrupted push;
+- bounded, closed run, reproduction, tag-observation, pack-input, stable-index,
+  and object-manifest records, plus a privacy-warning issue form; and
+- cross-binding from exact install/restore observations to the pack input and
+  synthetic incident pack, and from that input through run and reproduction
+  records to the attempt/job-specific qualification oracle. Download/preparation
+  alone remains insufficient for `CONFIRMED_EXECUTED`.
+
+Targeted offline package and command tests cover deterministic construction,
+two empty-repository imports, Git object/ref topology, hostile records and
+labels, local-only mutation fault injection, output-path replacement, repository
+controlled Git filters, transport-environment overrides, interrupted pushes,
+exact evidence edges, conservative finding language, privacy rejection, and
+the stable reproduction index. Local filesystem remotes exist only behind a
+test-only policy; the production command rejects them before invoking Git.
+
+The final public-lab-specific local closure regenerated the checked artifacts,
+compared them byte-for-byte with an independent deterministic generation, and
+passed bundle verification, two empty-repository imports, strict full Git
+object checks, source/history/privacy/license/DCO/workflow-permission audits,
+generated-workflow `actionlint`, marker syscall observation, shell lint, focused
+normal tests, focused race tests, and focused vet. The checked bundle is 39,656
+bytes with SHA-256
+`16f41eac01532e764d2ed0518db2a7dafcbcd3bd6bcea5f8e4e9e23385667b99`;
+the 20,838-byte object manifest has SHA-256
+`199f914b9fbc6aaf1d5cf8ed41f8734f594d072c8475d22725855d527aa682da`.
+Those results satisfy the bounded local criteria for `LAB-PUBLIC-001`,
+`LAB-PUBLIC-002`, `LAB-PUBLIC-004`, and `LAB-PUBLIC-005`. The same exact
+worktree also passed the isolated clean-cache whole-repository preflight:
+normal and race tests, vet, reachable-vulnerability and license checks, six
+cross-platform builds, deterministic demo generation, and case-manifest
+verification. Hosted, maintainer, outside-human, and final v0.2 release gates
+remain separate and open.
+
+GitHub-hosted confirmation of the skipped-step preparation grammar remains
+`LAB-PUBLIC-003`; authorized live qualification and repository creation remain
+`LAB-PUBLIC-006` through `LAB-PUBLIC-008`; one genuinely independent
+outside-human reproduction remains `LAB-PUBLIC-009`; and maintainer acceptance
+plus release-identity closure remain `LAB-PUBLIC-010` and `LAB-PUBLIC-011`. No
+external repository, mutable remote tag, workflow run, publication, independent
+reproduction, or human review is claimed. The local scope and open gates are
+recorded in the
+[`2026-08-31 public-lab local qualification`](validation/2026-08-31-public-lab-local-qualification.md).
+
+A 2026-09-02 pre-commit security audit of that same uncommitted batch left every
+artifact identity unchanged. It pinned the tag-control Git boundary's hook path
+to the null device, rejected option-shaped remote arguments at the boundary
+allowlist, removed a dead empty-overlay exception from the bundle builder,
+stopped a pre-Git policy rejection from printing a remote-readback diagnostic,
+added an ordinary `go test` guard that fails on every hosted CI target when the
+checked artifacts drift from deterministic regeneration, marked the bundle as a
+binary Git attribute, and documented that the isolated boundary makes SSH the
+practical authenticated transport while `actionlint`, `strace`, and the shell
+negative tests remain Linux-local gates. Its commands, results, and the items
+that remain outside local validation are recorded in the
+[`2026-09-02 public-lab batch audit`](validation/2026-09-02-public-lab-batch-audit.md).
 
 ## CLI status
 

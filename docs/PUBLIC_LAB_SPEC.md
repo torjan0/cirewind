@@ -36,9 +36,16 @@ them afterward.
 
 One standalone public repository contains the marker Action, stable wrapper,
 reusable workflow, consumer workflows, protocol, expected-result schema, and
-reproduction issue template. A reproducer may fork it or use a separately owned
-copy. The basic protocol requires GitHub-hosted runners only; no self-hosted
-runner, environment approval, cloud credential, package publication, or external
+reproduction issue template. An ordinary GitHub fork is not a qualified copy:
+the committed `uses:` bytes remain bound to the original owner/repository, so
+moving the fork's `v1` would not prove that its workflows resolved the fork's
+marker. A reproducer instead invokes `BuildForRepository` through the
+`--repository OWNER/REPOSITORY` argument to `go run ./tools/publiclab build` and
+imports that owner-specialized bundle into a new, separately owned, empty
+repository. The specialized object manifest and import commit are the copy's
+source identity.
+The basic protocol requires GitHub-hosted runners only; no self-hosted runner,
+environment approval, cloud credential, package publication, or external
 service is necessary.
 
 The lab repository is not a subdirectory deployed as an active CIRewind test
@@ -54,8 +61,19 @@ tag objects and peeled commits, bundle SHA-256/length, and expected results of
 `git bundle verify` and `git fsck`. Import tests clone the bundle into two empty
 repositories and prove identical I, A, B, tag objects, peeled commits, trees,
 and workflow bytes. The sidecar lives in CIRewind's reviewed lab source package,
-so it can hash the bundle without creating a Git-object self-reference. The
-external repository records I and the sidecar hash in a later provenance commit.
+so it can hash the bundle without creating a Git-object self-reference.
+
+The default branch remains exactly import commit I from import through the end
+of live qualification. Provenance and observations never advance `main` during
+that interval. They are committed to the dedicated protected, append-only,
+non-default `refs/heads/observations` branch. The branch pointer may advance
+only by fast-forward;
+each sidecar, tag-move observation, pack-input, generated pack, run record, and
+reproduction record is cited by its immutable full commit URL and content hash.
+No record commit rewrites I, changes workflow bytes, or becomes a workflow
+definition candidate for the qualified runs. Records are published from a
+separate clone; the tag-control clone remains on `main` at I. A linked worktree
+is not an accepted publication boundary.
 
 ## Proposed layout
 
@@ -76,6 +94,8 @@ actions/
 protocol/
   README.md
   expected-findings.json
+  tag-move-record.schema.json
+  pack-input-record.schema.json
   run-record.schema.json
   reproduction-record.schema.json
   reset-checklist.md
@@ -181,12 +201,28 @@ supplied exact lab repository. They are external laboratory operations; the
 
 Preconditions:
 
-1. Operator has write access only to a disposable lab/fork and authenticates
-   through their normal Git/GitHub tooling; no token is written to the repository
-   or command transcript.
-2. Repository ID/owner/name and default branch commit equal the reviewed protocol
-   record.
-3. Local worktree is clean and remote URL equals the explicitly approved lab.
+1. Operator has write access only to the owner-specialized, separately owned,
+   disposable lab repository and authenticates through their normal Git/GitHub
+   tooling; no token is written to the repository or command transcript. A plain
+   fork of the canonical lab is not accepted.
+2. Owner/name and default branch commit equal the specialized object manifest;
+   `refs/heads/main` is exact import commit I. The value supplied through
+   `--assert-repository-id` is an operator assertion because the bounded Git
+   transport cannot observe a GitHub database ID; the later run/API record must
+   cross-check it before qualification can succeed.
+3. The tag-control clone is on `main` at exact I and its fetch and push remote
+   URLs equal the explicitly approved lab. Production accepts only
+   repository-matching GitHub.com HTTPS or SSH remotes. Local filesystem
+   remotes are available only inside tests and are not a live-protocol option.
+   The isolated Git boundary deliberately discards global and system
+   configuration, credential helpers, and interactive prompts, so an
+   authenticated HTTPS push has no credential source and fails closed before
+   any ref changes; SSH through the operator's normal agent or key is the
+   practical production transport.
+   Worktree content is deliberately outside the mutation precondition: the
+   tool borrows only validated Git objects and pushes exact reviewed object
+   IDs, avoiding Git commands that could invoke repository-controlled clean
+   filters.
 4. A/B full commit IDs, annotated fixture-tag object IDs, and their peeled
    commit IDs equal the reviewed object manifest and are reachable from the
    reviewed lab history.
@@ -200,25 +236,59 @@ commit. A mismatch
 fails closed; no generic `--force`, wildcard refspec, branch mutation, release
 tag, organization target, or repository discovered from pack content is allowed.
 After the move, read back `refs/tags/v1` and record its exact target commit and
-observation time.
+observation time. Each mutating invocation requires a new `--observation-out`
+path outside the tag-control clone. The tool pre-reserves that new regular file
+before any remote mutation; failure to reserve it fails closed before the push.
+It writes the machine-readable record even after a reconciled failure or
+interruption when it can do so safely; an output record does not turn a failed
+or unconfirmed operation into a successful one. Worktree cleanliness is not an
+evidence claim or precondition.
 
 Protocol sequence:
 
-1. Set/verify `v1 -> A`; dispatch baseline; record run/attempt/job IDs.
-2. Move `v1: A -> B` with an exact-object lease; verify and record.
-3. Dispatch direct, composite, reusable, skipped, matrix, and rerun-control
+1. Import the owner-specialized bundle into a new empty repository; verify the
+   bundle/manifest, `main -> I`, immutable fixture tags, and `v1 -> A`, and
+   record the operator-asserted repository ID. Create protected non-default
+   `refs/heads/observations` without changing `main`, and commit the exact
+   sidecar manifest there from a separate publication clone. The asserted
+   repository ID remains provisional until later GitHub run/API evidence
+   cross-checks it.
+2. Dispatch a baseline only if the qualification plan requires one; record its
+   run/attempt/job IDs.
+3. Move `v1: A -> B` with an exact-object lease and a new
+   `--observation-out install-tag-move.json`; verify and preserve that record.
+4. Dispatch direct, composite, reusable, skipped, matrix, and rerun-control
    workflows; record dispatch and run IDs.
-4. Wait for terminal job states and retained logs. Do not restore early merely to
+5. Wait for terminal job states and retained logs. Do not restore early merely to
    shorten the protocol.
-5. Restore `v1: B -> A` with an exact-object lease; verify and record.
-6. Request full, failed-job, and single-job reruns through explicit GitHub UI/API
+6. Restore `v1: B -> A` with an exact-object lease and a new
+   `--observation-out restore-tag-move.json`; read back exact A before proceeding.
+7. Generate a manifest-bound pre-case pack input with the `render-pack-input`
+   operation, supplying the exact install and restore observation files,
+   a canonical UTC `--created-at`, and a new output path. Its record ID is
+   derived from its canonical material content. Commit the exact install,
+   restore, and pack-input JSON blobs under `observations/<record-id>.json` in
+   one later immutable commit on `refs/heads/observations`; cite only that full
+   commit URL and the recorded content hashes. Generate the synthetic pack
+   with `render-pack` only when `--install-record`, `--restore-record`, and
+   `--record-source-worktree ABSOLUTE_SEPARATE_OBSERVATIONS_CLONE` verify those
+   same three exact blobs at that commit. Add the generated pack as a subsequent
+   commit on `refs/heads/observations`. The pack is not derived from a run
+   record or case conclusion.
+8. Request full, failed-job, and single-job reruns through explicit GitHub UI/API
    operations against recorded run IDs; record new attempt/job IDs. GitHub's
    official [rerun documentation](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/re-run-workflows-and-jobs)
    is the platform basis (retrieved 2026-08-22); the lab still measures the
    resulting attempt-specific behavior rather than assuming more than it states.
-7. Wait for terminal states, collect with CIRewind, generate raw-disabled case,
+9. Wait for terminal states, collect with CIRewind, generate raw-disabled case,
    verify its manifest, and compare with the expected oracle.
-8. Run the reset checklist and retain public run evidence.
+10. Generate the bounded run record from verified case/public-run facts, then
+    validate it against the exact pack-input bytes, cross-checking the
+    operator-asserted repository database ID and the A-to-B-to-A observations
+    against later run/API evidence. Add it as a later immutable commit on
+    `refs/heads/observations`. Reproduction validation requires that same pack
+    input plus the exact run record; `main` remains I.
+11. Run the reset checklist and retain public run evidence.
 
 If a failure occurs after B is installed, restoration to A is the first recovery
 action. The protocol displays a prominent manual recovery command/check using
@@ -245,6 +315,12 @@ A bounded machine-readable run record contains:
 - statement that no raw logs, token material, secret values, or private data are
   included.
 
+The public-lab validator requires `--pack-input-record` for both run and
+reproduction records, and additionally requires `--run-record` for a
+reproduction. Matching qualification binds the exact reviewed scenario shapes
+and finding totals; a failed reproduction remains representable only as a
+deterministically derived mismatch with its gaps or deviations intact.
+
 The run record is evidence context, not a substitute for CIRewind evidence
 objects. Approximate GitHub UI times remain approximate.
 
@@ -263,6 +339,20 @@ The exposure window is derived from actual recorded remote tag observations and
 states its precision/bounds. It is not copied from local wall-clock guesses. The
 pack contains no URL that the product follows, script, command, HTML, external
 request, real IOC, victim data, or secret.
+
+The pack is derived from the pre-case pack-input record, never from a run record,
+finding, or case. Its incident identity and pack version are exercise-content-
+specific: changing the repository-bound objects, observed A-to-B-to-A interval,
+or other material pack input must produce a distinct identity/version rather
+than different bytes under the same immutable pack version.
+
+The pack-input `record_id` is a deterministic digest-derived identifier over
+its canonical material content with the ID field omitted. Generation is still
+not self-authentication: `render-pack` requires the exact install tag-move,
+restore tag-move, and pack-input bytes to exist together at the one immutable
+`refs/heads/observations` commit named by the source URL, and verifies their
+record IDs, hashes, derivation relationships, manifest binding, and order from a
+separate observations clone without following the URL.
 
 ## Expected findings and prohibited outcomes
 
@@ -301,17 +391,21 @@ Reset is successful only when all of the following are checked:
 1. Remote `v1` resolves to exact A and not B.
 2. Immutable annotated fixture tags retain their exact tag-object IDs and peel
    to their original exact A/B commit IDs.
-3. No workflow run remains queued/in progress because of the exercise.
-4. No repository/organization secret, variable, environment, deployment key,
+3. Remote `refs/heads/main` remains exact owner-specialized import commit I.
+4. Protected `refs/heads/observations` contains only append-only provenance and
+   observation commits; each retained sidecar/tag/pack-input/pack/run record is
+   referenced by an immutable full commit URL and verified content hash.
+5. No workflow run remains queued/in progress because of the exercise.
+6. No repository/organization secret, variable, environment, deployment key,
    package credential, self-hosted runner, webhook, or GitHub App was created for
    the basic protocol. If an optional isolated extension created one, remove it
    explicitly and record removal without recording a value.
-5. Default workflow permissions remain read-only.
-6. Repository branch/ruleset protection and selected-Action policy remain as
+7. Default workflow permissions remain read-only.
+8. Repository branch/ruleset protection and selected-Action policy remain as
    reviewed.
-7. Public run pages and immutable records needed for reproduction remain
+9. Public run pages and immutable records needed for reproduction remain
    available; reset does not delete evidence to make results appear clean.
-8. The final CIRewind collection records any logs already expired or inaccessible
+10. The final CIRewind collection records any logs already expired or inaccessible
    as gaps.
 
 Do not delete/rewrite run history, force-push branches, erase immutable fixture
@@ -322,7 +416,8 @@ tags, or rotate unrelated credentials as part of reset.
 The lab repository provides a structured issue form with required fields:
 
 - reproducer public identity and conflict disclosure;
-- fork/lab repository and immutable source commit;
+- separately owned, owner-specialized lab repository and immutable source
+  commit;
 - exact A/B IDs and `v1` observations before/during/after;
 - CIRewind exact qualified v0.2 release-candidate commit, binary SHA-256, and
   acquisition/provenance record; after publication, the released version and
@@ -345,7 +440,9 @@ The lab repository provides a structured issue form with required fields:
 The form warns not to paste tokens, cookies, signed URLs, raw logs, secret values,
 private repository names, or unredacted local paths. Maintainers sanitize or
 privately request removal if those appear; they do not quote the sensitive value
-into a follow-up.
+into a follow-up. Schema validation, privacy attestations, and automated scans
+are necessary rejection aids, not proof that a record or archive contains no
+sensitive material. Human inspection remains mandatory before publication.
 
 The downloadable case must contain the exact fixed raw-disabled case contract,
 no `raw/`, and no unexpected file/link. Its hosting URL may not require a token,
@@ -422,6 +519,11 @@ Before publication:
 - run terminal/Markdown/YAML/path injection fixtures against record generators;
 - ensure expected outputs contain only synthetic identities and public run IDs;
 - publish a security contact and clear “harmless test only” scope.
+
+A passing schema, scanner, privacy-attestation, or fixture test establishes only
+that its declared checks found no violation. It does not prove absence of all
+credentials, private data, or hostile content and cannot replace human review of
+the exact bytes proposed for publication.
 
 GitHub documents that workflow-run logs for public resources can be downloaded
 without authentication through the

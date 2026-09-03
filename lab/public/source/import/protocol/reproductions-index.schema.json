@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "reproductions-index.schema.json",
+  "title": "CIRewind accepted public laboratory reproductions index v1alpha1",
+  "description": "A stable, closed index of separately submitted reproduction records that a maintainer has downloaded and verified. An empty index makes no reproduction claim.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "notice", "records"],
+  "properties": {
+    "schema_version": { "const": "cirewind.lab-reproductions-index/v1alpha1" },
+    "status": { "enum": ["awaiting-independent-reproduction", "contains-accepted-reproductions"] },
+    "notice": {
+      "const": "Only records independently downloaded, manifest-verified, evidence-checked, and accepted by a human maintainer appear here. An empty list makes no independent-reproduction claim."
+    },
+    "records": {
+      "$comment": "Canonical indexes sort by reproduction_id. Semantic validation rejects duplicates and verifies identity/hash bindings.",
+      "type": "array",
+      "maxItems": 1000,
+      "items": { "$ref": "#/$defs/acceptedRecord" }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "status": { "const": "awaiting-independent-reproduction" } },
+        "required": ["status"]
+      },
+      "then": { "properties": { "records": { "maxItems": 0 } } },
+      "else": { "properties": { "records": { "minItems": 1 } } }
+    }
+  ],
+  "$defs": {
+    "publicIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["github_login", "github_database_id"],
+      "properties": {
+        "github_login": { "$ref": "record-common.schema.json#/$defs/githubActor" },
+        "github_database_id": { "$ref": "record-common.schema.json#/$defs/positiveID" }
+      }
+    },
+    "acceptance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "maintainer",
+        "accepted_at",
+        "anonymous_archive_downloaded",
+        "case_manifest_verified",
+        "evidence_chains_checked",
+        "privacy_scan_passed",
+        "summary"
+      ],
+      "properties": {
+        "maintainer": { "$ref": "#/$defs/publicIdentity" },
+        "accepted_at": { "$ref": "record-common.schema.json#/$defs/utcTimestamp" },
+        "anonymous_archive_downloaded": { "const": true },
+        "case_manifest_verified": { "const": true },
+        "evidence_chains_checked": { "const": true },
+        "privacy_scan_passed": { "const": true },
+        "summary": { "$ref": "record-common.schema.json#/$defs/nonEmptySafeText" }
+      }
+    },
+    "acceptedRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reproduction_id",
+        "reproducer",
+        "lab_source_commit",
+        "cirewind_source_commit",
+        "cirewind_binary_sha256",
+        "record_commit",
+        "record_url",
+        "record_sha256",
+        "case_archive_url",
+        "case_archive_sha256",
+        "case_manifest_sha256",
+        "disposition",
+        "acceptance"
+      ],
+      "properties": {
+        "reproduction_id": { "$ref": "record-common.schema.json#/$defs/stableID" },
+        "reproducer": { "$ref": "#/$defs/publicIdentity" },
+        "lab_source_commit": { "$ref": "record-common.schema.json#/$defs/gitObject" },
+        "cirewind_source_commit": { "$ref": "record-common.schema.json#/$defs/gitObject" },
+        "cirewind_binary_sha256": { "$ref": "record-common.schema.json#/$defs/sha256" },
+        "record_commit": { "$ref": "record-common.schema.json#/$defs/gitObject" },
+        "record_url": { "$ref": "record-common.schema.json#/$defs/githubImmutableBlobURL" },
+        "record_sha256": { "$ref": "record-common.schema.json#/$defs/sha256" },
+        "case_archive_url": { "$ref": "record-common.schema.json#/$defs/publicHTTPSURL" },
+        "case_archive_sha256": { "$ref": "record-common.schema.json#/$defs/sha256" },
+        "case_manifest_sha256": { "$ref": "record-common.schema.json#/$defs/sha256" },
+        "disposition": { "const": "accepted-by-human-maintainer" },
+        "acceptance": { "$ref": "#/$defs/acceptance" }
+      }
+    }
+  }
+}

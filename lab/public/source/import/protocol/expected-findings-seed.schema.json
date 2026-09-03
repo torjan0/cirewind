@@ -1,0 +1,156 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "expected-findings-seed.schema.json",
+  "title": "CIRewind public laboratory pre-qualification finding requirements v1alpha1",
+  "description": "A closed semantic seed for live qualification. It deliberately has no run IDs, attempt numbers, job IDs, event times, or evidence IDs and therefore is not a published findings oracle.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "identity_binding",
+    "scenario_requirements",
+    "prohibited_outcomes"
+  ],
+  "properties": {
+    "schema_version": { "const": "cirewind.lab-expected-findings-seed/v1alpha1" },
+    "status": { "const": "requires-live-qualification" },
+    "identity_binding": {
+      "const": "No live run, attempt, job, time, or evidence identity is present. Qualification must replace this seed with observations from the authorized public laboratory."
+    },
+    "scenario_requirements": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "items": { "$ref": "#/$defs/scenarioRequirement" }
+    },
+    "prohibited_outcomes": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 50,
+      "items": { "$ref": "#/$defs/prohibitedOutcome" }
+    }
+  },
+  "$defs": {
+    "scenarioRequirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scenario_id",
+        "qualification_required",
+        "required_findings",
+        "required_context"
+      ],
+      "properties": {
+        "scenario_id": {
+          "enum": [
+            "PUBLIC-DIRECT",
+            "PUBLIC-COMPOSITE",
+            "PUBLIC-REUSABLE",
+            "PUBLIC-SKIPPED",
+            "PUBLIC-MATRIX",
+            "PUBLIC-RERUN-FULL",
+            "PUBLIC-RERUN-JOB"
+          ]
+        },
+        "qualification_required": { "const": true },
+        "required_findings": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10,
+          "items": { "$ref": "#/$defs/findingRequirement" }
+        },
+        "required_context": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/contextRequirement" }
+        }
+      }
+    },
+    "findingRequirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "subject_role",
+        "occurrence_role",
+        "required_state",
+        "provenance_ceiling",
+        "minimum_occurrences",
+        "required_support"
+      ],
+      "properties": {
+        "subject_role": { "enum": ["affected-marker-b"] },
+        "occurrence_role": { "enum": ["original", "any"] },
+        "required_state": { "$ref": "record-common.schema.json#/$defs/findingState" },
+        "provenance_ceiling": { "$ref": "record-common.schema.json#/$defs/provenanceLevel" },
+        "minimum_occurrences": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        },
+        "required_support": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "exact-action-source-sha",
+              "preparation-completed",
+              "same-job-attempt-lifecycle-start",
+              "transitive-chain-with-evidence-ids",
+              "absence-of-lifecycle-start-after-completed-preparation",
+              "distinct-run-attempt-job-identity"
+            ]
+          }
+        }
+      }
+    },
+    "contextRequirement": {
+      "enum": [
+        "called-workflow-sha-kept-separate-from-action-sha",
+        "caller-workflow-sha-kept-separate-from-called-workflow-sha",
+        "composite-wrapper-chain-retained",
+        "display-name-not-used-as-job-identity",
+        "exact-a-resolution-retained-after-tag-restoration",
+        "exact-b-resolution-retained-after-tag-restoration",
+        "github-hosted-runner-only",
+        "matrix-jobs-distinct-by-run-attempt-job-identity",
+        "no-cloud-role-or-secret-access-claim",
+        "no-runtime-claim-without-evidence-ids",
+        "original-and-rerun-attempts-distinct",
+        "raw-logs-disabled",
+        "step-never-started",
+        "v1-declaration-retained-as-mutable-ref"
+      ]
+    },
+    "prohibitedOutcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "scope", "rationale"],
+      "properties": {
+        "code": { "$ref": "record-common.schema.json#/$defs/stableID" },
+        "scope": {
+          "oneOf": [
+            {
+              "enum": [
+                "PUBLIC-DIRECT",
+                "PUBLIC-COMPOSITE",
+                "PUBLIC-REUSABLE",
+                "PUBLIC-SKIPPED",
+                "PUBLIC-MATRIX",
+                "PUBLIC-RERUN-FULL",
+                "PUBLIC-RERUN-JOB"
+              ]
+            },
+            { "const": "ALL-SCENARIOS" }
+          ]
+        },
+        "state": { "$ref": "record-common.schema.json#/$defs/findingState" },
+        "rationale": { "$ref": "record-common.schema.json#/$defs/nonEmptySafeText" }
+      }
+    }
+  }
+}

@@ -1,0 +1,27 @@
+name: Rerun identity fixture
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  marker-success:
+    name: Marker success control
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Invoke mutable marker
+        uses: {{LAB_REPOSITORY}}/actions/marker@v1
+
+  marker-fixed-failure:
+    name: Marker fixed failure control
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Invoke mutable marker before fixed failure
+        uses: {{LAB_REPOSITORY}}/actions/marker@v1
+      - name: Exit with fixed nonzero status
+        shell: bash
+        run: exit 1

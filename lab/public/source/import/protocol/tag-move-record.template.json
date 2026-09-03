@@ -1,0 +1,25 @@
+{
+  "schema_version": "cirewind.lab-tag-move-record/v1alpha1",
+  "record_id": "TEMPLATE_REPLACE_ME",
+  "lab_repository": null,
+  "repository_database_id_basis": "OPERATOR_ASSERTED_PREFLIGHT_REQUIRES_RUN_CROSSCHECK",
+  "protocol_source_commit": null,
+  "fixture_objects": null,
+  "move": null,
+  "before": null,
+  "after": null,
+  "verified": false,
+  "outcome": "PRECONDITION_FAILED",
+  "recovery": null,
+  "recorded_at": null,
+  "privacy_statement": "This tag-move record contains only public synthetic Git identities and exact remote-ref observations; it contains no remote URL, command output, authentication material, secret values, local paths, or private user data.",
+  "privacy": {
+    "rawLogsIncluded": false,
+    "tokensOrCookiesIncluded": false,
+    "secretValuesIncluded": false,
+    "privateRepositoryNamesIncluded": false,
+    "localPathsIncluded": false,
+    "privateUserDataIncluded": false
+  },
+  "template_notice": "Deliberately invalid; use the reviewed move-v1 tool to create a record from exact readbacks."
+}

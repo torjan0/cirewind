@@ -1,0 +1,21 @@
+{
+  "schema_version": "cirewind.lab-pack-input-record/v1alpha1",
+  "record_id": "TEMPLATE_REPLACE_ME",
+  "lab_repository": null,
+  "repository_database_id_basis": "OPERATOR_ASSERTED_PREFLIGHT_REQUIRES_RUN_CROSSCHECK",
+  "protocol": null,
+  "fixture_objects": null,
+  "mutable_tag": null,
+  "derivation_inputs": [],
+  "created_at": null,
+  "privacy_statement": "This pack-input record contains only public synthetic Git identities and tag observations; it contains no raw logs, token material, secret values, private repository names, local paths, private user data, findings, or case hashes.",
+  "privacy": {
+    "rawLogsIncluded": false,
+    "tokensOrCookiesIncluded": false,
+    "secretValuesIncluded": false,
+    "privateRepositoryNamesIncluded": false,
+    "localPathsIncluded": false,
+    "privateUserDataIncluded": false
+  },
+  "template_notice": "Deliberately invalid until every null and this notice are removed after exact A-to-B-to-A git-ls-remote observations."
+}

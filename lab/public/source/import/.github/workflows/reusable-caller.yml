@@ -1,0 +1,12 @@
+name: Reusable workflow fixture
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  reusable-caller:
+    name: Stable reusable workflow
+    uses: {{LAB_REPOSITORY}}/.github/workflows/reusable.yml@{{REUSABLE_COMMIT}}

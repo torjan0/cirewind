@@ -1,0 +1,8 @@
+name: CIRewind lab marker
+description: Print a fixed public marker for the harmless temporal evidence lab
+runs:
+  using: composite
+  steps:
+    - name: Print fixed marker
+      shell: bash
+      run: printf '%s\n' 'cirewind-lab-marker=B'

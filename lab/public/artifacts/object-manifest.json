@@ -1,0 +1,690 @@
+{
+  "schemaVersion": "cirewind.public-lab-object-manifest/v1alpha1",
+  "repository": "torjan0/cirewind-lab",
+  "objectFormat": "sha1",
+  "bundle": {
+    "filename": "cirewind-lab.bundle",
+    "format": "git-bundle-v2",
+    "byteLength": 39656,
+    "sha256": "16f41eac01532e764d2ed0518db2a7dafcbcd3bd6bcea5f8e4e9e23385667b99"
+  },
+  "identity": {
+    "name": "torjan0",
+    "email": "38338151+torjan0@users.noreply.github.com"
+  },
+  "commits": [
+    {
+      "role": "governance",
+      "objectId": "574b978aa906a8651d4bc94165a80ad78bc2bb68",
+      "treeObjectId": "c57d3ca14f5f2d9e95dc1ca322f2be13cfe0cc05",
+      "parentObjects": [],
+      "subject": "chore: establish public lab governance",
+      "author": {
+        "name": "torjan0",
+        "email": "38338151+torjan0@users.noreply.github.com"
+      },
+      "authorTime": "2026-08-31T00:00:00Z",
+      "committer": {
+        "name": "torjan0",
+        "email": "38338151+torjan0@users.noreply.github.com"
+      },
+      "committerTime": "2026-08-31T00:00:00Z"
+    },
+    {
+      "role": "marker-a",
+      "objectId": "afb628b57608bae0397cdb0d2201103c4e6a1f2e",
+      "treeObjectId": "e7016f8d2cc87cf00cfdcfd759ce0ae1c51d17ab",
+      "parentObjects": [
+        "574b978aa906a8651d4bc94165a80ad78bc2bb68"
+      ],
+      "subject": "feat: add harmless marker A",
+      "author": {
+        "name": "torjan0",
+        "email": "38338151+torjan0@users.noreply.github.com"
+      },
+      "authorTime": "2026-08-31T00:01:00Z",
+      "committer": {
+        "name": "torjan0",
+        "email": "38338151+torjan0@users.noreply.github.com"
+      },
+      "committerTime": "2026-08-31T00:01:00Z"
+    },
+    {
+      "role": "marker-b",
+      "objectId": "941f217e2d8b8c9bce64cedfcc07a0dd749eb831",
+      "treeObjectId": "ff7d02ee93a88478025f5f6c999285b61e1466af",
+      "parentObjects": [
+        "afb628b57608bae0397cdb0d2201103c4e6a1f2e"
+      ],
+      "subject": "test: add harmless affected marker B",
+      "author": {
+        "name": "torjan0",
+        "email": "38338151+torjan0@users.noreply.github.com"
+      },
+      "authorTime": "2026-08-31T00:02:00Z",
+      "committer": {
+        "name": "torjan0",
+        "email": "38338151+torjan0@users.noreply.github.com"
+      },
+      "committerTime": "2026-08-31T00:02:00Z"
+    },
+    {
+      "role": "wrapper",
+      "objectId": "71c0379d1ab6082c9bcd5e5a374704d537b0b520",
+      "treeObjectId": "d11c133bb908e7ff548ef5a17803b8c725225f28",
+      "parentObjects": [
+        "941f217e2d8b8c9bce64cedfcc07a0dd749eb831"
+      ],
+      "subject": "feat: restore marker A and add stable wrapper",
+      "author": {
+        "name": "torjan0",
+        "email": "38338151+torjan0@users.noreply.github.com"
+      },
+      "authorTime": "2026-08-31T00:03:00Z",
+      "committer": {
+        "name": "torjan0",
+        "email": "38338151+torjan0@users.noreply.github.com"
+      },
+      "committerTime": "2026-08-31T00:03:00Z"
+    },
+    {
+      "role": "reusable",
+      "objectId": "f7442b6ef0fe635a6a5c319ad3f52d019b8c5027",
+      "treeObjectId": "fb1d04995aaba568ea7ffe02f2af5fb5b2c0e91f",
+      "parentObjects": [
+        "71c0379d1ab6082c9bcd5e5a374704d537b0b520"
+      ],
+      "subject": "feat: add stable reusable workflow",
+      "author": {
+        "name": "torjan0",
+        "email": "38338151+torjan0@users.noreply.github.com"
+      },
+      "authorTime": "2026-08-31T00:04:00Z",
+      "committer": {
+        "name": "torjan0",
+        "email": "38338151+torjan0@users.noreply.github.com"
+      },
+      "committerTime": "2026-08-31T00:04:00Z"
+    },
+    {
+      "role": "import",
+      "objectId": "a9ca057fb991b5860c48c855d506e36eab07c221",
+      "treeObjectId": "1623b36783329263d72070160b0772d2a586e255",
+      "parentObjects": [
+        "f7442b6ef0fe635a6a5c319ad3f52d019b8c5027"
+      ],
+      "subject": "feat: add public A-to-B-to-A scenarios",
+      "author": {
+        "name": "torjan0",
+        "email": "38338151+torjan0@users.noreply.github.com"
+      },
+      "authorTime": "2026-08-31T00:05:00Z",
+      "committer": {
+        "name": "torjan0",
+        "email": "38338151+torjan0@users.noreply.github.com"
+      },
+      "committerTime": "2026-08-31T00:05:00Z"
+    }
+  ],
+  "tags": [
+    {
+      "name": "fixture-a",
+      "kind": "annotated",
+      "objectId": "88fc00c71d4e5875b7a4030e37be3d3a3d8f5c91",
+      "peeledCommitId": "afb628b57608bae0397cdb0d2201103c4e6a1f2e",
+      "tagger": {
+        "name": "torjan0",
+        "email": "38338151+torjan0@users.noreply.github.com"
+      },
+      "taggedAt": "2026-08-31T00:06:00Z"
+    },
+    {
+      "name": "fixture-b",
+      "kind": "annotated",
+      "objectId": "9c0f7f1cfb03e156c0c8ebf4cab8356d4ebb01a9",
+      "peeledCommitId": "941f217e2d8b8c9bce64cedfcc07a0dd749eb831",
+      "tagger": {
+        "name": "torjan0",
+        "email": "38338151+torjan0@users.noreply.github.com"
+      },
+      "taggedAt": "2026-08-31T00:07:00Z"
+    }
+  ],
+  "refs": [
+    {
+      "name": "HEAD",
+      "objectId": "a9ca057fb991b5860c48c855d506e36eab07c221",
+      "kind": "bundle-head",
+      "peeledCommitId": "a9ca057fb991b5860c48c855d506e36eab07c221"
+    },
+    {
+      "name": "refs/heads/main",
+      "objectId": "a9ca057fb991b5860c48c855d506e36eab07c221",
+      "kind": "branch",
+      "peeledCommitId": "a9ca057fb991b5860c48c855d506e36eab07c221"
+    },
+    {
+      "name": "refs/tags/fixture-a",
+      "objectId": "88fc00c71d4e5875b7a4030e37be3d3a3d8f5c91",
+      "kind": "annotated-tag",
+      "peeledCommitId": "afb628b57608bae0397cdb0d2201103c4e6a1f2e"
+    },
+    {
+      "name": "refs/tags/fixture-b",
+      "objectId": "9c0f7f1cfb03e156c0c8ebf4cab8356d4ebb01a9",
+      "kind": "annotated-tag",
+      "peeledCommitId": "941f217e2d8b8c9bce64cedfcc07a0dd749eb831"
+    },
+    {
+      "name": "refs/tags/v1",
+      "objectId": "afb628b57608bae0397cdb0d2201103c4e6a1f2e",
+      "kind": "lightweight-tag",
+      "peeledCommitId": "afb628b57608bae0397cdb0d2201103c4e6a1f2e"
+    }
+  ],
+  "objects": [
+    {
+      "objectId": "574b978aa906a8651d4bc94165a80ad78bc2bb68",
+      "type": "commit",
+      "byteLength": 309
+    },
+    {
+      "objectId": "71c0379d1ab6082c9bcd5e5a374704d537b0b520",
+      "type": "commit",
+      "byteLength": 364
+    },
+    {
+      "objectId": "941f217e2d8b8c9bce64cedfcc07a0dd749eb831",
+      "type": "commit",
+      "byteLength": 355
+    },
+    {
+      "objectId": "a9ca057fb991b5860c48c855d506e36eab07c221",
+      "type": "commit",
+      "byteLength": 357
+    },
+    {
+      "objectId": "afb628b57608bae0397cdb0d2201103c4e6a1f2e",
+      "type": "commit",
+      "byteLength": 346
+    },
+    {
+      "objectId": "f7442b6ef0fe635a6a5c319ad3f52d019b8c5027",
+      "type": "commit",
+      "byteLength": 353
+    },
+    {
+      "objectId": "140fc38c1c5a7d76d814673463078f056a902225",
+      "type": "tree",
+      "byteLength": 38
+    },
+    {
+      "objectId": "1623b36783329263d72070160b0772d2a586e255",
+      "type": "tree",
+      "byteLength": 297
+    },
+    {
+      "objectId": "1c77013d8ed8016d06c5872d698f493271176692",
+      "type": "tree",
+      "byteLength": 67
+    },
+    {
+      "objectId": "26958aaa027e055842cfc557556d4f50fb56d044",
+      "type": "tree",
+      "byteLength": 280
+    },
+    {
+      "objectId": "2cf832952ba578853976ed65c394aa9abd8f6a8b",
+      "type": "tree",
+      "byteLength": 44
+    },
+    {
+      "objectId": "3eb046e166fd60ff183387bb7aaa19508e30fce2",
+      "type": "tree",
+      "byteLength": 40
+    },
+    {
+      "objectId": "40b0e8b1183155ffb2a6638dad6159c7d194eeed",
+      "type": "tree",
+      "byteLength": 823
+    },
+    {
+      "objectId": "491de4e1ee8b8bd3f2491d36a0b694cb8d8a027e",
+      "type": "tree",
+      "byteLength": 77
+    },
+    {
+      "objectId": "60da8609c32bcf2590fde819065fe1d5e2b1f97c",
+      "type": "tree",
+      "byteLength": 33
+    },
+    {
+      "objectId": "75c823c94519bf1bf727b94ca1d3d0e56f0820a6",
+      "type": "tree",
+      "byteLength": 38
+    },
+    {
+      "objectId": "8e7299f6a72afcaf37f8d3aeb5733322ebd3dc4f",
+      "type": "tree",
+      "byteLength": 38
+    },
+    {
+      "objectId": "a0e1739cea4b39175dacaf424e52bc361f7e964e",
+      "type": "tree",
+      "byteLength": 38
+    },
+    {
+      "objectId": "c57d3ca14f5f2d9e95dc1ca322f2be13cfe0cc05",
+      "type": "tree",
+      "byteLength": 154
+    },
+    {
+      "objectId": "d11c133bb908e7ff548ef5a17803b8c725225f28",
+      "type": "tree",
+      "byteLength": 188
+    },
+    {
+      "objectId": "e38fcb51caa667be80e2bf22525942598d041378",
+      "type": "tree",
+      "byteLength": 36
+    },
+    {
+      "objectId": "e7016f8d2cc87cf00cfdcfd759ce0ae1c51d17ab",
+      "type": "tree",
+      "byteLength": 188
+    },
+    {
+      "objectId": "f60eacd359a6061ab6292bdb1cacc491b6aa25d5",
+      "type": "tree",
+      "byteLength": 33
+    },
+    {
+      "objectId": "fb1d04995aaba568ea7ffe02f2af5fb5b2c0e91f",
+      "type": "tree",
+      "byteLength": 222
+    },
+    {
+      "objectId": "ff7d02ee93a88478025f5f6c999285b61e1466af",
+      "type": "tree",
+      "byteLength": 188
+    },
+    {
+      "objectId": "07612def39dcda375e8e3bc94d8ebed26ea7cb7a",
+      "type": "blob",
+      "byteLength": 1268
+    },
+    {
+      "objectId": "0e92ec08acbd5b001ae7f38d8072d49278e6557e",
+      "type": "blob",
+      "byteLength": 300
+    },
+    {
+      "objectId": "261eeb9e9f8b2b4b0d119366dda99c6fd7d35c64",
+      "type": "blob",
+      "byteLength": 11357
+    },
+    {
+      "objectId": "28fc85d9e479c9a4eefc22e476570ada05a6d327",
+      "type": "blob",
+      "byteLength": 11230
+    },
+    {
+      "objectId": "2945726191514d60205d16879933231107acf221",
+      "type": "blob",
+      "byteLength": 436
+    },
+    {
+      "objectId": "2e3bedf207829519e53683eb3d82f5f1b0102477",
+      "type": "blob",
+      "byteLength": 1305
+    },
+    {
+      "objectId": "37aad45f826ed3bdfb7d7b0305e9f93b3f6e1ebf",
+      "type": "blob",
+      "byteLength": 4190
+    },
+    {
+      "objectId": "3d87e41041cb29e1e3d780fde28b81db2bdbf249",
+      "type": "blob",
+      "byteLength": 2998
+    },
+    {
+      "objectId": "3fa32f35fb9aa8747b24f3d8f1f8c9225e21a8d1",
+      "type": "blob",
+      "byteLength": 4672
+    },
+    {
+      "objectId": "4ed9d4855b7bd4711f8d9c1540f583222d37192d",
+      "type": "blob",
+      "byteLength": 364
+    },
+    {
+      "objectId": "538e8f37335801bfd725b8de3c3bd7f2add63137",
+      "type": "blob",
+      "byteLength": 5139
+    },
+    {
+      "objectId": "58a82d38c6d6fb4df12a3d6ce8998c92609ca220",
+      "type": "blob",
+      "byteLength": 19269
+    },
+    {
+      "objectId": "5f9dbd8a9ae051ac8fe872687ce610be159e1215",
+      "type": "blob",
+      "byteLength": 1033
+    },
+    {
+      "objectId": "6470f0692511cf2665be11f2d709b8254da8336f",
+      "type": "blob",
+      "byteLength": 332
+    },
+    {
+      "objectId": "67faa1f27b3f069564bcee6c778f09b6c7888677",
+      "type": "blob",
+      "byteLength": 7486
+    },
+    {
+      "objectId": "846177041892b0c3c1f1e217e824a20e407bbd01",
+      "type": "blob",
+      "byteLength": 227
+    },
+    {
+      "objectId": "871aaf7e722ad77db3a3cf67e2b380e8bba32c0e",
+      "type": "blob",
+      "byteLength": 2453
+    },
+    {
+      "objectId": "98b8a4a1933fb52f89deccb63d2f07af61044f6a",
+      "type": "blob",
+      "byteLength": 612
+    },
+    {
+      "objectId": "a50f7e424b68838e951601692d80041b0034fab6",
+      "type": "blob",
+      "byteLength": 328
+    },
+    {
+      "objectId": "a75244f89172c275f6f6df9b4e2eb8b0d341a531",
+      "type": "blob",
+      "byteLength": 238
+    },
+    {
+      "objectId": "b5b3f01dbe9771b581358db4e7db55a7a4791a18",
+      "type": "blob",
+      "byteLength": 7422
+    },
+    {
+      "objectId": "c16bb53e2be4b922d4526087b8a393320da06987",
+      "type": "blob",
+      "byteLength": 1030
+    },
+    {
+      "objectId": "c36ab37da03adb35e76ef70edb7bdb9e0fc2b426",
+      "type": "blob",
+      "byteLength": 975
+    },
+    {
+      "objectId": "c6e06264ca2e9a4fd6b7de85ae0bf61ab410d905",
+      "type": "blob",
+      "byteLength": 253
+    },
+    {
+      "objectId": "d13c250cda3b33e0ba3757a697ec4422ce3b5b86",
+      "type": "blob",
+      "byteLength": 7996
+    },
+    {
+      "objectId": "d7fd86edc65b1502851b65fe241acaa595190b01",
+      "type": "blob",
+      "byteLength": 238
+    },
+    {
+      "objectId": "dfb89f1d5202ff8dfaebfb19511f3f6bb1c35371",
+      "type": "blob",
+      "byteLength": 19921
+    },
+    {
+      "objectId": "e105107e159ed20726447e96d39317c98433bbd8",
+      "type": "blob",
+      "byteLength": 340
+    },
+    {
+      "objectId": "e4d750a5b8c6fb63af1a8f98aae49ae9dbc8bcc9",
+      "type": "blob",
+      "byteLength": 2516
+    },
+    {
+      "objectId": "f8569c25d94098fd747f92ac345a070420c03ab7",
+      "type": "blob",
+      "byteLength": 1162
+    },
+    {
+      "objectId": "88fc00c71d4e5875b7a4030e37be3d3a3d8f5c91",
+      "type": "tag",
+      "byteLength": 257
+    },
+    {
+      "objectId": "9c0f7f1cfb03e156c0c8ebf4cab8356d4ebb01a9",
+      "type": "tag",
+      "byteLength": 266
+    }
+  ],
+  "importFiles": [
+    {
+      "path": ".github/ISSUE_TEMPLATE/reproduction.yml",
+      "mode": "100644",
+      "blobObjectId": "67faa1f27b3f069564bcee6c778f09b6c7888677",
+      "byteLength": 7486,
+      "sha256": "c73093126d03f7c26a52f4f59b4f1c5373478030f360711ab4d7f7d3dc89c8bf"
+    },
+    {
+      "path": ".github/workflows/composite.yml",
+      "mode": "100644",
+      "blobObjectId": "6470f0692511cf2665be11f2d709b8254da8336f",
+      "byteLength": 332,
+      "sha256": "8ff77eb60a556c101fa79ca544e653fd779973b600d33d4a73adf63dcb07f22e"
+    },
+    {
+      "path": ".github/workflows/direct.yml",
+      "mode": "100644",
+      "blobObjectId": "0e92ec08acbd5b001ae7f38d8072d49278e6557e",
+      "byteLength": 300,
+      "sha256": "2f9a3b0baa6c8aaf03ec1c93eb7e262ded4fdff8b5bd10d8bf6be69909aca593"
+    },
+    {
+      "path": ".github/workflows/matrix.yml",
+      "mode": "100644",
+      "blobObjectId": "2945726191514d60205d16879933231107acf221",
+      "byteLength": 436,
+      "sha256": "a3f0ffb4e2435cb6d183ca3040c7f1872430f2cc37e8bfa66112e4ec3d4f6393"
+    },
+    {
+      "path": ".github/workflows/rerun.yml",
+      "mode": "100644",
+      "blobObjectId": "98b8a4a1933fb52f89deccb63d2f07af61044f6a",
+      "byteLength": 612,
+      "sha256": "5d3acaac21e83ce457933a54e5b78bcfaf2f9fd7d20a3b3e03a37e9f2bcf7e4b"
+    },
+    {
+      "path": ".github/workflows/reusable-caller.yml",
+      "mode": "100644",
+      "blobObjectId": "c6e06264ca2e9a4fd6b7de85ae0bf61ab410d905",
+      "byteLength": 253,
+      "sha256": "fbafd8ab2756a0652d92bd793e70d778b70512c8b5dd3381f398993f133a1933"
+    },
+    {
+      "path": ".github/workflows/reusable.yml",
+      "mode": "100644",
+      "blobObjectId": "e105107e159ed20726447e96d39317c98433bbd8",
+      "byteLength": 340,
+      "sha256": "186b66e03c27eb9b64584f9f51eebfc3d78e09e7c10adc98d4ee2045ad4a8ab2"
+    },
+    {
+      "path": ".github/workflows/skipped.yml",
+      "mode": "100644",
+      "blobObjectId": "4ed9d4855b7bd4711f8d9c1540f583222d37192d",
+      "byteLength": 364,
+      "sha256": "7ed45fb1c15e4651a218958f87a38fe12916d60f7af6856aa9db137c43a6a98d"
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "mode": "100644",
+      "blobObjectId": "07612def39dcda375e8e3bc94d8ebed26ea7cb7a",
+      "byteLength": 1268,
+      "sha256": "8b28d1cdfbf310344017924a672551b918a58228081c96909dfefdfc1756ca5d"
+    },
+    {
+      "path": "LICENSE",
+      "mode": "100644",
+      "blobObjectId": "261eeb9e9f8b2b4b0d119366dda99c6fd7d35c64",
+      "byteLength": 11357,
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+    },
+    {
+      "path": "README.md",
+      "mode": "100644",
+      "blobObjectId": "3d87e41041cb29e1e3d780fde28b81db2bdbf249",
+      "byteLength": 2998,
+      "sha256": "c7ee38ba45706934e6089be1b18e4a982a6e407978a330a0fe59e498d08d73ed"
+    },
+    {
+      "path": "SECURITY.md",
+      "mode": "100644",
+      "blobObjectId": "2e3bedf207829519e53683eb3d82f5f1b0102477",
+      "byteLength": 1305,
+      "sha256": "c3aeb6d60614ca0928bb2d7ebdd7b508b2a0d427480188e6a868f04557cee5f0"
+    },
+    {
+      "path": "actions/marker/action.yml",
+      "mode": "100644",
+      "blobObjectId": "d7fd86edc65b1502851b65fe241acaa595190b01",
+      "byteLength": 238,
+      "sha256": "85816df9ae9fb634ffd9501511dd3af58fb8c6ab17ca5867d410a88686fce62b"
+    },
+    {
+      "path": "actions/wrapper/action.yml",
+      "mode": "100644",
+      "blobObjectId": "846177041892b0c3c1f1e217e824a20e407bbd01",
+      "byteLength": 227,
+      "sha256": "99dae876dbb7c74fea7e68ca9c55fe9e177cdd00bef0ef0e4577ab5807a331fb"
+    },
+    {
+      "path": "protocol/README.md",
+      "mode": "100644",
+      "blobObjectId": "28fc85d9e479c9a4eefc22e476570ada05a6d327",
+      "byteLength": 11230,
+      "sha256": "4c920a471f20fdabcf088eee380accdd00e6b23717c84a144e4609bf48ae00b1"
+    },
+    {
+      "path": "protocol/expected-findings-seed.schema.json",
+      "mode": "100644",
+      "blobObjectId": "538e8f37335801bfd725b8de3c3bd7f2add63137",
+      "byteLength": 5139,
+      "sha256": "b5eeec16d80a28ca892f50dce83ee277d9c6a253b722d2d1adc3984ad3684b74"
+    },
+    {
+      "path": "protocol/expected-findings.seed.json",
+      "mode": "100644",
+      "blobObjectId": "b5b3f01dbe9771b581358db4e7db55a7a4791a18",
+      "byteLength": 7422,
+      "sha256": "fb4ac4a7478ca280541a89f8fc165640c1d625a0dc4f8db781f1d4f9fd86f6c8"
+    },
+    {
+      "path": "protocol/pack-input-record.schema.json",
+      "mode": "100644",
+      "blobObjectId": "871aaf7e722ad77db3a3cf67e2b380e8bba32c0e",
+      "byteLength": 2453,
+      "sha256": "44f6850812f8ddb3e3dca17c00c90132ff5f0c8333eb2da8512aad36d94278b6"
+    },
+    {
+      "path": "protocol/pack-input-record.template.json",
+      "mode": "100644",
+      "blobObjectId": "c36ab37da03adb35e76ef70edb7bdb9e0fc2b426",
+      "byteLength": 975,
+      "sha256": "22c22b687817b6d6d09a1af3e1a422d95df24a0e97d0539b5142fd09ea1de405"
+    },
+    {
+      "path": "protocol/record-common.schema.json",
+      "mode": "100644",
+      "blobObjectId": "d13c250cda3b33e0ba3757a697ec4422ce3b5b86",
+      "byteLength": 7996,
+      "sha256": "c85289b8e7941274611c87550e8232c2e3a339bbfcf8c6d6bc33932fc9465e62"
+    },
+    {
+      "path": "protocol/reproduction-record.schema.json",
+      "mode": "100644",
+      "blobObjectId": "58a82d38c6d6fb4df12a3d6ce8998c92609ca220",
+      "byteLength": 19269,
+      "sha256": "d4b7ba2572280c9e6336f3faa1e33e87d3bb06b747fba80fc9f80e02aa66487a"
+    },
+    {
+      "path": "protocol/reproduction-record.template.json",
+      "mode": "100644",
+      "blobObjectId": "f8569c25d94098fd747f92ac345a070420c03ab7",
+      "byteLength": 1162,
+      "sha256": "5c119f0e9537220b1343c5f16c2c3efb41735e257e19f52387bf9dc10263d75e"
+    },
+    {
+      "path": "protocol/reproductions-index.schema.json",
+      "mode": "100644",
+      "blobObjectId": "37aad45f826ed3bdfb7d7b0305e9f93b3f6e1ebf",
+      "byteLength": 4190,
+      "sha256": "fa4667f0bd854b43fa954af1417626a9f86f46aea66fb8f79a0ddad29c1a870f"
+    },
+    {
+      "path": "protocol/reproductions-index.template.json",
+      "mode": "100644",
+      "blobObjectId": "a50f7e424b68838e951601692d80041b0034fab6",
+      "byteLength": 328,
+      "sha256": "489a00410c4f51f37c3753d6ccfe9480b0430d0ca841d3ee9865734a0b59fb62"
+    },
+    {
+      "path": "protocol/reset-checklist.md",
+      "mode": "100644",
+      "blobObjectId": "e4d750a5b8c6fb63af1a8f98aae49ae9dbc8bcc9",
+      "byteLength": 2516,
+      "sha256": "449fb5ec0c789a6f9b125676d8f11dc6e8388b26be221c21615a9b5eff5ba2f1"
+    },
+    {
+      "path": "protocol/run-record.schema.json",
+      "mode": "100644",
+      "blobObjectId": "dfb89f1d5202ff8dfaebfb19511f3f6bb1c35371",
+      "byteLength": 19921,
+      "sha256": "78a01f52a7e9040131868ec3078865e2c55d78f86145a8c68984081d92f6d755"
+    },
+    {
+      "path": "protocol/run-record.template.json",
+      "mode": "100644",
+      "blobObjectId": "5f9dbd8a9ae051ac8fe872687ce610be159e1215",
+      "byteLength": 1033,
+      "sha256": "c0c68e3afa70c01bb20aa80706289809d85aa1fdffba886a019fc55523cd8cf5"
+    },
+    {
+      "path": "protocol/tag-move-record.schema.json",
+      "mode": "100644",
+      "blobObjectId": "3fa32f35fb9aa8747b24f3d8f1f8c9225e21a8d1",
+      "byteLength": 4672,
+      "sha256": "c8571c6a49d042871ab5ec7a2f721f9cbd8b47e9eb26e7cb70aa8004a5da0eea"
+    },
+    {
+      "path": "protocol/tag-move-record.template.json",
+      "mode": "100644",
+      "blobObjectId": "c16bb53e2be4b922d4526087b8a393320da06987",
+      "byteLength": 1030,
+      "sha256": "8f92bd4cfefec6513bd3010f132987e2a81e4d36caebef0dd20d4e8057a9aedc"
+    },
+    {
+      "path": "reproductions/index.json",
+      "mode": "100644",
+      "blobObjectId": "a50f7e424b68838e951601692d80041b0034fab6",
+      "byteLength": 328,
+      "sha256": "489a00410c4f51f37c3753d6ccfe9480b0430d0ca841d3ee9865734a0b59fb62"
+    }
+  ],
+  "verification": {
+    "bundleVerifyExpected": true,
+    "fsckExpected": true,
+    "prerequisiteCount": 0,
+    "independentImports": 2
+  }
+}

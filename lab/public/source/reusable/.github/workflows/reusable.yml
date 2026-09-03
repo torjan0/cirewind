@@ -1,0 +1,16 @@
+name: Reusable composite fixture
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  reusable-composite:
+    name: Reusable composite fixture
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Invoke stable wrapper
+        uses: {{LAB_REPOSITORY}}/actions/wrapper@{{WRAPPER_COMMIT}}

@@ -1,0 +1,33 @@
+{
+  "_template_notice": "This is intentionally schema-invalid until every null and empty live-evidence field is replaced from an authorized public run. Never invent an ID, object, timestamp, hash, observation, or finding.",
+  "schema_version": "cirewind.lab-run-record/v1alpha1",
+  "record_id": null,
+  "lab_repository": {
+    "database_id": null,
+    "full_name": null,
+    "public_url": null
+  },
+  "protocol": {
+    "version": "public-a-b-a/v1",
+    "source_commit": null,
+    "source_manifest_sha256": null
+  },
+  "fixture_objects": {
+    "marker_a_commit": null,
+    "marker_b_commit": null,
+    "fixture_a_tag": null,
+    "fixture_b_tag": null
+  },
+  "mutable_tag": {
+    "ref": "refs/tags/v1",
+    "before": null,
+    "during": null,
+    "after": null
+  },
+  "workflow_runs": [],
+  "rerun_requests": [],
+  "collector": null,
+  "collection": null,
+  "privacy_statement": "This public record contains no raw logs, token material, secret values, private repository names, local paths, or private user data.",
+  "privacy": null
+}

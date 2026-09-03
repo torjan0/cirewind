@@ -1,0 +1,16 @@
+name: Direct mutable marker fixture
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  direct:
+    name: Direct mutable marker
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Invoke mutable marker directly
+        uses: {{LAB_REPOSITORY}}/actions/marker@v1

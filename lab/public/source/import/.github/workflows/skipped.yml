@@ -1,0 +1,17 @@
+name: Downloaded but skipped fixture
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  skipped:
+    name: Marker step remains skipped
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Marker must not begin
+        if: ${{ github.repository == '__cirewind_lab_never__' }}
+        uses: {{LAB_REPOSITORY}}/actions/marker@v1
