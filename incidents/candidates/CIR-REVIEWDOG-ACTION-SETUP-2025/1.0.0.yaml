@@ -1,0 +1,142 @@
+apiVersion: cirewind.dev/v1alpha1
+kind: GitHubActionsIncident
+metadata:
+  id: CIR-REVIEWDOG-ACTION-SETUP-2025
+  packVersion: 1.0.0
+  title: reviewdog/action-setup v1 tag compromise, 2025-03-11
+  publishedAt: "2026-09-03T00:00:00Z"
+  updatedAt: "2026-09-03T00:00:00Z"
+  labels:
+    - candidate
+    - github-actions
+    - mutable-tag
+  sources:
+    - id: ghsa-maintainer
+      type: primary-advisory
+      title: Multiple Reviewdog actions were compromised during a specific time period
+      publisher: reviewdog maintainers, GitHub security advisory GHSA-qmg3-hpqr-gqvc
+      url: https://github.com/reviewdog/reviewdog/security/advisories/GHSA-qmg3-hpqr-gqvc
+      publishedAt: "2025-03-19T09:49:24Z"
+      retrievedAt: "2026-09-03T03:59:37Z"
+      sourceRevision: rest-advisory-updated-at-2025-03-19T14:59:51Z
+      sourceSha256: e1d8c14621d310ecd20ea3317c0803c0a090e4b0684b9ffff59f12b64f028749
+      timePrecision: minute
+      notes: Reviewed bytes are the GitHub REST advisory object for the repository advisory; the human-readable page is a rendering of the same record. The advisory abbreviates both commit names.
+    - id: ghsa-database
+      type: github-advisory-database
+      title: GHSA-qmg3-hpqr-gqvc reviewed record (CVE-2025-30154)
+      publisher: GitHub Advisory Database
+      url: https://github.com/github/advisory-database/blob/fa95208a0a9d23397334d6d71255ba089f49a067/advisories/github-reviewed/2025/03/GHSA-qmg3-hpqr-gqvc/GHSA-qmg3-hpqr-gqvc.json
+      publishedAt: "2025-03-19T15:19:12Z"
+      retrievedAt: "2026-09-03T03:59:37Z"
+      sourceRevision: fa95208a0a9d23397334d6d71255ba089f49a067
+      sourceSha256: 1c88c7aae11ecae2b71278115c1d9c47720be36c737005223cc01cc0e66e9cf8
+      timePrecision: second
+      notes: Pinned database commit. The record names both full commit objects in its references and expresses the affected package as GitHub Actions reviewdog/action-setup version 1.
+    - id: issue-2079
+      type: vendor-incident-report
+      title: "[Security Advisory] Supply Chain Attack on reviewdog GitHub Actions during a specific time period"
+      publisher: reviewdog maintainers, issue reviewdog/reviewdog#2079
+      url: https://github.com/reviewdog/reviewdog/issues/2079
+      publishedAt: "2025-03-18T20:07:54Z"
+      retrievedAt: "2026-09-03T03:59:37Z"
+      sourceRevision: rest-issue-updated-at-2025-04-02T22:23:13Z
+      sourceSha256: cca64035a889fe6fd1a83385b96a06d3fff954a6910cfee8cf87eabfc07b6f1a
+      timePrecision: minute
+      notes: The maintainer's incident thread. The 2025-03-23 update states that only the v1 tag was affected and that the tag was overwritten with a compromised contributor personal access token; those statements are in the comments object listed separately in the review-packet source ledger.
+    - id: commit-f0d342d
+      type: source-repository
+      title: reviewdog/action-setup commit f0d342d24037bb11d26b9bd8496e0808ba32e9ec
+      publisher: reviewdog/action-setup repository, GitHub REST commit object
+      url: https://github.com/reviewdog/action-setup/commit/f0d342d24037bb11d26b9bd8496e0808ba32e9ec
+      publishedAt: "2025-03-11T18:31:43Z"
+      retrievedAt: "2026-09-03T03:59:37Z"
+      sourceRevision: f0d342d24037bb11d26b9bd8496e0808ba32e9ec
+      sourceSha256: 4c41574f98eb4f6316150fc598f201f68f01a53079f7d1572288e2fec0bdff8c
+      timePrecision: second
+      notes: Resolves the advisory's abbreviated name f0d342d to the full object. The recorded author and committer instant is the object's own metadata, not the time the v1 tag began pointing at it.
+    - id: issue-2079-comments
+      type: vendor-incident-report
+      title: Comments on [Security Advisory] Supply Chain Attack on reviewdog GitHub Actions
+      publisher: reviewdog maintainers, comments on issue reviewdog/reviewdog#2079
+      url: https://api.github.com/repos/reviewdog/reviewdog/issues/2079/comments
+      publishedAt: "2025-03-23T05:30:54Z"
+      retrievedAt: "2026-09-03T03:59:37Z"
+      sourceRevision: rest-issue-comments-last-2773864711
+      sourceSha256: 1d1d64cb2ee8ce0c05c165bb796669e3e920eaa05dad60d3238a493a7a229907
+      timePrecision: second
+      notes: The maintainer's 2025-03-23 update states that audit review found only the v1 tag affected and that the tag was overwritten by a git push with a compromised contributor personal access token.
+    - id: commit-3f401fe
+      type: source-repository
+      title: reviewdog/action-setup commit 3f401fe1d58fe77e10d665ab713057375e39b887
+      publisher: reviewdog/action-setup repository, GitHub REST commit object
+      url: https://github.com/reviewdog/action-setup/commit/3f401fe1d58fe77e10d665ab713057375e39b887
+      publishedAt: "2024-03-12T15:16:47Z"
+      retrievedAt: "2026-09-03T03:59:37Z"
+      sourceRevision: 3f401fe1d58fe77e10d665ab713057375e39b887
+      sourceSha256: 1e6bc29dc8d73163c34409d668cfa3964421ac7499535fc2c497af34353108a6
+      timePrecision: second
+      notes: The advisory's fix/retag object. It is the v1.3.0 release commit from 2024-03-12, so the retag restored a pre-existing object; it is not encoded as a known-good identity because its content has not been independently reviewed.
+spec:
+  description: On 2025-03-11 the mutable v1 tag of reviewdog/action-setup was overwritten to point at commit f0d342d24037bb11d26b9bd8496e0808ba32e9ec, whose installer wrote exposed secrets into workflow logs, and was later restored. The maintainers published the tag exposure as 18:42 through 20:31 UTC at minute precision. Wrapper Actions that resolved action-setup@v1 during that period were transitively exposed; this pack does not label any wrapper commit compromised and does not enumerate wrapper versions, because no primary source binds a wrapper commit to its historical nested declaration.
+  components:
+    - id: action-setup
+      type: github-action
+      repository:
+        owner: reviewdog
+        name: action-setup
+      subpaths:
+        - ""
+  windows:
+    - id: v1-tag-compromise
+      start: "2025-03-11T18:42:00Z"
+      end: "2025-03-11T20:32:00Z"
+      bounds: "[)"
+      sourcePrecision: minute
+      approximation: source-rounded
+      originalClaim: "March 11, 2025, between 18:42 and 20:31 UTC"
+      sourceRefs:
+        - ghsa-maintainer
+      notes: The source states minute precision. The start is the stated minute; the end is rounded up to the exclusive next-minute boundary so that every instant inside the stated final minute is covered without inventing seconds.
+  indicators:
+    - id: action-setup-malicious-commit
+      componentId: action-setup
+      kind: action-commit
+      value:
+        gitObject:
+          algorithm: sha1
+          value: "f0d342d24037bb11d26b9bd8496e0808ba32e9ec"
+      windowRefs:
+        - v1-tag-compromise
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-maintainer
+        - ghsa-database
+        - commit-f0d342d
+      notes: The maintainer advisory names the object as the malicious commit; the pinned database record and the commit object resolve it to the full identifier.
+    - id: action-setup-v1-mutable-ref
+      componentId: action-setup
+      kind: mutable-action-ref
+      value:
+        ref: v1
+      windowRefs:
+        - v1-tag-compromise
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-maintainer
+        - issue-2079
+      notes: Only the v1 tag is claimed. The maintainer's 2025-03-23 update states that audit review found only v1 affected.
+  knownGood: []
+  remediation:
+    guidance:
+      - Resolve every historical run attempt that declared reviewdog/action-setup@v1 during the window to its exact runtime object before drawing a conclusion; the current v1 tag target says nothing about what a March 2025 run resolved.
+      - Treat wrapper Actions that nest reviewdog/action-setup@v1 as transitive candidates to reconstruct from their exact historical metadata; a wrapper pinned by full commit can still have resolved the mutable nested ref, and the wrapper commit itself is not an incident indicator.
+      - Pin reviewdog/action-setup and every wrapper Action to a full commit object and verify the nested dependencies pinned inside each wrapper.
+    credentialRotationTriggers:
+      - id: rotate-after-execution
+        whenStates:
+          - CONFIRMED_EXECUTED
+        guidance: Rotate every secret the affected job could read; the malicious commit wrote exposed secrets into the workflow log, which does not by itself prove which values were recovered.
+        confidence: L4_CERTAIN
+        sourceRefs:
+          - ghsa-maintainer
