@@ -174,12 +174,19 @@ func (b *Builder) AddAttemptJob(ctx context.Context, run int64, attempt uint32, 
 // AddRuntime records a runner-log observation of an Action for one job: a
 // completed preparation (download) or a lifecycle start on a step.
 func (b *Builder) AddRuntime(ctx context.Context, execution model.JobExecutionIdentity, stepNumber int32, kind model.RuntimeObservationKind, actionRepository model.RepositorySlug, oid model.ActionSourceObjectID, declaredRef, subpath string) error {
+	return b.AddRuntimeWithDigest(ctx, execution, stepNumber, kind, actionRepository, oid, declaredRef, subpath, nil)
+}
+
+// AddRuntimeWithDigest records a runtime observation that also carries the
+// package digest the runner reported for the resolved action, so fixtures can
+// prove that a digest matches only inside its own namespace.
+func (b *Builder) AddRuntimeWithDigest(ctx context.Context, execution model.JobExecutionIdentity, stepNumber int32, kind model.RuntimeObservationKind, actionRepository model.RepositorySlug, oid model.ActionSourceObjectID, declaredRef, subpath string, digest *model.PackageDigest) error {
 	scope := model.CoverageScope{RepositoryID: ptr(execution.RepositoryID), RunID: ptr(execution.RunID), RunAttempt: ptr(execution.RunAttempt), JobID: ptr(execution.JobID)}
 	evidenceID, err := b.source(ctx, "runtime-"+execution.String()+"-"+string(kind), scope, `{"synthetic":"runner-control"}`)
 	if err != nil {
 		return err
 	}
-	observation := model.RuntimeActionObservation{Kind: kind, Execution: execution, ActionRepository: actionRepository, ActionSubpath: subpath, DeclaredRef: declaredRef, SourceObjectID: &oid, EventTime: InstantEvent(b.when), SourceEvidenceIDs: []model.EvidenceID{evidenceID}, SourceSpan: model.SourceSpan{ByteStart: 0, ByteEnd: 32, LineStart: 1, LineEnd: 1}, ExtractorName: "synthetic-runner-log", ExtractorVersion: logparse.GrammarVersion, RulesetSHA256: strings.Repeat("e", 64)}
+	observation := model.RuntimeActionObservation{Kind: kind, Execution: execution, ActionRepository: actionRepository, ActionSubpath: subpath, DeclaredRef: declaredRef, SourceObjectID: &oid, PackageDigest: digest, EventTime: InstantEvent(b.when), SourceEvidenceIDs: []model.EvidenceID{evidenceID}, SourceSpan: model.SourceSpan{ByteStart: 0, ByteEnd: 32, LineStart: 1, LineEnd: 1}, ExtractorName: "synthetic-runner-log", ExtractorVersion: logparse.GrammarVersion, RulesetSHA256: strings.Repeat("e", 64)}
 	if stepNumber > 0 {
 		number := model.APIStepNumber(stepNumber)
 		observation.Step = &model.StepIdentity{Job: execution, APIStepNumber: &number, LifecyclePhase: model.LifecycleMain, Occurrence: 1}
