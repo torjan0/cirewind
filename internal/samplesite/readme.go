@@ -42,7 +42,9 @@ const (
 	readmeAssetsDir       = "site/assets"
 	// readmeBannerAlt names every element whose meaning the banner encodes by
 	// shape and color, so the image adds nothing a screen reader cannot hear.
-	readmeBannerAlt = "CIRewind wordmark over a schematic GitHub Actions run: blue job nodes in a chain, an orange dashed node with a question mark where evidence is missing, a red node where a compromised action ran, a green node where a verified action ran, and a green dashed arrow from the red node back to the start, showing the run reconstructed from evidence"
+	// It describes the drawing without asserting a verdict the README text
+	// itself hedges: an affected step, not a compromised or verified one.
+	readmeBannerAlt = "CIRewind wordmark above a schematic run graph: chained job nodes, one dashed node marked with a question mark where evidence is missing, one highlighted affected step, and a dashed arrow back to the start showing the run being reconstructed from evidence"
 	maxBannerBytes  = 512 << 10
 	bannerWidth     = 1800
 	bannerHeight    = 600

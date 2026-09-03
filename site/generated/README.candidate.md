@@ -7,8 +7,8 @@ which do not exist until the authorized publication and deployment. Sections
 below the first screen are carried from the v0.1.1 README pending the v0.2
 consistency gate. Do not copy this file to README.md on the default branch.
 -->
-![CIRewind wordmark over a schematic GitHub Actions run: blue job nodes in a chain, an orange dashed node with a question mark where evidence is missing, a red node where a compromised action ran, a green node where a verified action ran, and a green dashed arrow from the red node back to the start, showing the run reconstructed from evidence](site/assets/cirewind-banner-dark.png#gh-dark-mode-only)
-![CIRewind wordmark over a schematic GitHub Actions run: blue job nodes in a chain, an orange dashed node with a question mark where evidence is missing, a red node where a compromised action ran, a green node where a verified action ran, and a green dashed arrow from the red node back to the start, showing the run reconstructed from evidence](site/assets/cirewind-banner-light.png#gh-light-mode-only)
+![CIRewind wordmark above a schematic run graph: chained job nodes, one dashed node marked with a question mark where evidence is missing, one highlighted affected step, and a dashed arrow back to the start showing the run being reconstructed from evidence](site/assets/cirewind-banner-dark.png#gh-dark-mode-only)
+![CIRewind wordmark above a schematic run graph: chained job nodes, one dashed node marked with a question mark where evidence is missing, one highlighted affected step, and a dashed arrow back to the start showing the run being reconstructed from evidence](site/assets/cirewind-banner-light.png#gh-light-mode-only)
 
 # CIRewind
 
