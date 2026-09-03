@@ -1,0 +1,1756 @@
+apiVersion: cirewind.dev/v1alpha1
+kind: GitHubActionsIncident
+metadata:
+  id: CIR-AQUASECURITY-TRIVY-2026
+  packVersion: 1.0.0
+  title: "Trivy ecosystem supply chain compromise, 2026-03-19 to 2026-03-23"
+  publishedAt: "2026-09-03T00:00:00Z"
+  updatedAt: "2026-09-03T00:00:00Z"
+  labels:
+    - candidate
+    - container-image
+    - embedded-tool
+    - github-actions
+    - mutable-tag
+  sources:
+    - id: ghsa-maintainer
+      type: primary-advisory
+      title: "Trivy ecosystem supply chain temporarily compromised"
+      publisher: "Aqua Security Trivy maintainers, GitHub security advisory GHSA-69fq-xp46-6x23"
+      url: https://github.com/aquasecurity/trivy/security/advisories/GHSA-69fq-xp46-6x23
+      publishedAt: "2026-03-21T15:51:56Z"
+      retrievedAt: "2026-09-03T04:45:11Z"
+      sourceRevision: rest-advisory-updated-at-2026-03-30T16:44:30Z
+      sourceSha256: c0ec987f2a9abc7436615dd7d89dd6b464e5b7fc04db13166f2ac2dbfa3494c0
+      timePrecision: minute
+      notes: "Retrieved as GET /repos/aquasecurity/trivy/security-advisories/GHSA-69fq-xp46-6x23. Material statements: the four-row exposure window table with footnotes marking approximate endpoints, the 76 of 77 trivy-action tag force-push, the seven setup-trivy tags v0.2.0 to v0.2.6, the v-prefixed re-publication of the original tags with three named unrestored tags, the version latest exposure, the pre-2025-04-09 SHA-pin transitive exposure, the 26-row executable table, the 15-row container image table, and the two network literals. The two IOC tables and the network list were transformed mechanically by the trivy-2026-advisory-tables extractor, whose record is committed beside the fixtures."
+    - id: ghsa-database
+      type: github-advisory-database
+      title: "GHSA-69fq-xp46-6x23 reviewed record (CVE-2026-33634)"
+      publisher: "GitHub Advisory Database"
+      url: https://github.com/github/advisory-database/blob/fa95208a0a9d23397334d6d71255ba089f49a067/advisories/github-reviewed/2026/03/GHSA-69fq-xp46-6x23/GHSA-69fq-xp46-6x23.json
+      publishedAt: "2026-03-24T17:53:12Z"
+      retrievedAt: "2026-09-03T04:45:11Z"
+      sourceRevision: fa95208a0a9d23397334d6d71255ba089f49a067
+      sourceSha256: 51e2e8bf05e21b78201549838254192d9fa036ccab588f396740dd4a43f47bf5
+      timePrecision: minute
+      notes: "The GitHub Advisory Database is published under CC-BY 4.0 and is redistributed with attribution to GitHub. The details field repeats the maintainer advisory text including the window table and both IOC tables; the affected ranges state trivy-action fixed in 0.35.0, setup-trivy fixed in 0.2.6, and the Go module affected only at 0.69.4."
+    - id: discussion-10425
+      type: vendor-incident-report
+      title: "Trivy Security incident 2026-03-19"
+      publisher: "Aqua Security Trivy maintainers, GitHub discussion aquasecurity/trivy#10425"
+      url: https://github.com/aquasecurity/trivy/discussions/10425
+      publishedAt: "2026-03-20T12:52:05Z"
+      retrievedAt: "2026-09-03T04:45:11Z"
+      sourceRevision: graphql-discussion-last-edited-at-2026-04-14T12:00:26Z
+      sourceSha256: 0a4bbc9354bb5e90c1a4a096d4c55ee52572f550175b37e15f0f895c78a2e353
+      timePrecision: minute
+      notes: "Retrieved through the GraphQL discussion object (number, title, body, createdAt, updatedAt, lastEditedAt). The initial maintainer statement repeats the window table, names the safe releases trivy v0.69.3, trivy-action v0.35.0 at commit 57a97c7e7821a5776cebc9bb87c984fa69cba8f1, and setup-trivy v0.2.6 at commit 3fb12ec12f41e471780db15c232d5dd185dcb514, and repeats the C2 domain and address with bracketed dots. Its footnote states that the first malicious activity observed was at 2026-03-19 17:43 UTC."
+    - id: discussion-10462
+      type: vendor-incident-report
+      title: "Trivy Security incident 2026-03-19 conclusion"
+      publisher: "Aqua Security Trivy maintainers, GitHub discussion aquasecurity/trivy#10462"
+      url: https://github.com/aquasecurity/trivy/discussions/10462
+      publishedAt: "2026-03-30T15:12:53Z"
+      retrievedAt: "2026-09-03T04:45:11Z"
+      sourceRevision: graphql-discussion-last-edited-at-2026-03-30T15:14:01Z
+      sourceSha256: 7167941e968929e33c69a844da356431ca6bc82a206aab6df135757c1c0a6fb1
+      timePrecision: minute
+      notes: "The conclusion timeline states that the malicious v0.69.4 release build was triggered at 17:47 UTC on March 19, that the compromised token was revoked at 22:42 UTC, that the 0.69.5 and 0.69.6 Docker Hub tags were pushed at 15:43 UTC and 16:34 UTC on March 22, and that the malicious Docker Hub tags were removed at 01:40 UTC on March 23."
+    - id: trivy-action-tags
+      type: source-repository
+      title: "aquasecurity/trivy-action tag listing at retrieval"
+      publisher: "aquasecurity/trivy-action repository, GitHub REST matching-refs listing"
+      url: https://github.com/aquasecurity/trivy-action/tags
+      publishedAt: "2026-09-03T04:46:36Z"
+      retrievedAt: "2026-09-03T04:46:36Z"
+      sourceRevision: rest-matching-refs-retrieved-at-2026-09-03T04:46:36Z
+      sourceSha256: 38f552d21beb0c9362af7a4e6bc7e15ce89c27df837d31a13e5920bcf77e8a63
+      timePrecision: unknown
+      notes: "Retrieved as GET /repos/aquasecurity/trivy-action/git/matching-refs/tags/ with pagination. It is current state, not a historical observation: 72 v-prefixed tags below 0.35.0, the immutable 0.35.0 tag, v0.35.0, and v0.36.0. The trivy-2026-action-tag-inventory extractor strips the v prefix from the 72 tags and adds the three unrestored names the advisory states, yielding 75 original names against the advisory count of 76 affected tags; one original name cannot be recovered from these sources."
+spec:
+  description: "On March 19, 2026 a threat actor with compromised credentials published a malicious Trivy v0.69.4 release, force-pushed 76 of 77 version tags of aquasecurity/trivy-action to credential-stealing content, and replaced all seven tags of aquasecurity/setup-trivy; on March 22 the same actor pushed malicious 0.69.5 and 0.69.6 images directly to Docker Hub. Each vector has its own maintainer-stated window and this pack keeps them separate: the trivy-action tags, the setup-trivy tags, the v0.69.4 release assets, and the Docker Hub images. Most endpoints are marked approximate by the publisher and are encoded at the stated minute without expansion. The malicious Action objects were never published, so the Action components carry only mutable refs: the seven setup-trivy tags named by the maintainer and 75 original trivy-action tag names derived mechanically from the current v-prefixed replacement tags plus the three unrestored names the maintainer lists; the maintainer counts 76 affected tags, so one name is unknown. The 26 release-asset and 15 image digests and the two network literals were extracted mechanically from the pinned advisory bytes with recorded input and output hashes; CIRewind does not observe release downloads or image pulls in v0.2 evidence, so the digests are retained for manual review rather than automatic exposure findings, and the network literals and version strings are stated in the guidance instead of being encoded because a compact archive cannot evaluate literal indicators. No known-good identity is encoded because the safe objects have not been independently reviewed and v0.2.6 has two historical identities, and the tpcp-docs- repository-name prefix cannot be encoded as an exact repository indicator."
+  components:
+    - id: setup-trivy
+      type: github-action
+      repository:
+        owner: aquasecurity
+        name: setup-trivy
+      subpaths:
+        - ""
+    - id: trivy
+      type: embedded-tool
+      repository:
+        owner: aquasecurity
+        name: trivy
+      subpaths:
+        - ""
+    - id: trivy-action
+      type: github-action
+      repository:
+        owner: aquasecurity
+        name: trivy-action
+      subpaths:
+        - ""
+  windows:
+    - id: dockerhub-images
+      start: "2026-03-22T15:43:00Z"
+      end: "2026-03-23T01:41:00Z"
+      bounds: "[)"
+      sourcePrecision: minute
+      approximation: source-rounded
+      originalClaim: "2026-03-22 15:43 to 2026-03-23 ~01:40 (UTC)"
+      sourceRefs:
+        - discussion-10425
+        - discussion-10462
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "Row 4 of the exposure window table. The start is the minute of the first Docker Hub push, which discussion 10462 repeats together with a second push at 16:34 UTC; the end is marked approximate and discussion 10462 states removal at 01:40 UTC on March 23. Encoded at the stated minutes with the exclusive minute boundary after ~01:40 and no expansion."
+    - id: setup-trivy-tags
+      start: "2026-03-19T17:43:00Z"
+      end: "2026-03-19T21:45:00Z"
+      bounds: "[)"
+      sourcePrecision: minute
+      approximation: source-rounded
+      originalClaim: "2026-03-19 ~17:43 [^2] to 2026-03-19 ~21:44 (UTC)"
+      sourceRefs:
+        - discussion-10425
+        - discussion-10462
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "Row 3 of the exposure window table. Both endpoints are marked approximate by the publisher; the maintainer text states the malicious releases were removed within about four hours and v0.2.6 was re-created with safe content, so the same tag name has a malicious identity inside this window and a safe identity after it. Encoded at the stated minutes without expansion."
+    - id: trivy-action-tags
+      start: "2026-03-19T17:43:00Z"
+      end: "2026-03-20T05:41:00Z"
+      bounds: "[)"
+      sourcePrecision: minute
+      approximation: source-rounded
+      originalClaim: "2026-03-19 ~17:43 [^2] to 2026-03-20 ~05:40 (UTC)"
+      sourceRefs:
+        - discussion-10425
+        - discussion-10462
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "Row 2 of the exposure window table. Both endpoints are marked approximate by the publisher; footnote 2 states that 17:43 UTC is the earliest suspicious activity in the audit log. Encoded at the stated minutes with the exclusive minute boundary after ~05:40 and no expansion. Runs shortly outside these minutes deserve manual review because the publisher states no error margin."
+    - id: trivy-binary-v0-69-4
+      start: "2026-03-19T18:22:00Z"
+      end: "2026-03-19T21:43:00Z"
+      bounds: "[)"
+      sourcePrecision: minute
+      approximation: source-rounded
+      originalClaim: "2026-03-19 18:22 [^1] to 2026-03-19 ~21:42 (UTC)"
+      sourceRefs:
+        - discussion-10425
+        - discussion-10462
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "Row 1 of the exposure window table. The start is the minute at which the v0.69.4 release artifacts became publicly available (footnote 1) and is not marked approximate; the end is marked approximate by the publisher with a tilde. Both endpoints are encoded at the stated minute, the end as the exclusive minute boundary after ~21:42, without any expansion; the publisher gives no error margin. Discussion 10462 places the release build trigger at 17:47 UTC and the token revocation at 22:42 UTC."
+  indicators:
+    - id: setup-trivy-tag-v0-2-0
+      componentId: setup-trivy
+      kind: mutable-action-ref
+      value:
+        ref: "v0.2.0"
+      windowRefs:
+        - setup-trivy-tags
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "One of the seven then-existing setup-trivy tags (v0.2.0 to v0.2.6) that the maintainer states were force-pushed to malicious commits. The maintainer states this name was not restored."
+    - id: setup-trivy-tag-v0-2-1
+      componentId: setup-trivy
+      kind: mutable-action-ref
+      value:
+        ref: "v0.2.1"
+      windowRefs:
+        - setup-trivy-tags
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "One of the seven then-existing setup-trivy tags (v0.2.0 to v0.2.6) that the maintainer states were force-pushed to malicious commits. The maintainer states this name was not restored."
+    - id: setup-trivy-tag-v0-2-2
+      componentId: setup-trivy
+      kind: mutable-action-ref
+      value:
+        ref: "v0.2.2"
+      windowRefs:
+        - setup-trivy-tags
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "One of the seven then-existing setup-trivy tags (v0.2.0 to v0.2.6) that the maintainer states were force-pushed to malicious commits. The maintainer states this name was not restored."
+    - id: setup-trivy-tag-v0-2-3
+      componentId: setup-trivy
+      kind: mutable-action-ref
+      value:
+        ref: "v0.2.3"
+      windowRefs:
+        - setup-trivy-tags
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "One of the seven then-existing setup-trivy tags (v0.2.0 to v0.2.6) that the maintainer states were force-pushed to malicious commits. The maintainer states this name was not restored."
+    - id: setup-trivy-tag-v0-2-4
+      componentId: setup-trivy
+      kind: mutable-action-ref
+      value:
+        ref: "v0.2.4"
+      windowRefs:
+        - setup-trivy-tags
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "One of the seven then-existing setup-trivy tags (v0.2.0 to v0.2.6) that the maintainer states were force-pushed to malicious commits. The maintainer states this name was not restored."
+    - id: setup-trivy-tag-v0-2-5
+      componentId: setup-trivy
+      kind: mutable-action-ref
+      value:
+        ref: "v0.2.5"
+      windowRefs:
+        - setup-trivy-tags
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "One of the seven then-existing setup-trivy tags (v0.2.0 to v0.2.6) that the maintainer states were force-pushed to malicious commits. The maintainer states this name was not restored."
+    - id: setup-trivy-tag-v0-2-6
+      componentId: setup-trivy
+      kind: mutable-action-ref
+      value:
+        ref: "v0.2.6"
+      windowRefs:
+        - setup-trivy-tags
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "One of the seven then-existing setup-trivy tags (v0.2.0 to v0.2.6) that the maintainer states were force-pushed to malicious commits. The same name was re-created with safe content after the window, so the tag has two historical identities and current resolution is misleading."
+    - id: trivy-action-tag-0-0-1
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.0.1"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.0.1, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-0-10
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.0.10"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-maintainer
+      notes: "Original tag name stated by the maintainer as one of the three tags deleted during remediation and not yet restored (named there with its replacement v prefix). Every original tag below 0.35.0 was force-pushed to malicious content during the trivy-action window."
+    - id: trivy-action-tag-0-0-11
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.0.11"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.0.11, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-0-12
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.0.12"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.0.12, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-0-13
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.0.13"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.0.13, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-0-14
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.0.14"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.0.14, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-0-15
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.0.15"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.0.15, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-0-16
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.0.16"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.0.16, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-0-17
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.0.17"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.0.17, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-0-18
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.0.18"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.0.18, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-0-19
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.0.19"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.0.19, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-0-2
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.0.2"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.0.2, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-0-20
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.0.20"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.0.20, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-0-21
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.0.21"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.0.21, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-0-22
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.0.22"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.0.22, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-0-3
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.0.3"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.0.3, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-0-4
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.0.4"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.0.4, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-0-5
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.0.5"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.0.5, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-0-6
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.0.6"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.0.6, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-0-7
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.0.7"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.0.7, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-0-8
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.0.8"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.0.8, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-0-9
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.0.9"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.0.9, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-1-0
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.1.0"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.1.0, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-10-0
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.10.0"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.10.0, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-11-0
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.11.0"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.11.0, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-11-1
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.11.1"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.11.1, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-11-2
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.11.2"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.11.2, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-12-0
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.12.0"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.12.0, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-13-0
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.13.0"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.13.0, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-13-1
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.13.1"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.13.1, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-14-0
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.14.0"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.14.0, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-15-0
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.15.0"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.15.0, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-16-0
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.16.0"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.16.0, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-16-1
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.16.1"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.16.1, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-17-0
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.17.0"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.17.0, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-18-0
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.18.0"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.18.0, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-19-0
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.19.0"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.19.0, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-2-0
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.2.0"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.2.0, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-2-1
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.2.1"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.2.1, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-2-2
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.2.2"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.2.2, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-2-3
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.2.3"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.2.3, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-2-4
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.2.4"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.2.4, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-2-5
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.2.5"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.2.5, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-20-0
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.20.0"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.20.0, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-21-0
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.21.0"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.21.0, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-22-0
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.22.0"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.22.0, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-23-0
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.23.0"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.23.0, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-24-0
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.24.0"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.24.0, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-25-0
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.25.0"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.25.0, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-26-0
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.26.0"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.26.0, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-27-0
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.27.0"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.27.0, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-28-0
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.28.0"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.28.0, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-29-0
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.29.0"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.29.0, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-3-0
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.3.0"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.3.0, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-30-0
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.30.0"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.30.0, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-31-0
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.31.0"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.31.0, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-32-0
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.32.0"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.32.0, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-33-0
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.33.0"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.33.0, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-33-1
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.33.1"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.33.1, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-34-0
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.34.0"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.34.0, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-34-1
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.34.1"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-maintainer
+      notes: "Original tag name stated by the maintainer as one of the three tags deleted during remediation and not yet restored (named there with its replacement v prefix). Every original tag below 0.35.0 was force-pushed to malicious content during the trivy-action window."
+    - id: trivy-action-tag-0-34-2
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.34.2"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-maintainer
+      notes: "Original tag name stated by the maintainer as one of the three tags deleted during remediation and not yet restored (named there with its replacement v prefix). Every original tag below 0.35.0 was force-pushed to malicious content during the trivy-action window."
+    - id: trivy-action-tag-0-4-0
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.4.0"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.4.0, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-4-1
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.4.1"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.4.1, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-5-0
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.5.0"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.5.0, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-5-1
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.5.1"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.5.1, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-6-0
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.6.0"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.6.0, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-6-1
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.6.1"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.6.1, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-6-2
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.6.2"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.6.2, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-7-0
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.7.0"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.7.0, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-7-1
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.7.1"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.7.1, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-8-0
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.8.0"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.8.0, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-9-0
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.9.0"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.9.0, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-9-1
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.9.1"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.9.1, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-action-tag-0-9-2
+      componentId: trivy-action
+      kind: mutable-action-ref
+      value:
+        ref: "0.9.2"
+      windowRefs:
+        - trivy-action-tags
+      confidence: L3_STRONG
+      sourceRefs:
+        - ghsa-maintainer
+        - trivy-action-tags
+      notes: "Original tag name derived by stripping the v prefix from the current replacement tag v0.9.2, which the maintainer states points at the original legitimate commit. The derivation record commits the listing hash and the object each replacement tag points at; the advisory counts 76 affected original tags and this derivation recovers 75 names, so one affected name is unknown."
+    - id: trivy-asset-trivy-0-69-4-freebsd-64bit-tar-gz
+      componentId: trivy
+      kind: digest
+      value:
+        subject: "release-asset"
+        algorithm: "sha256"
+        digest: "c5b16c42dbd2a1494141cd651a406ec9094d5031a421c0aa624c4d139ae81239"
+        path: "trivy_0.69.4_FreeBSD_64bit.tar.gz"
+      windowRefs:
+        - trivy-binary-v0-69-4
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "SHA-256 of the v0.69.4 release asset trivy_0.69.4_FreeBSD_64bit.tar.gz from row 1 of the Executable binaries table, extracted mechanically. CIRewind does not observe release downloads in v0.2 evidence; this digest is retained for artifact comparison and manual log review, not for automatic matching."
+    - id: trivy-asset-trivy-0-69-4-linux-32bit-deb
+      componentId: trivy
+      kind: digest
+      value:
+        subject: "release-asset"
+        algorithm: "sha256"
+        digest: "cff74e3e9ac0cda2078d31800d8fcad832d7b52c9920b085054d1e96dacff8a3"
+        path: "trivy_0.69.4_Linux-32bit.deb"
+      windowRefs:
+        - trivy-binary-v0-69-4
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "SHA-256 of the v0.69.4 release asset trivy_0.69.4_Linux-32bit.deb from row 2 of the Executable binaries table, extracted mechanically. CIRewind does not observe release downloads in v0.2 evidence; this digest is retained for artifact comparison and manual log review, not for automatic matching."
+    - id: trivy-asset-trivy-0-69-4-linux-32bit-rpm
+      componentId: trivy
+      kind: digest
+      value:
+        subject: "release-asset"
+        algorithm: "sha256"
+        digest: "55047c55a5ceab6d80b13884b4a4e8cd27a0bab7a218a952a00aae9e05f16f80"
+        path: "trivy_0.69.4_Linux-32bit.rpm"
+      windowRefs:
+        - trivy-binary-v0-69-4
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "SHA-256 of the v0.69.4 release asset trivy_0.69.4_Linux-32bit.rpm from row 3 of the Executable binaries table, extracted mechanically. CIRewind does not observe release downloads in v0.2 evidence; this digest is retained for artifact comparison and manual log review, not for automatic matching."
+    - id: trivy-asset-trivy-0-69-4-linux-32bit-tar-gz
+      componentId: trivy
+      kind: digest
+      value:
+        subject: "release-asset"
+        algorithm: "sha256"
+        digest: "ba04ba6a0c028cde17599c8ddaefdb854055c5a23c595e06630732002ea59a76"
+        path: "trivy_0.69.4_Linux-32bit.tar.gz"
+      windowRefs:
+        - trivy-binary-v0-69-4
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "SHA-256 of the v0.69.4 release asset trivy_0.69.4_Linux-32bit.tar.gz from row 4 of the Executable binaries table, extracted mechanically. CIRewind does not observe release downloads in v0.2 evidence; this digest is retained for artifact comparison and manual log review, not for automatic matching."
+    - id: trivy-asset-trivy-0-69-4-linux-64bit-deb
+      componentId: trivy
+      kind: digest
+      value:
+        subject: "release-asset"
+        algorithm: "sha256"
+        digest: "0ca60dd18178d1c79d59cc06be12c540c121a4aea467484244667131aa13c311"
+        path: "trivy_0.69.4_Linux-64bit.deb"
+      windowRefs:
+        - trivy-binary-v0-69-4
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "SHA-256 of the v0.69.4 release asset trivy_0.69.4_Linux-64bit.deb from row 5 of the Executable binaries table, extracted mechanically. CIRewind does not observe release downloads in v0.2 evidence; this digest is retained for artifact comparison and manual log review, not for automatic matching."
+    - id: trivy-asset-trivy-0-69-4-linux-64bit-rpm
+      componentId: trivy
+      kind: digest
+      value:
+        subject: "release-asset"
+        algorithm: "sha256"
+        digest: "a5696321a6c93071f46c8bb8cbd0a8d2bce6d1860cc3c109247a4e8b64ebd317"
+        path: "trivy_0.69.4_Linux-64bit.rpm"
+      windowRefs:
+        - trivy-binary-v0-69-4
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "SHA-256 of the v0.69.4 release asset trivy_0.69.4_Linux-64bit.rpm from row 6 of the Executable binaries table, extracted mechanically. CIRewind does not observe release downloads in v0.2 evidence; this digest is retained for artifact comparison and manual log review, not for automatic matching."
+    - id: trivy-asset-trivy-0-69-4-linux-64bit-tar-gz
+      componentId: trivy
+      kind: digest
+      value:
+        subject: "release-asset"
+        algorithm: "sha256"
+        digest: "385d498d18a3a7c67878ca7322716f9da25683eb1a4bf9e9592da0d5f2ab09f6"
+        path: "trivy_0.69.4_Linux-64bit.tar.gz"
+      windowRefs:
+        - trivy-binary-v0-69-4
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "SHA-256 of the v0.69.4 release asset trivy_0.69.4_Linux-64bit.tar.gz from row 7 of the Executable binaries table, extracted mechanically. CIRewind does not observe release downloads in v0.2 evidence; this digest is retained for artifact comparison and manual log review, not for automatic matching."
+    - id: trivy-asset-trivy-0-69-4-linux-amd64
+      componentId: trivy
+      kind: digest
+      value:
+        subject: "release-asset"
+        algorithm: "sha256"
+        digest: "822dd269ec10459572dfaaefe163dae693c344249a0161953f0d5cdd110bd2a0"
+        path: "trivy_0.69.4_linux_amd64"
+      windowRefs:
+        - trivy-binary-v0-69-4
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "SHA-256 of the v0.69.4 release asset trivy_0.69.4_linux_amd64 from row 23 of the Executable binaries table, extracted mechanically. CIRewind does not observe release downloads in v0.2 evidence; this digest is retained for artifact comparison and manual log review, not for automatic matching."
+    - id: trivy-asset-trivy-0-69-4-linux-arm-deb
+      componentId: trivy
+      kind: digest
+      value:
+        subject: "release-asset"
+        algorithm: "sha256"
+        digest: "8f0c7b92b251c61cbca2add06c676dd21fde8fbb2d0cd6616383fae29b21756a"
+        path: "trivy_0.69.4_Linux-ARM.deb"
+      windowRefs:
+        - trivy-binary-v0-69-4
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "SHA-256 of the v0.69.4 release asset trivy_0.69.4_Linux-ARM.deb from row 8 of the Executable binaries table, extracted mechanically. CIRewind does not observe release downloads in v0.2 evidence; this digest is retained for artifact comparison and manual log review, not for automatic matching."
+    - id: trivy-asset-trivy-0-69-4-linux-arm-rpm
+      componentId: trivy
+      kind: digest
+      value:
+        subject: "release-asset"
+        algorithm: "sha256"
+        digest: "c5df9d1bc6275711b2884a9ed4aacfe4e10dbe3c8f6c79df59126fd0e6dcd83f"
+        path: "trivy_0.69.4_Linux-ARM.rpm"
+      windowRefs:
+        - trivy-binary-v0-69-4
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "SHA-256 of the v0.69.4 release asset trivy_0.69.4_Linux-ARM.rpm from row 9 of the Executable binaries table, extracted mechanically. CIRewind does not observe release downloads in v0.2 evidence; this digest is retained for artifact comparison and manual log review, not for automatic matching."
+    - id: trivy-asset-trivy-0-69-4-linux-arm-tar-gz
+      componentId: trivy
+      kind: digest
+      value:
+        subject: "release-asset"
+        algorithm: "sha256"
+        digest: "f7a9bbfec8add36c548add4d875848b8b57c21fabe236d115f1c49113d12b332"
+        path: "trivy_0.69.4_Linux-ARM.tar.gz"
+      windowRefs:
+        - trivy-binary-v0-69-4
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "SHA-256 of the v0.69.4 release asset trivy_0.69.4_Linux-ARM.tar.gz from row 10 of the Executable binaries table, extracted mechanically. CIRewind does not observe release downloads in v0.2 evidence; this digest is retained for artifact comparison and manual log review, not for automatic matching."
+    - id: trivy-asset-trivy-0-69-4-linux-arm64
+      componentId: trivy
+      kind: digest
+      value:
+        subject: "release-asset"
+        algorithm: "sha256"
+        digest: "e64e152afe2c722d750f10259626f357cdea40420c5eedae37969fbf13abbecf"
+        path: "trivy_0.69.4_linux_arm64"
+      windowRefs:
+        - trivy-binary-v0-69-4
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "SHA-256 of the v0.69.4 release asset trivy_0.69.4_linux_arm64 from row 24 of the Executable binaries table, extracted mechanically. CIRewind does not observe release downloads in v0.2 evidence; this digest is retained for artifact comparison and manual log review, not for automatic matching."
+    - id: trivy-asset-trivy-0-69-4-linux-arm64-deb
+      componentId: trivy
+      kind: digest
+      value:
+        subject: "release-asset"
+        algorithm: "sha256"
+        digest: "9a833d68a49ec6d44bc50fb9ff3b184bafb0edc913e1293daebe51d334676a70"
+        path: "trivy_0.69.4_Linux-ARM64.deb"
+      windowRefs:
+        - trivy-binary-v0-69-4
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "SHA-256 of the v0.69.4 release asset trivy_0.69.4_Linux-ARM64.deb from row 11 of the Executable binaries table, extracted mechanically. CIRewind does not observe release downloads in v0.2 evidence; this digest is retained for artifact comparison and manual log review, not for automatic matching."
+    - id: trivy-asset-trivy-0-69-4-linux-arm64-rpm
+      componentId: trivy
+      kind: digest
+      value:
+        subject: "release-asset"
+        algorithm: "sha256"
+        digest: "451ce0c4deb620894d07a2f4a37c8ea3b7a4f9b6d111651b4ac3bcc737b0fac0"
+        path: "trivy_0.69.4_Linux-ARM64.rpm"
+      windowRefs:
+        - trivy-binary-v0-69-4
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "SHA-256 of the v0.69.4 release asset trivy_0.69.4_Linux-ARM64.rpm from row 12 of the Executable binaries table, extracted mechanically. CIRewind does not observe release downloads in v0.2 evidence; this digest is retained for artifact comparison and manual log review, not for automatic matching."
+    - id: trivy-asset-trivy-0-69-4-linux-arm64-tar-gz
+      componentId: trivy
+      kind: digest
+      value:
+        subject: "release-asset"
+        algorithm: "sha256"
+        digest: "e401ae1e6d2442fa9a0c79dc0f3b0457ecfebf74a9c0a920159c49437f663aef"
+        path: "trivy_0.69.4_Linux-ARM64.tar.gz"
+      windowRefs:
+        - trivy-binary-v0-69-4
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "SHA-256 of the v0.69.4 release asset trivy_0.69.4_Linux-ARM64.tar.gz from row 13 of the Executable binaries table, extracted mechanically. CIRewind does not observe release downloads in v0.2 evidence; this digest is retained for artifact comparison and manual log review, not for automatic matching."
+    - id: trivy-asset-trivy-0-69-4-linux-ppc64le-deb
+      componentId: trivy
+      kind: digest
+      value:
+        subject: "release-asset"
+        algorithm: "sha256"
+        digest: "284622577cf6a7c58704de60194205f765fcef432934c200b462ef0290aa5f57"
+        path: "trivy_0.69.4_Linux-PPC64LE.deb"
+      windowRefs:
+        - trivy-binary-v0-69-4
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "SHA-256 of the v0.69.4 release asset trivy_0.69.4_Linux-PPC64LE.deb from row 14 of the Executable binaries table, extracted mechanically. CIRewind does not observe release downloads in v0.2 evidence; this digest is retained for artifact comparison and manual log review, not for automatic matching."
+    - id: trivy-asset-trivy-0-69-4-linux-ppc64le-rpm
+      componentId: trivy
+      kind: digest
+      value:
+        subject: "release-asset"
+        algorithm: "sha256"
+        digest: "5fac89e66d70cadec5c0e30c0b0cf8bf38c145cbf06422d40d076985195e1dd6"
+        path: "trivy_0.69.4_Linux-PPC64LE.rpm"
+      windowRefs:
+        - trivy-binary-v0-69-4
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "SHA-256 of the v0.69.4 release asset trivy_0.69.4_Linux-PPC64LE.rpm from row 15 of the Executable binaries table, extracted mechanically. CIRewind does not observe release downloads in v0.2 evidence; this digest is retained for artifact comparison and manual log review, not for automatic matching."
+    - id: trivy-asset-trivy-0-69-4-linux-ppc64le-tar-gz
+      componentId: trivy
+      kind: digest
+      value:
+        subject: "release-asset"
+        algorithm: "sha256"
+        digest: "52518d441fd6dd25fa5126683a330592d3be80d5ce3fb9e0b1becb806ff4f857"
+        path: "trivy_0.69.4_Linux-PPC64LE.tar.gz"
+      windowRefs:
+        - trivy-binary-v0-69-4
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "SHA-256 of the v0.69.4 release asset trivy_0.69.4_Linux-PPC64LE.tar.gz from row 16 of the Executable binaries table, extracted mechanically. CIRewind does not observe release downloads in v0.2 evidence; this digest is retained for artifact comparison and manual log review, not for automatic matching."
+    - id: trivy-asset-trivy-0-69-4-linux-s390x-deb
+      componentId: trivy
+      kind: digest
+      value:
+        subject: "release-asset"
+        algorithm: "sha256"
+        digest: "62585efcdc7767f3fe0b9ae2897fe03bf331934492fd7a5da46f14fd7bf705c8"
+        path: "trivy_0.69.4_Linux-s390x.deb"
+      windowRefs:
+        - trivy-binary-v0-69-4
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "SHA-256 of the v0.69.4 release asset trivy_0.69.4_Linux-s390x.deb from row 17 of the Executable binaries table, extracted mechanically. CIRewind does not observe release downloads in v0.2 evidence; this digest is retained for artifact comparison and manual log review, not for automatic matching."
+    - id: trivy-asset-trivy-0-69-4-linux-s390x-rpm
+      componentId: trivy
+      kind: digest
+      value:
+        subject: "release-asset"
+        algorithm: "sha256"
+        digest: "107be2081bdc3ddad2889ae037ab2ad6bbd214fb9a43eaa25390d00411d1c7dd"
+        path: "trivy_0.69.4_Linux-s390x.rpm"
+      windowRefs:
+        - trivy-binary-v0-69-4
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "SHA-256 of the v0.69.4 release asset trivy_0.69.4_Linux-s390x.rpm from row 18 of the Executable binaries table, extracted mechanically. CIRewind does not observe release downloads in v0.2 evidence; this digest is retained for artifact comparison and manual log review, not for automatic matching."
+    - id: trivy-asset-trivy-0-69-4-linux-s390x-tar-gz
+      componentId: trivy
+      kind: digest
+      value:
+        subject: "release-asset"
+        algorithm: "sha256"
+        digest: "16c855c398a8b185a907790054b70164358844a893bf9965651b88d6967c7c0a"
+        path: "trivy_0.69.4_Linux-s390x.tar.gz"
+      windowRefs:
+        - trivy-binary-v0-69-4
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "SHA-256 of the v0.69.4 release asset trivy_0.69.4_Linux-s390x.tar.gz from row 19 of the Executable binaries table, extracted mechanically. CIRewind does not observe release downloads in v0.2 evidence; this digest is retained for artifact comparison and manual log review, not for automatic matching."
+    - id: trivy-asset-trivy-0-69-4-macos-64bit-tar-gz
+      componentId: trivy
+      kind: digest
+      value:
+        subject: "release-asset"
+        algorithm: "sha256"
+        digest: "90d61cf37355b89fae9ff84867100e1721c1876007ef1771e465ce5a721141ad"
+        path: "trivy_0.69.4_macOS-64bit.tar.gz"
+      windowRefs:
+        - trivy-binary-v0-69-4
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "SHA-256 of the v0.69.4 release asset trivy_0.69.4_macOS-64bit.tar.gz from row 20 of the Executable binaries table, extracted mechanically. CIRewind does not observe release downloads in v0.2 evidence; this digest is retained for artifact comparison and manual log review, not for automatic matching."
+    - id: trivy-asset-trivy-0-69-4-macos-arm64-tar-gz
+      componentId: trivy
+      kind: digest
+      value:
+        subject: "release-asset"
+        algorithm: "sha256"
+        digest: "1dc871b02cd7a1fd80babb1b8762a2fd9cc2b735d4d3759d012626de3ccc7a5b"
+        path: "trivy_0.69.4_macOS-ARM64.tar.gz"
+      windowRefs:
+        - trivy-binary-v0-69-4
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "SHA-256 of the v0.69.4 release asset trivy_0.69.4_macOS-ARM64.tar.gz from row 21 of the Executable binaries table, extracted mechanically. CIRewind does not observe release downloads in v0.2 evidence; this digest is retained for artifact comparison and manual log review, not for automatic matching."
+    - id: trivy-asset-trivy-0-69-4-ppc64le
+      componentId: trivy
+      kind: digest
+      value:
+        subject: "release-asset"
+        algorithm: "sha256"
+        digest: "ecce7ae5ffc9f57bb70efd3ea136a2923f701334a8cd47d4fbf01a97fd22859c"
+        path: "trivy_0.69.4_ppc64le"
+      windowRefs:
+        - trivy-binary-v0-69-4
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "SHA-256 of the v0.69.4 release asset trivy_0.69.4_ppc64le from row 26 of the Executable binaries table, extracted mechanically. CIRewind does not observe release downloads in v0.2 evidence; this digest is retained for artifact comparison and manual log review, not for automatic matching."
+    - id: trivy-asset-trivy-0-69-4-s390x
+      componentId: trivy
+      kind: digest
+      value:
+        subject: "release-asset"
+        algorithm: "sha256"
+        digest: "d5edd791021b966fb6af0ace09319ace7b97d6642363ef27b3d5056ca654a94c"
+        path: "trivy_0.69.4_s390x"
+      windowRefs:
+        - trivy-binary-v0-69-4
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "SHA-256 of the v0.69.4 release asset trivy_0.69.4_s390x from row 25 of the Executable binaries table, extracted mechanically. CIRewind does not observe release downloads in v0.2 evidence; this digest is retained for artifact comparison and manual log review, not for automatic matching."
+    - id: trivy-asset-trivy-0-69-4-windows-64bit-zip
+      componentId: trivy
+      kind: digest
+      value:
+        subject: "release-asset"
+        algorithm: "sha256"
+        digest: "0376b98064636c30f5fbe60fb3b1225516e23e88dd7e909937f81d9265292e7d"
+        path: "trivy_0.69.4_windows_64bit.zip"
+      windowRefs:
+        - trivy-binary-v0-69-4
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "SHA-256 of the v0.69.4 release asset trivy_0.69.4_windows_64bit.zip from row 22 of the Executable binaries table, extracted mechanically. CIRewind does not observe release downloads in v0.2 evidence; this digest is retained for artifact comparison and manual log review, not for automatic matching."
+    - id: trivy-image-0-69-4
+      componentId: trivy
+      kind: digest
+      value:
+        subject: "oci-manifest"
+        algorithm: "sha256"
+        digest: "27f446230c60bbf0b70e008db798bd4f33b7826f9f76f756606f5417100beef3"
+      windowRefs:
+        - trivy-binary-v0-69-4
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "OCI manifest digest listed for the container image tag 0.69.4 in row 1 of the Container images table, extracted mechanically. CIRewind does not observe image pulls in v0.2 evidence; the digest is retained for artifact comparison and manual log review."
+    - id: trivy-image-0-69-4-linux-amd64
+      componentId: trivy
+      kind: digest
+      value:
+        subject: "oci-manifest"
+        algorithm: "sha256"
+        digest: "12c702212dee1cbec9471e9261501a3335963321fe76e60e5a715b5acd3c40a2"
+      windowRefs:
+        - trivy-binary-v0-69-4
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "OCI manifest digest listed for the container image tag 0.69.4-linux/amd64 in row 2 of the Container images table, extracted mechanically. CIRewind does not observe image pulls in v0.2 evidence; the digest is retained for artifact comparison and manual log review."
+    - id: trivy-image-0-69-4-linux-arm64
+      componentId: trivy
+      kind: digest
+      value:
+        subject: "oci-manifest"
+        algorithm: "sha256"
+        digest: "2d7cee41048988eec27615412e7c6e2e21046f2b5faa888c24e11ca6764058ed"
+      windowRefs:
+        - trivy-binary-v0-69-4
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "OCI manifest digest listed for the container image tag 0.69.4-linux/arm64 in row 3 of the Container images table, extracted mechanically. CIRewind does not observe image pulls in v0.2 evidence; the digest is retained for artifact comparison and manual log review."
+    - id: trivy-image-0-69-4-linux-ppc64le
+      componentId: trivy
+      kind: digest
+      value:
+        subject: "oci-manifest"
+        algorithm: "sha256"
+        digest: "ae3494bd6ae860d7727116681bd09fc7b20dc994ec7a8105738f0a623ea93427"
+      windowRefs:
+        - trivy-binary-v0-69-4
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "OCI manifest digest listed for the container image tag 0.69.4-linux/ppc64le in row 4 of the Container images table, extracted mechanically. CIRewind does not observe image pulls in v0.2 evidence; the digest is retained for artifact comparison and manual log review."
+    - id: trivy-image-0-69-4-linux-s390x
+      componentId: trivy
+      kind: digest
+      value:
+        subject: "oci-manifest"
+        algorithm: "sha256"
+        digest: "43f46547efd488e56dcf862ed4d7cc342730a803f8d5bec5cac443028fefabef"
+      windowRefs:
+        - trivy-binary-v0-69-4
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "OCI manifest digest listed for the container image tag 0.69.4-linux/s390x in row 5 of the Container images table, extracted mechanically (the source cell contained a stray space that was removed). CIRewind does not observe image pulls in v0.2 evidence; the digest is retained for artifact comparison and manual log review."
+    - id: trivy-image-0-69-4-signature
+      componentId: trivy
+      kind: digest
+      value:
+        subject: "oci-manifest"
+        algorithm: "sha256"
+        digest: "cc464a3961e1dbe145c75343b55c2f446e08b821782ec993728c4222b0d85589"
+      windowRefs:
+        - trivy-binary-v0-69-4
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "OCI manifest digest listed for the container image tag 0.69.4-signature in row 6 of the Container images table, extracted mechanically. CIRewind does not observe image pulls in v0.2 evidence; the digest is retained for artifact comparison and manual log review."
+    - id: trivy-image-0-69-5
+      componentId: trivy
+      kind: digest
+      value:
+        subject: "oci-manifest"
+        algorithm: "sha256"
+        digest: "5aaa1d7cfa9ca4649d6ffad165435c519dc836fa6e21b729a2174ad10b057d2b"
+      windowRefs:
+        - dockerhub-images
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "OCI manifest digest listed for the container image tag 0.69.5 in row 7 of the Container images table, extracted mechanically. CIRewind does not observe image pulls in v0.2 evidence; the digest is retained for artifact comparison and manual log review."
+    - id: trivy-image-0-69-5-linux-arm64
+      componentId: trivy
+      kind: digest
+      value:
+        subject: "oci-manifest"
+        algorithm: "sha256"
+        digest: "95ff680103570179feb0c6667a9b9b2d98c53fa5a9a451265036810390bbe70a"
+      windowRefs:
+        - dockerhub-images
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "OCI manifest digest listed for the container image tag 0.69.5-linux/arm64 in row 8 of the Container images table, extracted mechanically (the source cell carried a trailing line-break tag that was dropped). CIRewind does not observe image pulls in v0.2 evidence; the digest is retained for artifact comparison and manual log review."
+    - id: trivy-image-0-69-5-linux-ppc64le
+      componentId: trivy
+      kind: digest
+      value:
+        subject: "oci-manifest"
+        algorithm: "sha256"
+        digest: "4f7a06bb51714713ab308d2f8125f3b09ee1c3ffbba1a5ffd0cc80da95fbb6cc"
+      windowRefs:
+        - dockerhub-images
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "OCI manifest digest listed for the container image tag 0.69.5-linux/ppc64le in row 9 of the Container images table, extracted mechanically. CIRewind does not observe image pulls in v0.2 evidence; the digest is retained for artifact comparison and manual log review."
+    - id: trivy-image-0-69-5-linux-s390x
+      componentId: trivy
+      kind: digest
+      value:
+        subject: "oci-manifest"
+        algorithm: "sha256"
+        digest: "edef8e5816eced552a909b878ff262c0c47776d3297bcc23796ad4cce1e85414"
+      windowRefs:
+        - dockerhub-images
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "OCI manifest digest listed for the container image tag 0.69.5-linux/s390x in row 10 of the Container images table, extracted mechanically. CIRewind does not observe image pulls in v0.2 evidence; the digest is retained for artifact comparison and manual log review."
+    - id: trivy-image-0-69-6
+      componentId: trivy
+      kind: digest
+      value:
+        subject: "oci-manifest"
+        algorithm: "sha256"
+        digest: "425cd3e1a2846ac73944e891250377d2b03653e6f028833e30fc00c1abbc6d33"
+      windowRefs:
+        - dockerhub-images
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "OCI manifest digest listed for the container image tag 0.69.6 in row 11 of the Container images table, extracted mechanically. CIRewind does not observe image pulls in v0.2 evidence; the digest is retained for artifact comparison and manual log review."
+    - id: trivy-image-0-69-6-linux-amd64
+      componentId: trivy
+      kind: digest
+      value:
+        subject: "oci-manifest"
+        algorithm: "sha256"
+        digest: "dd8beb3b40df080b3fd7f9a0f5a1b02f3692f65c68980f46da8328ce8bb788ef"
+      windowRefs:
+        - dockerhub-images
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "OCI manifest digest listed for the container image tag 0.69.6-linux/amd64 in row 12 of the Container images table, extracted mechanically. CIRewind does not observe image pulls in v0.2 evidence; the digest is retained for artifact comparison and manual log review."
+    - id: trivy-image-0-69-6-linux-arm64
+      componentId: trivy
+      kind: digest
+      value:
+        subject: "oci-manifest"
+        algorithm: "sha256"
+        digest: "4b22cedea58780ff76735c3e08b9ee8cb5d06c908ffa868152f11d45349eb696"
+      windowRefs:
+        - dockerhub-images
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "OCI manifest digest listed for the container image tag 0.69.6-linux/arm64 in row 13 of the Container images table, extracted mechanically. CIRewind does not observe image pulls in v0.2 evidence; the digest is retained for artifact comparison and manual log review."
+    - id: trivy-image-0-69-6-linux-ppc64le
+      componentId: trivy
+      kind: digest
+      value:
+        subject: "oci-manifest"
+        algorithm: "sha256"
+        digest: "9efd59534d2b6b81b8b7a0eeb3ad0e74015f358650e24b9dab00c900d3118593"
+      windowRefs:
+        - dockerhub-images
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "OCI manifest digest listed for the container image tag 0.69.6-linux/ppc64le in row 14 of the Container images table, extracted mechanically. CIRewind does not observe image pulls in v0.2 evidence; the digest is retained for artifact comparison and manual log review."
+    - id: trivy-image-0-69-6-linux-s390x
+      componentId: trivy
+      kind: digest
+      value:
+        subject: "oci-manifest"
+        algorithm: "sha256"
+        digest: "5e5fb53cf4ce5555171ff5206302ba2f4f66f5381bbf673c354c87a925473f07"
+      windowRefs:
+        - dockerhub-images
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-database
+        - ghsa-maintainer
+      notes: "OCI manifest digest listed for the container image tag 0.69.6-linux/s390x in row 15 of the Container images table, extracted mechanically. CIRewind does not observe image pulls in v0.2 evidence; the digest is retained for artifact comparison and manual log review."
+  knownGood: []
+  remediation:
+    guidance:
+      - "Treat each component separately: trivy-action tags, setup-trivy tags, the v0.69.4 release assets, and the Docker Hub images have different windows, and a run is assessed against the window of the component it actually resolved."
+      - "Resolve every historical run attempt that declared aquasecurity/trivy-action or aquasecurity/setup-trivy by tag during its component window to the exact runtime object before drawing a conclusion; the malicious objects were removed and never published, so identity comes from the run log, never from present-day tags, and v0.2.6 in particular has a malicious identity inside its window and a safe identity after it."
+      - "A trivy-action reference pinned to a full commit from before 2025-04-09 resolved setup-trivy by tag inside the action, so such a run is transitively exposed during the setup-trivy window even though the pinned wrapper object itself is not malicious."
+      - "An explicit version latest input to trivy-action, or any direct download, fetched the compromised v0.69.4 binary during the binary window; CIRewind archives no evidence of that download, so a run with this input inside the binary window must be reviewed by hand against the retained log and the release-asset digests."
+      - "The publisher marks most window endpoints approximate without an error margin; review runs shortly before or after an encoded endpoint by hand rather than treating the encoded minute as an observation."
+      - "If exfiltration is suspected, look for public repositories whose names carry the tpcp-docs- prefix in the affected GitHub account; this fallback indicator cannot be encoded as an exact repository-name indicator."
+      - "Search retained raw logs by hand for the command-and-control host scan.aquasecurtiy.org and the address 45.148.10.212, and for the version strings 0.69.4, 0.69.5, and 0.69.6; CIRewind cannot evaluate literal indicators from a compact archive that discarded the raw log, so these literals are stated here rather than encoded, and a literal match never by itself proves which component executed."
+      - "Pin aquasecurity/trivy-action and aquasecurity/setup-trivy to full commit objects that have been independently reviewed; the maintainer names v0.35.0 and the re-created v0.2.6 as safe, but no object is encoded as known good until reviewers verify it."
+    credentialRotationTriggers:
+      - id: rotate-after-execution
+        whenStates:
+          - CONFIRMED_EXECUTED
+        guidance: "Rotate every secret the affected job could read; the malicious code dumped runner process memory and swept the filesystem for credentials before sending them to attacker infrastructure, which does not by itself prove which values were recovered."
+        confidence: L4_CERTAIN
+        sourceRefs:
+          - ghsa-maintainer
+      - id: rotate-after-possible-exposure
+        whenStates:
+          - POTENTIAL_TRANSITIVE
+          - RUN_IN_WINDOW_MUTABLE_REF
+        guidance: "The maintainer states that any possibility of a compromised version having run means all secrets accessible to the pipeline must be treated as exposed; rotate them unless the exact runtime object is shown to be safe."
+        confidence: L3_STRONG
+        sourceRefs:
+          - ghsa-maintainer
