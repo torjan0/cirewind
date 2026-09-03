@@ -239,6 +239,24 @@ local automated evidence only; no external review or reproduction is claimed.
 
 - [ ] **ADO-030 — Prepare the README redesign above the fold.** Build the reviewable content/layout using trusted typed slots for the eventual versioned sample and install URLs: temporal value proposition, generated SVG, synthetic counts/partial label, two-minute command, experimental warning in the first screen, and the retained high-assurance lane. Do not advertise unresolved slots on the default branch. **Done when:** generated values/counts and local links pass, no visual/result overclaims, the final-slot inventory is explicit, high-assurance installation remains available, and an actual human cold reader can explain downloaded versus executed. **Automation cannot satisfy the cold-reader criterion.** *(Tests: template/link/count/wording audit and responsive render; dependencies: `SITE-003`.)*
 
+README candidate checkpoint (2026-09-03): `internal/samplesite` renders a
+staged `site/generated/README.candidate.md` from the verified demo case with
+trusted typed slots (version, predictable Pages and release URLs, install
+commands, oracle-checked counts), a README preview viewport of `graph.svg`
+that changes only the root viewport and appends one sentence to the root
+accessible description, a byte-identical graph copy, and an explicit
+`README.slots.json` inventory that marks each slot resolved now, at release,
+or at deployment. Tests cover determinism, first-screen order (headline,
+visual, synthetic partial-coverage counts, sample links, two-minute command,
+experimental warning, then the retained high-assurance lane), invariants,
+prohibited language, repository-relative link existence, the fixed external
+destinations, and drift detection; `make readme-candidate-check` runs in the
+site validation workflow. The candidate is never `README.md`, its banner says
+the lower sections are carried from the v0.1.1 README pending `ADO-099`, and
+the `--final` rendering is reserved for `ADO-032`. Open: the actual human
+cold-reader criterion, a GitHub-rendered responsive review of the candidate,
+and the dependency on `SITE-003`'s human review.
+
 - [ ] **ADO-032 — Materialize and freeze the exact release README bytes.** After public URL shapes, lab stable index, Pages workflow, and formula contract are fixed, render every trusted slot for v0.2.0 and place the exact final README on the RC release branch while the default branch remains at its leased prior tip. **Done when:** no placeholder/unresolved slot remains; every predictable versioned URL, install command, generated visual/count, external-lab allowlisted link, and high-assurance instruction passes local audit; the byte hash is recorded; and a later activation requires no source edit. *(Tests: unresolved-slot rejection, exact URL/command/hash golden, link allowlist; dependencies: `ADO-030`, `DIST-003`, `SITE-005`, `LAB-PUBLIC-007`.)*
 
 - [ ] **ADO-031 — Measure the two north-star paths before activation.** Record zero-install navigation from the exact immutable tagged README preview to public Pages and measure the documented installation command plus demo on the launch-blocking reference systems. `T_demo` begins when the installed binary is invoked; `T_total` begins when the documented installation command is invoked. Both stop only after every required case output exists and case-manifest verification succeeds. Use Ubuntu 24.04 amd64 with 2 vCPU/4 GiB RAM and macOS 15 arm64 with Homebrew already installed; run five clean trials per lane with a new output directory and no CIRewind cache. Browser opening is a separate smoke. Reserve a post-activation landing-page smoke for `DIST-009`; Windows 11 amd64 results are informational. **Done when:** each measurement records OS/arch/hardware, installation lane, cache/network state, version, transcript, every trial, and manifest result; each launch-blocking lane has `T_demo` p50 at most 15 seconds and no run over 30 seconds, plus `T_total` p50 at most 120 seconds and no run over 180 seconds; failure blocks activation/launch and requires a new reviewed RC if frozen public wording must change. *(Tests: five-trial repeatable timing protocol with clean outputs/no CIRewind cache and separate browser smoke; dependencies: `ADO-015`, `SITE-008`, `DIST-005`, `DIST-010`.)*

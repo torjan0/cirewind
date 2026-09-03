@@ -11,8 +11,12 @@ All notable changes to CIRewind are documented here. The format follows
 - Deterministic synthetic sample-site generator (`tools/samplesite`,
   `internal/samplesite`), the two-generation build script, the sandboxed
   Chromium site audit, and the `sample-site`, `sample-site-check`, and
-  `sample-site-browser-audit` Make targets. The generator publishes nothing;
-  deployment workflows and the human accessibility review remain open.
+  `sample-site-browser-audit` Make targets; the staged README candidate
+  generator with typed slots, preview viewport, and slot inventory
+  (`readme-candidate`, `readme-candidate-check`); and the read-only sample-site
+  validation workflow. The generator publishes nothing; the deployment
+  workflow, the human accessibility review, and the README cold-reader review
+  remain open.
 
 ### Documentation
 

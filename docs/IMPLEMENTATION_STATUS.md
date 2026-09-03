@@ -182,9 +182,15 @@ sandboxed, DNS-denied Chromium behind a loopback server under a project Pages
 base path: applied hashed policy, request allowlist, relative and fixed external
 links, first-viewport content, heading order, keyboard focus, overflow from
 320 px to 1440 px and at 200% zoom, forced colors, blocked images, storage and
-service-worker absence, and the report and SVG pages. No site has been
-deployed, no Pages workflow exists, the live link redirect audit and the human
-accessibility review remain open, and none of this is a v0.2 release claim.
+service-worker absence, and the report and SVG pages. The same package renders
+the staged README candidate under `site/generated` with typed slots, a preview
+viewport of the graph, and an explicit slot inventory; it is never `README.md`
+before activation. `.github/workflows/site-validate.yml` builds, verifies,
+tamper-tests, and drift-checks the site and candidate on pull requests with
+`contents: read` only and no deployment step. No site has been deployed, no
+deployment workflow exists, the live link redirect audit, the human
+accessibility review, and the README cold-reader review remain open, and none
+of this is a v0.2 release claim.
 
 ## CLI status
 

@@ -86,6 +86,20 @@ that the visual has a text equivalent when images are blocked, and that no
 storage or service worker is used. The manual keyboard, screen-reader, zoom,
 and contrast review recorded by a person is still required by `SITE-003`.
 
+## README candidate
+
+`make readme-candidate` regenerates `site/generated/README.candidate.md`,
+`readme-preview.svg`, `graph.svg`, and `README.slots.json` from a fresh demo
+case at the current source revision, and `make readme-candidate-check` fails on
+any byte of drift. The candidate is the staged v0.2 README redesign: its first
+screen carries the headline, the preview viewport of the generated graph, the
+synthetic partial-coverage counts, the sample links, the two-minute command,
+and the experimental warning ahead of the retained high-assurance lane. The
+slot inventory lists every typed slot and whether it is resolved now, at
+release, or at deployment. The candidate is never copied to `README.md` before
+the authorized release and activation; `samplesite readme --final` renders the
+banner-free `README.md` for the release-candidate materialization step only.
+
 ## Prior version trees
 
 Later versions keep earlier versioned trees or tombstones beside the current
