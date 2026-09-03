@@ -145,8 +145,9 @@ version manifest and contains only a fixed current-version landing/link.
 
 The exact top-to-bottom hierarchy is:
 
-1. **Headline:** “Reconstruct which GitHub Action commit actually ran—even after
-   a mutable tag was restored.” Do not use “prove compromise.”
+1. **Headline:** “Reconstruct which GitHub Action commit each historical run
+   executed, from retained evidence and with every gap visible, even after a
+   mutable tag was restored.” Do not use “prove compromise.”
 2. **Temporal evidence path:** the generated `graph.svg` displayed as a
    same-origin `<img>` with useful `alt`; adjacent link opens the standalone SVG.
 3. **Result counts:** all key counts from the synthetic oracle, including a

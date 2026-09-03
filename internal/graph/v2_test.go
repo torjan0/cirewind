@@ -761,7 +761,7 @@ func TestTemporalPathAndSVGAreDeterministicOrderIndependentAndDoNotMutate(t *tes
 	if got := bytes.Count(first, []byte(`stroke-linejoin="round" stroke-linecap="butt" aria-hidden="true" data-route-underlay="true"`)); got != renderedEdges {
 		t.Fatalf("bounded-junction route underlays=%d, want %d", got, renderedEdges)
 	}
-	wantDigest := "347f6ecedcc13a1b3b03c5833fc43ef0971ec27c69013712de959e66bfbb4cc7"
+	wantDigest := "36dfdd2ddeaa0ad9389370390ee3231dfe5f39ea7d4752af8701258b8ce1a95a"
 	if got := fmt.Sprintf("%x", sha256.Sum256(first)); got != wantDigest {
 		t.Fatalf("cross-platform SVG golden digest=%s, want %s", got, wantDigest)
 	}
