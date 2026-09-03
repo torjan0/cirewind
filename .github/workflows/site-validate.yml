@@ -41,15 +41,15 @@ jobs:
         run: make sample-site-check
       - name: Reject README candidate drift
         run: make readme-candidate-check
-      - name: Allow the Chromium namespace sandbox on the ephemeral runner
-        # Ubuntu 24.04 restricts unprivileged user namespaces by default and the
-        # runner's Chromium ships without the setuid sandbox helper, so its
-        # zygote sandbox cannot start. Re-enabling unprivileged user namespaces
-        # on this throwaway runner keeps Chromium's sandbox on; the audit never
-        # passes --no-sandbox or --disable-setuid-sandbox.
-        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
       - name: Audit the sample site in sandboxed, network-denied Chromium
+        # The runner image ships Google Chrome with its setuid sandbox helper
+        # and a matching ChromeDriver, while its Chromium snapshot lacks the
+        # helper and never exits in headless mode; prefer Chrome when present.
         run: |
+          if command -v google-chrome >/dev/null 2>&1; then
+            CIREWIND_CHROME="$(command -v google-chrome)"
+            export CIREWIND_CHROME
+          fi
           if [ -n "${CHROMEWEBDRIVER:-}" ] && [ -x "$CHROMEWEBDRIVER/chromedriver" ]; then
             export CIREWIND_CHROMEDRIVER="$CHROMEWEBDRIVER/chromedriver"
           fi

@@ -187,7 +187,8 @@ the staged README candidate under `site/generated` with typed slots, a preview
 viewport of the graph, and an explicit slot inventory; it is never `README.md`
 before activation. `.github/workflows/site-validate.yml` builds, verifies,
 tamper-tests, and drift-checks the site and candidate on pull requests with
-`contents: read` only and no deployment step. `.github/workflows/site-deploy.yml`
+`contents: read` only and no deployment step; its hosted run passed on the
+pull-request head, including the Chromium audit. `.github/workflows/site-deploy.yml`
 is the protected, dispatch-only deployment at an exact annotated release tag; it
 has never been dispatched. No site has been deployed, the live link redirect
 audit, the human accessibility review, and the README cold-reader review remain
