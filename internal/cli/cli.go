@@ -70,7 +70,8 @@ func runWithDependencies(ctx context.Context, args []string, stdout, stderr io.W
 		fmt.Fprint(stdout, usage)
 		return 0
 	case "version", "--version":
-		fmt.Fprintf(stdout, "cirewind %s (commit %s, built %s)\n", buildinfo.Version, buildinfo.Commit, buildinfo.Date)
+		info := buildinfo.Current()
+		fmt.Fprintf(stdout, "cirewind %s (commit %s, built %s)\n", info.Version, info.Commit, info.Date)
 		return 0
 	case "investigate", "archive", "replay", "demo", "pack", "verify":
 		commandErrors := stderr

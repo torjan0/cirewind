@@ -11,7 +11,7 @@ RELEASE_WORK_ROOT ?=
 SPDX_VALIDATOR ?=
 SPDX_TOOLS_VERSION ?=
 
-.PHONY: build test vet race vuln licenses demo browser-audit safety-audit pack-review-check pack-review-clean release release-test release-verify release-spdx release-workflow-audit preflight clean
+.PHONY: build test vet race vuln licenses demo browser-audit safety-audit go-install-check go-install-qualify pack-review-check pack-review-clean release release-test release-verify release-spdx release-workflow-audit preflight clean
 
 build:
 	mkdir -p "$(dir $(BINARY))"
@@ -40,6 +40,16 @@ browser-audit:
 
 safety-audit:
 	sh ./scripts/offline-safety-audit.sh
+
+go-install-check:
+	sh -n ./scripts/go-install-proxy.sh
+	sh -n ./scripts/test-go-install-version.sh
+	GO="$(GO)" GOTOOLCHAIN="$(GO_TOOLCHAIN)" sh ./scripts/test-go-install-version.sh
+
+go-install-qualify:
+	sh -n ./scripts/go-install-proxy.sh
+	sh -n ./scripts/qualify-go-install.sh
+	GO="$(GO)" GOTOOLCHAIN="$(GO_TOOLCHAIN)" sh ./scripts/qualify-go-install.sh
 
 pack-review-check:
 	bash -n scripts/pack-review-git-guard.sh

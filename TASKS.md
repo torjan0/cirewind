@@ -397,9 +397,31 @@ claimed.
 
 ### Distribution and coordinated release
 
-- [ ] **DIST-001 — Make version reporting accurate for versioned `go install`.** Use Go module/VCS build information only as a safe fallback when linker-injected release metadata is absent; release stamps remain authoritative. **Done when:** `go install ...@v0.2.0` reports the module version, reports VCS revision only when embedded (otherwise `unknown`), local dirty/dev builds remain honest, release artifacts are unchanged in authority, and no build path leaks host data. *(Tests: injected/module/dev/dirty/no-VCS build-info matrix; dependencies: `ADO-001`.)*
+Local checkpoint (2026-09-03): `cirewind version` resolves linker-injected
+release metadata first and otherwise reports the Go module version, the
+toolchain-embedded VCS revision, and a modified-worktree marker, keeping `dev`
+and `unknown` for anything not recorded. The injected/module/pseudo-version/
+dev/dirty/no-build-info/hostile matrix is unit-tested, and
+`make go-install-check` installs the current tree as a synthetic module version
+through a file-based Go module proxy from outside the checkout and requires the
+installed binary to report that version, an unknown commit, and a verified
+offline demo. The literal public `@v0.2.0` recheck belongs to the
+post-publication distribution gates.
 
-- [ ] **DIST-002 — Prequalify the versioned `go install` contract.** Serve the exact candidate as `v0.2.0` through a disposable local file-based Go module proxy, then run version, demo, manifest verification, and uninstall/path guidance in clean environments. **Done when:** no source clone/current `go.mod` is required by the installing environment, version output is honest, the installed binary creates the exact demo offline, supported OS/arch/Go prerequisites are documented, and no public-tag/install claim is made. *(Tests: local-proxy clean-container/host cold and warm install; dependencies: `DIST-001`, `ADO-015`.)*
+- [x] **DIST-001 — Make version reporting accurate for versioned `go install`.** Use Go module/VCS build information only as a safe fallback when linker-injected release metadata is absent; release stamps remain authoritative. **Done when:** `go install ...@v0.2.0` reports the module version, reports VCS revision only when embedded (otherwise `unknown`), local dirty/dev builds remain honest, release artifacts are unchanged in authority, and no build path leaks host data. *(Tests: injected/module/dev/dirty/no-VCS build-info matrix; dependencies: `ADO-001`.)*
+
+Local checkpoint (2026-09-03): the versioned `go install` lane was
+prequalified offline through a file-based module proxy on the host (cold and
+warm) and inside a clean minimal container addressed by immutable image ID
+with no network, a read-only root, no capabilities, and an unprivileged user
+(cold and warm). Each install ran from outside any checkout, reported the
+synthetic module version with an unknown commit, embedded no VCS data, and
+produced a verified offline demo. Prerequisites, supported targets, and
+uninstall guidance are in `docs/INSTALLATION.md`; the record is
+`docs/validation/2026-09-03-go-install-lane-qualification.md`. No public tag or
+public-proxy claim is made; reference-host timing remains `ADO-031`.
+
+- [x] **DIST-002 — Prequalify the versioned `go install` contract.** Serve the exact candidate as `v0.2.0` through a disposable local file-based Go module proxy, then run version, demo, manifest verification, and uninstall/path guidance in clean environments. **Done when:** no source clone/current `go.mod` is required by the installing environment, version output is honest, the installed binary creates the exact demo offline, supported OS/arch/Go prerequisites are documented, and no public-tag/install claim is made. *(Tests: local-proxy clean-container/host cold and warm install; dependencies: `DIST-001`, `ADO-015`.)*
 
 - [ ] **DIST-003 — Prepare the least-surprise Homebrew formula generator/template.** Define final immutable upstream `v0.2.0` URL shapes, no bottles, supported macOS/Linux architectures, required per-asset SHA-256 inputs, license, and a formula test running version/demo/verify in a temporary path with no postinstall network. Use only synthetic candidate-archive fixtures before RC freeze; do not call their hashes final. **Done when:** template/generator plus fixture formula pass local `brew audit/style/test`, missing/duplicate/wrong-platform subjects fail, and Homebrew is labeled an evaluation lane rather than attestation equivalent. *(Tests: local template/formula, URL/subject mapping, hostile metadata, deterministic rendering; dependencies: `DIST-006`.)*
 
