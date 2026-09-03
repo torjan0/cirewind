@@ -517,6 +517,28 @@ steps.
 
 - [ ] **DIST-007 — Freeze and deeply qualify the exact v0.2 release candidate locally.** After required reviewed packs and the authorized public lab/index land, freeze one commit containing the exact staged README/site links, record the expected old default-branch tip and begin a merge freeze, build its release subjects twice with separately fixed intended-final metadata (`0.2.0`, exact commit, deterministic build time), render/test the final unmerged Homebrew formula from those exact subject hashes, and run full tests, vet, race, fuzz seeds, vulnerability/license scans, offline safety, browser/SVG/site audits, secret/private-data/history scans, clean-clone reproduction, demo timing, pack records, local-proxy/formula installs, and release comparison twice. Prepare—but do not remotely publish—a bounded RC acquisition record containing that metadata, Go/toolchain identity, reproducible build command, release-subject and binary SHA-256 values, plus the allowed immutable artifact fields. **Done when:** release subjects, final formula bytes, README bytes, acquisition-record bytes, RC commit, intended-final metadata, and expected old default tip are frozen locally; required workflows already exist in the pre-activation default-branch base; independent local technical passes are green with no forensic/security waiver; and all evidence binds one immutable commit/binary digest. *(Tests: exact-subject double build, explicit-version-not-ref-name vector, local clean-clone byte match, default-tip ancestry/lease and workflow-presence checks, final-formula hash/install, and all pre-external repository preflight/release gates; dependencies: `ADO-015`, `ADO-025`, `ADO-032`, `DIST-002`, `DIST-003`, `DIST-006`, `PACK-070`, `SITE-005`, `LAB-PUBLIC-007`.)*
 
+DIST-007 preparation checkpoint (2026-09-03): the local freeze is automated
+but the task stays open because its dependencies (`ADO-025`, `PACK-070` behind
+the human pack gates, `LAB-PUBLIC-007`) are not met. `make rc-freeze` takes
+the intended final version, the frozen commit, and the expected old
+default-branch tip as explicit inputs, refuses a dirty tree, a commit other
+than `HEAD`, a `v`-prefixed or pre-release version, and an existing output;
+builds the six release subjects twice from an immutable snapshot and once more
+from a fresh local clone, comparing every byte; verifies the candidate; renders
+the final upstream-shaped formula from the exact subject hashes; runs the local
+gates through the existing Make targets into a ledger that records skipped
+prerequisites and any selected subset, with the history scan run by gitleaks
+when installed and otherwise by a bounded built-in pattern scan; and writes a bounded acquisition record
+(`schema/rc-acquisition-record-v1alpha1.json`, canonical JSON with a SHA-256
+sidecar) binding version, commit, default tip, source date, toolchain, build
+command, every subject and binary digest, formula and README digests, and the
+ledger, with `immutableArtifact` null and a fixed not-published statement.
+`releasetool verify-acquisition-record` recomputes the subjects against a
+record. `make rc-freeze-check` proves the rejections, the byte identity, and
+the record round trip on a disposable synthetic commit. Closing `DIST-007`
+still requires reviewed packs, the authorized public lab, a fully equipped host
+where no gate is skipped, and the human review of the frozen bytes.
+
 - [ ] **DIST-007A — Authorize, expose, and hosted-qualify the immutable RC for outside reproduction.** With Maksim's explicit authorization, create and push the next unused protected annotated tag `v0.2.0-rc.N` at the exact `DIST-007` commit, run the dedicated protected hosted qualification at that tag, and retain the exact qualified binary as an immutable identified CI artifact; publish the acquisition record without creating a GitHub Release or the final `v0.2.0` tag. Record the annotated tag-object ID and peeled commit ID. The tag authenticates source only: the workflow supplies the separately frozen intended-final metadata from `DIST-007`, pins `version=0.2.0` in reviewed workflow logic rather than accepting a caller version, validates commit/build time against the acquisition record, and rejects output stamped `0.2.0-rc.N`. Never move, delete, or reuse an RC tag; any changed candidate receives the next `N`, and branches/lightweight tags are rejected. **Done when:** hosted and local release subjects byte-match; the public commit/tag object/peeled commit, artifact run/attempt/ID and hashes, intended-final metadata, toolchain, build command, and acquisition record match `DIST-007`; anonymous source acquisition or authorized artifact acquisition is reproducible; tag protection is effective; and the default branch still equals the leased old tip. **This task cannot be completed by local implementation alone.** *(Tests: RC-source-tag/final-version separation, arbitrary-version-input rejection, hosted/local exact-subject comparison; dependencies: `ADO-026`; maintainer push/tag-protection/artifact authorization gate.)*
 
 - [ ] **DIST-008 — Authorize, tag, draft, reverify, and stage-publish v0.2.0.** After final semantic/external-record review, Maksim records GO, creates/protects the annotated tag at the unchanged RC commit, and uses protected workflows to publish previously verified exact artifacts without rebuild. **Done when:** `V02-G01` through `V02-G09` passed, the publication portion of `V02-G10` succeeds, exact public assets/attestations verify anonymously, and release notes distinguish implemented/experimental/future work. **This task cannot be completed without explicit publication authorization.** *(Dependencies: `ADO-099`, `DIST-007A`; maintainer external-state gate.)*
