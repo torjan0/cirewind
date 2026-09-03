@@ -2,6 +2,7 @@ package packreview
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -83,12 +84,25 @@ func TestAssembleCandidateRegeneratesSyntheticUnitDeterministically(t *testing.T
 	if unit.CandidateManifestSHA256 == "" {
 		t.Fatal("validated unit lacks a manifest hash")
 	}
-	expected, err := os.ReadFile(filepath.Join(repo.candidate, "expected-findings.json"))
+	expectedRaw, err := os.ReadFile(filepath.Join(repo.candidate, "expected-findings.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(expected), `"CONFIRMED_DOWNLOADED"`) || strings.Contains(string(expected), `"scenarioId":"`+syntheticDownloadScenario+`","state":"CONFIRMED_EXECUTED"`) {
-		t.Fatalf("expected findings are not the replayed oracle: %s", expected)
+	var oracle ExpectedFindings
+	if err := json.Unmarshal(expectedRaw, &oracle); err != nil {
+		t.Fatal(err)
+	}
+	downloaded, executedInDownloadScenario := false, false
+	for _, row := range oracle.Findings {
+		if row.State == model.ConfirmedDownloaded {
+			downloaded = true
+		}
+		if row.ScenarioID == syntheticDownloadScenario && row.State == model.ConfirmedExecuted {
+			executedInDownloadScenario = true
+		}
+	}
+	if !downloaded || executedInDownloadScenario || len(oracle.Forbidden) != 1 || oracle.Forbidden[0].ScenarioID != syntheticDownloadScenario {
+		t.Fatalf("expected findings are not the replayed oracle: %s", expectedRaw)
 	}
 
 	poisoned := syntheticAuthoredScenarios(t)
