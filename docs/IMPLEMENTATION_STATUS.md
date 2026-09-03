@@ -200,7 +200,11 @@ sample site twice from that demo output, and archives carry a registry-bound
 reviewed-pack contract (distribution format version 2) whose inclusion,
 exclusion, and tamper rules are exercised with synthetic registry fixtures. The
 repository registry is empty, so no real pack ships; `DIST-006` remains open on
-its reference-host, human-review, and review-safety CI dependencies.
+its reference-host, human-review, and review-safety CI dependencies. The
+Homebrew evaluation-lane formula generator renders only from verified release
+subjects and passed style, strict audit, install, and test against synthetic
+subjects with a portable Linux Homebrew; the final formula is rendered from the
+frozen release-candidate subjects and published only after the release.
 
 ## CLI status
 
