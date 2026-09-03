@@ -411,7 +411,21 @@ report and standalone SVG pages. The actual human keyboard, screen-reader,
 zoom, and contrast review remains outstanding. Nothing is deployed; `SITE-004`
 and `SITE-005` have not started.
 
-- [ ] **SITE-004 — Add read-only Pages validation CI.** On PR/main, build and audit the site without deploying, using top-level no permissions and job-level `contents: read`. **Done when:** no `pull_request_target` or write permission exists, all introduced Actions are source-verified full-SHA pins in the pin registry, fork tests cannot deploy, and checks are eligible/recommended for required-check configuration; actual repository setting changes remain `SITE-006`. *(Tests: workflow/pin/permissions trigger audit; dependencies: `SITE-003`.)*
+- [x] **SITE-004 — Add read-only Pages validation CI.** On PR/main, build and audit the site without deploying, using top-level no permissions and job-level `contents: read`. **Done when:** no `pull_request_target` or write permission exists, all introduced Actions are source-verified full-SHA pins in the pin registry, fork tests cannot deploy, and checks are eligible/recommended for required-check configuration; actual repository setting changes remain `SITE-006`. *(Tests: workflow/pin/permissions trigger audit; dependencies: `SITE-003`.)*
+
+Validation workflow checkpoint (2026-09-03): `.github/workflows/site-validate.yml`
+runs on pull requests, pushes to `main`, and manual dispatch with top-level
+`permissions: {}`, one `contents: read` job, a credential-free checkout, and
+only the ledger-pinned checkout and setup-go actions; it builds the site twice,
+verifies and tamper-tests it, drift-checks the README candidate, and runs the
+sandboxed Chromium audit. It never uses `pull_request_target` and has no
+deployment step, so a fork cannot deploy. Hosted run
+[33714520397](https://github.com/torjan0/cirewind/actions/runs/33714520397)
+passed on the pull-request head, including the browser audit with the runner's
+Google Chrome 151 and matching ChromeDriver.
+`TestSiteValidationWorkflowIsReadOnlyAndNeverDeploys` and the pin ledger test
+pin the contract, and the job name "Build, verify, and audit the sample site"
+is stable for required-check configuration, which remains `SITE-006`.
 
 - [ ] **SITE-005 — Add protected exact-tag Pages deployment workflow.** Land the dispatch/deployment workflow in the pre-activation default-branch base, then have it revalidate annotated tag/commit, upload the exact audited site once under a unique trusted artifact name, record the returned `artifact_id` plus CIRewind's locally computed site-tree/site-manifest hash, and make deployment depend on that producer while passing the documented artifact name to `deploy-pages`; use only justified Pages/OIDC permissions. **Done when:** default-branch presence and tagged-ref dispatch are tested, workflow text does not call the local site hash an uploaded-artifact digest or claim deployment is ID-addressed, wrong ref/commit/name/local hash/environment fails closed, any optional API download/digest check is separately permissioned/live-qualified, PR branches cannot invoke production deployment, and no deployment rebuild changes bytes. *(Tests: mocked workflow contract, default-branch/trigger fixtures, and local policy preflight; dependencies: `SITE-004`, `DIST-006`.)*
 
