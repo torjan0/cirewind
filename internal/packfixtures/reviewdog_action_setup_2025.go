@@ -34,6 +34,7 @@ type Scenario struct {
 type Generator func(ctx context.Context) ([]Scenario, error)
 
 var generators = map[string]Generator{
+	"CIR-AQUASECURITY-TRIVY-2026/1.0.0":       trivyEcosystem2026,
 	"CIR-REVIEWDOG-ACTION-SETUP-2025/1.0.0":   reviewdogActionSetup2025,
 	"CIR-TJ-ACTIONS-CHANGED-FILES-2025/1.0.0": tjActionsChangedFiles2025,
 }
