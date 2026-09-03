@@ -1,0 +1,69 @@
+{
+  "schemaVersion": "cirewind.readme-slots/v1alpha1",
+  "siteVersion": "0.2.0",
+  "candidate": true,
+  "slots": [
+    {
+      "name": "version",
+      "value": "0.2.0",
+      "resolution": "resolved-now",
+      "note": "canonical SemVer without a v prefix; also fixes every versioned URL and install command below"
+    },
+    {
+      "name": "preview-image",
+      "value": "site/generated/readme-preview.svg",
+      "resolution": "resolved-now",
+      "note": "viewport crop of the generated graph.svg from the verified demo case, regenerated and drift-checked"
+    },
+    {
+      "name": "graph-copy",
+      "value": "site/generated/graph.svg",
+      "resolution": "resolved-now",
+      "note": "byte-identical copy of the demo graph.svg"
+    },
+    {
+      "name": "counts",
+      "value": "from findings.json of the verified demo case, compared with the embedded oracle",
+      "resolution": "resolved-now"
+    },
+    {
+      "name": "sample-graph-url",
+      "value": "https://torjan0.github.io/cirewind/v0.2.0/graph.svg",
+      "resolution": "resolves-at-deployment",
+      "note": "predictable Pages location; exists only after the authorized deployment"
+    },
+    {
+      "name": "sample-report-url",
+      "value": "https://torjan0.github.io/cirewind/v0.2.0/sample-case/report.html",
+      "resolution": "resolves-at-deployment"
+    },
+    {
+      "name": "sample-archive-url",
+      "value": "https://torjan0.github.io/cirewind/v0.2.0/downloads/cirewind-synthetic-case-v0.2.0.tar.gz",
+      "resolution": "resolves-at-deployment"
+    },
+    {
+      "name": "sample-manifest-url",
+      "value": "https://torjan0.github.io/cirewind/v0.2.0/sample-case/manifest.sha256",
+      "resolution": "resolves-at-deployment"
+    },
+    {
+      "name": "release-url",
+      "value": "https://github.com/torjan0/cirewind/releases/tag/v0.2.0",
+      "resolution": "resolves-at-release",
+      "note": "predictable release page; exists only after the authorized publication"
+    },
+    {
+      "name": "go-install-command",
+      "value": "go install github.com/torjan0/cirewind/cmd/cirewind@v0.2.0",
+      "resolution": "resolves-at-release",
+      "note": "the tag must exist and pass release qualification before this command is qualified"
+    },
+    {
+      "name": "brew-install-command",
+      "value": "brew install torjan0/tap/cirewind",
+      "resolution": "resolves-at-release",
+      "note": "the maintainer-owned tap formula is prepared under DIST-003 and published only after release"
+    }
+  ]
+}

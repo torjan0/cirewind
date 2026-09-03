@@ -1,0 +1,180 @@
+name: Sample site deployment
+
+# Protected, dispatch-only deployment of the deterministic synthetic sample
+# site to GitHub Pages. It runs only at an existing annotated release tag,
+# rebuilds the site from that exact commit, audits it, uploads it once under
+# a run-unique trusted artifact name, and deploys that name. The upload
+# Action returns an artifact identifier, not a digest: CIRewind's locally
+# computed site-manifest and archive hashes identify the bytes it uploaded,
+# not the artifact-service object, and deployment is addressed by artifact
+# name because that is deploy-pages' public input. This workflow must exist
+# on the default branch before it can be dispatched; landing it deploys
+# nothing.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing annotated vSEMVER release tag; dispatch this workflow at the same tag
+        required: true
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: sample-site-deployment
+  cancel-in-progress: false
+
+env:
+  GOFLAGS: -mod=readonly
+  GH_PROMPT_DISABLED: "1"
+
+jobs:
+  build:
+    name: Rebuild, audit, and upload the exact site
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    outputs:
+      artifact-id: ${{ steps.upload.outputs.artifact_id }}
+      artifact-name: ${{ steps.metadata.outputs.artifact-name }}
+      commit: ${{ steps.metadata.outputs.commit }}
+      version: ${{ steps.metadata.outputs.version }}
+      site-manifest-sha256: ${{ steps.site.outputs.site-manifest-sha256 }}
+      archive-sha256: ${{ steps.site.outputs.archive-sha256 }}
+    env:
+      SITE_TAG: ${{ inputs.tag }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Validate the dispatch ref before checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$SITE_TAG" =~ ^v[0-9A-Za-z.+-]+$ ]]
+          test "$GITHUB_REF" = "refs/tags/$SITE_TAG"
+      - name: Check out the exact requested tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: refs/tags/${{ inputs.tag }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate dispatch, annotated tag, checked-out commit, and release status
+        id: metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          commit=$(./scripts/verify-release-ref.sh "$SITE_TAG")
+          test "$GITHUB_REF" = "refs/tags/$SITE_TAG" || {
+            echo "dispatch ref must be the exact release tag refs/tags/$SITE_TAG" >&2
+            exit 1
+          }
+          test "$GITHUB_SHA" = "$commit" || {
+            echo "dispatch commit does not equal the annotated tag commit" >&2
+            exit 1
+          }
+          draft=$(gh release view "$SITE_TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft)
+          test "$draft" = false || {
+            echo "release $SITE_TAG is not published; the sample site deploys only for a published release" >&2
+            exit 1
+          }
+          {
+            printf 'commit=%s\n' "$commit"
+            printf 'version=%s\n' "${SITE_TAG#v}"
+            printf 'artifact-name=cirewind-sample-site-%s-%s-%s\n' "$SITE_TAG" "${{ github.run_id }}" "${{ github.run_attempt }}"
+          } >>"$GITHUB_OUTPUT"
+      - name: Fail closed unless the Pages environment is protected
+        shell: bash
+        run: ./scripts/verify-release-environment.sh "$GITHUB_REPOSITORY" github-pages "$GITHUB_REPOSITORY_OWNER"
+      - name: Set up the exact Go toolchain
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Build the site twice from the exact commit, compare, verify, and record local hashes
+        id: site
+        shell: bash
+        env:
+          SITE_VERSION: ${{ steps.metadata.outputs.version }}
+        run: |
+          set -euo pipefail
+          sh ./scripts/build-sample-site.sh "$RUNNER_TEMP/site" "$SITE_VERSION" >"$RUNNER_TEMP/site-build.json"
+          cmp site/generated/graph.svg "$RUNNER_TEMP/site/v$SITE_VERSION/graph.svg" || {
+            echo "the committed README graph copy differs from the site built at this commit" >&2
+            exit 1
+          }
+          go run ./tools/samplesite verify --site "$RUNNER_TEMP/site" --version "$SITE_VERSION" >"$RUNNER_TEMP/site-verify.json"
+          site_manifest_sha256=$(sha256sum "$RUNNER_TEMP/site/v$SITE_VERSION/site-manifest.sha256" | cut -c1-64)
+          archive_sha256=$(cut -c1-64 "$RUNNER_TEMP/site/v$SITE_VERSION/downloads/SHA256SUMS")
+          {
+            printf 'site-manifest-sha256=%s\n' "$site_manifest_sha256"
+            printf 'archive-sha256=%s\n' "$archive_sha256"
+          } >>"$GITHUB_OUTPUT"
+      - name: Upload the audited site once under the trusted run-unique name
+        id: upload
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          name: cirewind-sample-site-${{ inputs.tag }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/site
+          retention-days: 1
+      - name: Record the upload identity and the local hashes
+        shell: bash
+        env:
+          ARTIFACT_ID: ${{ steps.upload.outputs.artifact_id }}
+          ARTIFACT_NAME: ${{ steps.metadata.outputs.artifact-name }}
+          SITE_MANIFEST_SHA256: ${{ steps.site.outputs.site-manifest-sha256 }}
+          ARCHIVE_SHA256: ${{ steps.site.outputs.archive-sha256 }}
+          SITE_COMMIT: ${{ steps.metadata.outputs.commit }}
+        run: |
+          set -euo pipefail
+          test -n "$ARTIFACT_ID"
+          {
+            echo "## Sample site upload"
+            echo
+            echo "- tag: $SITE_TAG"
+            echo "- commit: $SITE_COMMIT"
+            echo "- artifact name: $ARTIFACT_NAME"
+            echo "- artifact identifier returned by the upload Action (not a digest): $ARTIFACT_ID"
+            echo "- local site-manifest SHA-256 of the uploaded tree: $SITE_MANIFEST_SHA256"
+            echo "- local sample-case archive SHA-256: $ARCHIVE_SHA256"
+            echo
+            echo "The local hashes identify the bytes CIRewind staged and uploaded; they do not identify the artifact-service object, and deployment is addressed by artifact name."
+          } >>"$GITHUB_STEP_SUMMARY"
+
+  deploy:
+    name: Deploy the uploaded artifact to GitHub Pages
+    needs:
+      - build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+      - name: Deploy the exact uploaded artifact by its trusted name
+        id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+        with:
+          artifact_name: ${{ needs.build.outputs.artifact-name }}
+      - name: Record the deployment
+        shell: bash
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+          ARTIFACT_NAME: ${{ needs.build.outputs.artifact-name }}
+          ARTIFACT_ID: ${{ needs.build.outputs.artifact-id }}
+          SITE_MANIFEST_SHA256: ${{ needs.build.outputs.site-manifest-sha256 }}
+          SITE_COMMIT: ${{ needs.build.outputs.commit }}
+        run: |
+          set -euo pipefail
+          {
+            echo "## Sample site deployment"
+            echo
+            echo "- page URL: $PAGE_URL"
+            echo "- commit: $SITE_COMMIT"
+            echo "- artifact name: $ARTIFACT_NAME"
+            echo "- artifact identifier (not a digest): $ARTIFACT_ID"
+            echo "- local site-manifest SHA-256: $SITE_MANIFEST_SHA256"
+          } >>"$GITHUB_STEP_SUMMARY"

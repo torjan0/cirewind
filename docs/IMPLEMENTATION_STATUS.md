@@ -165,6 +165,44 @@ excluded by default. `PACK-022` and `PACK-023` remain open because their accepte
 criteria require an actual qualifying GitHub human approval against C and a real
 C-to-P-to-later-registry history, respectively.
 
+The synthetic sample-site generator (`internal/samplesite`, `tools/samplesite`,
+`scripts/build-sample-site.sh`, `make sample-site` and `make sample-site-check`)
+is implemented on the `site/v0.2-sample-site` branch. It builds one immutable
+versioned tree from a verified raw-disabled demo case: a landing page rendered
+from typed data under a hashed-style deny-by-default meta CSP, byte-identical
+copies of `graph.svg`, `findings.json`, and `summary.md`, the complete case,
+a deterministic archive with `SHA256SUMS`, a distinct versioned site manifest,
+and a provenance record without wall-clock or host data. The tree audit fails
+closed on unexpected entries, links, executable bits, size budgets, `raw/`,
+credential or host-path shapes, active SVG constructs, forbidden HTML
+primitives, non-allowlisted URLs, and any digest mismatch. Prior version trees
+enter only as hash-locked local inputs. Two builds from one revision are
+byte-identical. `make sample-site-browser-audit` exercises the built site in
+sandboxed, DNS-denied Chromium behind a loopback server under a project Pages
+base path: applied hashed policy, request allowlist, relative and fixed external
+links, first-viewport content, heading order, keyboard focus, overflow from
+320 px to 1440 px and at 200% zoom, forced colors, blocked images, storage and
+service-worker absence, and the report and SVG pages. The same package renders
+the staged README candidate under `site/generated` with typed slots, a preview
+viewport of the graph, and an explicit slot inventory; it is never `README.md`
+before activation. `.github/workflows/site-validate.yml` builds, verifies,
+tamper-tests, and drift-checks the site and candidate on pull requests with
+`contents: read` only and no deployment step; its hosted run passed on the
+pull-request head, including the Chromium audit. `.github/workflows/site-deploy.yml`
+is the protected, dispatch-only deployment at an exact annotated release tag; it
+has never been dispatched. No site has been deployed, the live link redirect
+audit, the human accessibility review, and the README cold-reader review remain
+open, and none of this is a v0.2 release claim.
+
+Release qualification now exercises the adoption surfaces: the native,
+container, and Wine smokes run `cirewind demo` twice from the extracted release
+binary and compare every v0.2 case file, the release contract test builds the
+sample site twice from that demo output, and archives carry a registry-bound
+reviewed-pack contract (distribution format version 2) whose inclusion,
+exclusion, and tamper rules are exercised with synthetic registry fixtures. The
+repository registry is empty, so no real pack ships; `DIST-006` remains open on
+its reference-host, human-review, and review-safety CI dependencies.
+
 ## CLI status
 
 | Command | Status | Qualification boundary |

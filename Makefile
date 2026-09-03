@@ -10,8 +10,11 @@ RELEASE_TAG ?=
 RELEASE_WORK_ROOT ?=
 SPDX_VALIDATOR ?=
 SPDX_TOOLS_VERSION ?=
+SITE_OUT ?=
+SITE_VERSION ?=
+README_VERSION ?= 0.2.0
 
-.PHONY: build test vet race vuln licenses demo browser-audit safety-audit pack-review-check pack-review-clean release release-test release-verify release-spdx release-workflow-audit preflight clean
+.PHONY: build test vet race vuln licenses demo browser-audit safety-audit pack-review-check pack-review-clean release release-test release-verify release-spdx release-workflow-audit sample-site sample-site-check sample-site-browser-audit readme-candidate readme-candidate-check preflight clean
 
 build:
 	mkdir -p "$(dir $(BINARY))"
@@ -76,6 +79,27 @@ release-spdx:
 
 release-workflow-audit:
 	$(GO_EXACT) test ./internal/acceptance -run 'TestReleaseWorkflow|TestActionPins|TestCIUsesExactSixTarget|TestCIDarwinArm64RunsNativeDemoQualification|TestReleaseEnvironmentPolicy'
+
+sample-site:
+	@test -n "$(SITE_OUT)" || { echo "SITE_OUT is required" >&2; exit 2; }
+	@test -n "$(SITE_VERSION)" || { echo "SITE_VERSION=SEMVER without a v prefix is required" >&2; exit 2; }
+	sh ./scripts/build-sample-site.sh "$(SITE_OUT)" "$(SITE_VERSION)"
+
+sample-site-check:
+	sh -n scripts/build-sample-site.sh
+	sh -n scripts/test-sample-site.sh
+	$(GO_EXACT) test ./internal/samplesite ./tools/samplesite
+	sh ./scripts/test-sample-site.sh
+
+sample-site-browser-audit:
+	sh ./scripts/site-browser-audit.sh
+
+readme-candidate:
+	sh ./scripts/readme-candidate.sh "$(README_VERSION)"
+
+readme-candidate-check:
+	sh -n scripts/readme-candidate.sh
+	sh ./scripts/readme-candidate.sh "$(README_VERSION)" --check
 
 preflight:
 	sh ./scripts/preflight.sh

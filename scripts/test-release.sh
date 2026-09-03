@@ -61,6 +61,44 @@ CGO_ENABLED=0 go build -trimpath -buildvcs=false -o "$work/releasetool" ./intern
 "$work/releasetool" compare --first "$work/first" --second "$work/second"
 "$root/scripts/smoke-release.sh" "$work/first" "$version" "$commit" "$build_date" "$work_root"
 
+# The sample site must regenerate byte-identically from the release binary's
+# own demo output, so site determinism is part of release qualification.
+case "$(uname -s)" in
+	Linux) native_os=linux ;;
+	Darwin) native_os=darwin ;;
+	*)
+		printf '%s\n' "release contract site check supports Linux and macOS hosts" >&2
+		exit 2
+		;;
+esac
+case "$(uname -m)" in
+	x86_64|amd64) native_arch=amd64 ;;
+	aarch64|arm64) native_arch=arm64 ;;
+	*)
+		printf '%s\n' "unsupported native architecture: $(uname -m)" >&2
+		exit 2
+		;;
+esac
+native_base="cirewind_${version}_${native_os}_${native_arch}"
+mkdir "$work/native"
+tar -xzf "$work/first/$native_base.tar.gz" -C "$work/native"
+native_binary="$work/native/$native_base/cirewind"
+CGO_ENABLED=0 go build -trimpath -buildvcs=false -o "$work/samplesite" ./tools/samplesite
+for side in a b; do
+	"$native_binary" demo --out "$work/site-case-$side" >/dev/null
+	"$work/samplesite" build \
+		--case "$work/site-case-$side" \
+		--out "$work/site-$side" \
+		--version "$version" \
+		--source-commit "$commit" \
+		--go-version "$GOTOOLCHAIN" >/dev/null
+done
+if ! diff -r "$work/site-a" "$work/site-b" >/dev/null; then
+	printf '%s\n' "sample site built twice from release-binary demo output differs" >&2
+	exit 1
+fi
+"$work/samplesite" verify --site "$work/site-a" --version "$version" >/dev/null
+
 # Integrity verification must fail after a one-byte material-file change.
 printf '%s' x >>"$work/first/cirewind_${version}_linux_amd64.spdx.json"
 if "$work/releasetool" verify --dist "$work/first" >/dev/null 2>&1; then
@@ -68,4 +106,4 @@ if "$work/releasetool" verify --dist "$work/first" >/dev/null 2>&1; then
 	exit 1
 fi
 
-printf '%s\n' "release packaging contract passed for clean annotated-tag snapshot, all six archives, native runtime, and tamper rejection"
+printf '%s\n' "release packaging contract passed for clean annotated-tag snapshot, all six archives, native runtime, deterministic demo and sample site, and tamper rejection"

@@ -68,6 +68,14 @@ fi
 wine ./cirewind.exe --help >/dev/null
 wine ./cirewind.exe investigate --help >/dev/null 2>&1
 wine ./cirewind.exe pack validate 'incidents\synthetic\mutable-tag.yaml' >/dev/null
+if [ ! -f incidents/reviewed/index.json ]; then
+	printf '%s\n' "release archive omits the reviewed-pack index" >&2
+	exit 1
+fi
+for reviewed in incidents/reviewed/*/*.yaml; do
+	[ -e "$reviewed" ] || continue
+	wine ./cirewind.exe pack validate "$reviewed" >/dev/null
+done
 wine ./cirewind.exe archive --import-fixture synthetic --store "$work/archive.db" >/dev/null
 wine ./cirewind.exe replay \
 	--archive "$work/archive.db" \
@@ -75,5 +83,18 @@ wine ./cirewind.exe replay \
 	--out "$work/case" \
 	--fixed-collection-time 2026-08-20T00:00:00Z >/dev/null
 wine ./cirewind.exe verify "$work/case" >/dev/null
+wine ./cirewind.exe demo --out "$work/demo" >/dev/null
+wine ./cirewind.exe verify "$work/demo" >/dev/null
+wine ./cirewind.exe demo --out "$work/demo-again" >/dev/null
+for name in report.html graph.svg graph.json findings.json affected-runs.csv summary.md collection-metadata.json evidence.jsonl case.db manifest.sha256; do
+	if [ ! -f "$work/demo/$name" ]; then
+		printf '%s\n' "Wine release demo omitted $name" >&2
+		exit 1
+	fi
+	if ! cmp -s "$work/demo/$name" "$work/demo-again/$name"; then
+		printf '%s\n' "Wine release demo is not deterministic: $name differs between runs" >&2
+		exit 1
+	fi
+done
 
-printf '%s\n' "Windows/amd64 archive compatibility smoke passed under Wine (not native Windows qualification)"
+printf '%s\n' "Windows/amd64 archive compatibility smoke passed under Wine (not native Windows qualification; demo deterministic)"

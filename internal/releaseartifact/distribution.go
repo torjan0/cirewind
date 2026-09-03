@@ -158,6 +158,19 @@ func validateDescriptors(outputDir string, descriptors []ArtifactDescriptor) ([]
 		} else if descriptor.Build != build {
 			return nil, BuildMetadata{}, fmt.Errorf("target %s build metadata differs from other targets", descriptor.Target)
 		}
+		if i > 0 {
+			first, err := EncodeReviewedIndex(ordered[0].ReviewedPacks)
+			if err != nil {
+				return nil, BuildMetadata{}, err
+			}
+			current, err := EncodeReviewedIndex(descriptor.ReviewedPacks)
+			if err != nil {
+				return nil, BuildMetadata{}, err
+			}
+			if !bytes.Equal(first, current) {
+				return nil, BuildMetadata{}, fmt.Errorf("target %s reviewed-pack set differs from other targets", descriptor.Target)
+			}
+		}
 		for label, record := range map[string]FileRecord{"archive": descriptor.Archive, "SBOM": descriptor.SBOM} {
 			if _, err := safeDistributionName(record.Name); err != nil {
 				return nil, BuildMetadata{}, fmt.Errorf("target %s %s name: %w", descriptor.Target, label, err)
@@ -385,6 +398,13 @@ func verifyTargetArchive(directory string, descriptor ArtifactDescriptor) error 
 		return err
 	}
 	for name := range licenseEntries {
+		wantArchiveEntries[name] = true
+	}
+	reviewedEntries, err := verifyReviewedEntries(files, prefix, descriptor.ReviewedPacks)
+	if err != nil {
+		return err
+	}
+	for name := range reviewedEntries {
 		wantArchiveEntries[name] = true
 	}
 	if len(files) != len(wantArchiveEntries) {
