@@ -72,6 +72,11 @@ All notable changes to CIRewind are documented here. The format follows
   (`schema/rc-acquisition-record-v1alpha1.json`) whose immutable artifact
   fields stay empty until an authorized hosted qualification. Preparation for
   `DIST-007`; it publishes nothing and closes no human gate.
+- README candidate banner: maintainer-owned fixed assets
+  (`site/assets/cirewind-banner-dark.png` and `cirewind-banner-light.png`)
+  rendered above the heading for GitHub's dark and light themes through typed
+  slots whose recorded SHA-256 values are drift checked, with alt text naming
+  every element the image encodes.
 
 ### Changed
 
@@ -88,6 +93,14 @@ All notable changes to CIRewind are documented here. The format follows
   rejected at packaging and verification. The distribution format version is 2.
   Release smokes run the demo twice from the release binary and the release
   contract test builds the sample site twice from that output.
+- README candidate and sample-site wording after a cold-reader and visual
+  review: the headline binds the claim to retained evidence with gaps visible,
+  the release lane states what its verification does and does not certify,
+  the from-source path is one section, jargon is glossed inline, the
+  versioned page names the canonical pack hash beside the pack version and
+  points at the standalone SVG's per-lane descriptions, and the graph's root
+  description now states the lane and line-style encoding for readers who
+  cannot see it.
 
 ### Documentation
 

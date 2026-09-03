@@ -27,7 +27,7 @@ const Stylesheet = `:root{color-scheme:light}html,body{background:#FFFFFF;color:
 const (
 	ProjectURL              = "https://github.com/torjan0/cirewind"
 	LabReproductionIndexURL = "https://github.com/torjan0/cirewind-lab/tree/main/reproductions"
-	Headline                = "Reconstruct which GitHub Action commit actually ran—even after a mutable tag was restored."
+	Headline                = "Reconstruct which GitHub Action commit each historical run executed, from retained evidence and with every gap visible, even after a mutable tag was restored."
 )
 
 // Invariants are the eight mandatory evidence-model sentences, unedited.
@@ -60,24 +60,25 @@ type CountRow struct {
 // PageData is the typed input to the landing template. No field is parsed as
 // markup; html/template escapes every value at its sink.
 type PageData struct {
-	Version            string
-	VersionPath        string
-	Counts             []CountRow
-	Total              int
-	WriteTokenJobs     int
-	NamedSecretFlows   int
-	OIDCJobs           int
-	SelfHostedJobs     int
-	DeploymentsAfter   int
-	ArchiveName        string
-	ArchiveSHA256      string
-	CaseManifestSHA256 string
-	SourceCommit       string
-	GoVersion          string
-	DemoBundleID       string
-	FixtureVersion     string
-	SVGWidth           int
-	SVGHeight          int
+	Version             string
+	VersionPath         string
+	Counts              []CountRow
+	Total               int
+	WriteTokenJobs      int
+	NamedSecretFlows    int
+	OIDCJobs            int
+	SelfHostedJobs      int
+	DeploymentsAfter    int
+	ArchiveName         string
+	ArchiveSHA256       string
+	CaseManifestSHA256  string
+	SourceCommit        string
+	GoVersion           string
+	DemoBundleID        string
+	FixtureVersion      string
+	PackCanonicalSHA256 string
+	SVGWidth            int
+	SVGHeight           int
 }
 
 // CountPair places two canonical states side by side in the compact table.

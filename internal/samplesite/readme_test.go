@@ -46,7 +46,7 @@ func TestReadmeCandidateFirstScreenAndLinks(t *testing.T) {
 	}
 	order := []string{
 		"# CIRewind",
-		"Reconstruct which GitHub Action commit actually ran",
+		"Reconstruct which GitHub Action commit each historical run executed",
 		"[![Temporal evidence path for the synthetic case",
 		"](site/generated/readme-preview.svg)](" + VersionedPagesURL(testVersion) + "graph.svg)",
 		"**SYNTHETIC — PARTIAL COVERAGE.**",
@@ -60,7 +60,7 @@ func TestReadmeCandidateFirstScreenAndLinks(t *testing.T) {
 		"**Experimental v0.2.0:**",
 		"## High-assurance installation",
 		"[v0.2.0 release](" + ReleaseURL(testVersion) + ")",
-		"`SHA256SUMS`, per-target SPDX documents, and GitHub build-provenance",
+		"`SHA256SUMS`, per-target SPDX",
 		"## Why CIRewind exists",
 		"## Evidence semantics",
 		"## Contributing",

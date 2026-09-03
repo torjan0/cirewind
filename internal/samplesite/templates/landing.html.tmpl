@@ -12,7 +12,7 @@
 <body>
 <main>
 <header>
-<h1>Reconstruct which GitHub Action commit actually ran—even after a mutable tag was restored.</h1>
+<h1>Reconstruct which GitHub Action commit each historical run executed, from retained evidence and with every gap visible, even after a mutable tag was restored.</h1>
 <p class="lede">CIRewind is an experimental, evidence-first command-line tool that rebuilds historical GitHub Actions execution from retained evidence. This deterministic synthetic sample is not a real incident.</p>
 </header>
 
@@ -22,7 +22,7 @@
 <div class="visual" role="region" aria-label="Temporal evidence path, scrollable visual" tabindex="0">
 <img src="./graph.svg" alt="Temporal evidence path for the synthetic case: one lane per finding showing exact observations as solid lines, inferences as dashed lines, temporal correlation as dotted lines, contradictions as heavy lines, and evidence gaps as interrupted lines, each labeled with its relationship and evidence references." width="{{.SVGWidth}}" height="{{.SVGHeight}}">
 </div>
-<p><a href="./graph.svg">Open the standalone SVG</a>. The visual is a projection of the case database; it is not an attack graph and it adds no evidence.</p>
+<p><a href="./graph.svg">Open the standalone SVG</a>, where every lane carries its own accessible title and description. The visual is a projection of the case database; it is not an attack graph and it adds no evidence.</p>
 </section>
 <div>
 <section id="results">
@@ -95,7 +95,7 @@ cirewind verify cirewind-demo</code></pre>
 <ul>
 <li>Every identity on this site is synthetic. No real repository, run, secret, or person appears.</li>
 <li>The project adds no analytics, telemetry, cookies, storage, forms, or uploads to this site, and it never receives a visitor's case. GitHub logs visitor IP addresses for Pages sites for security purposes.</li>
-<li>Generated from source revision <code>{{.SourceCommit}}</code> with <code>{{.GoVersion}}</code>, demo bundle <code>{{.DemoBundleID}}</code>, synthetic pack version <code>{{.FixtureVersion}}</code>.</li>
+<li>Generated from source revision <code>{{.SourceCommit}}</code> with <code>{{.GoVersion}}</code>, demo bundle <code>{{.DemoBundleID}}</code>, synthetic pack version <code>{{.FixtureVersion}}</code> whose canonical pack SHA-256 <code>{{.PackCanonicalSHA256}}</code> is the identifier the report and summary name.</li>
 <li>Case manifest SHA-256 <code>{{.CaseManifestSHA256}}</code>; archive SHA-256 <code>{{.ArchiveSHA256}}</code>; the site manifest covers every versioned file. Manifest checks support integrity, not authenticity or legal custody.</li>
 <li>Regenerate locally with <code>make sample-site SITE_VERSION={{.Version}} SITE_OUT=DIR</code> from the same source revision; the output is byte-identical.</li>
 <li>Source: <a href="{{.ProjectURL}}" rel="noreferrer">{{.ProjectURL}}</a>. Independent reproductions of the public laboratory are indexed at <a href="{{.LabIndexURL}}" rel="noreferrer">{{.LabIndexURL}}</a>; an empty index makes no reproduction claim.</li>

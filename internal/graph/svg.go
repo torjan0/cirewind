@@ -59,7 +59,7 @@ func RenderSVG(ctx context.Context, path TemporalEvidencePath) ([]byte, error) {
 	if err := textElement(encoder, "title", attrs("id", "tep-title"), "Temporal evidence path"); err != nil {
 		return nil, err
 	}
-	description := fmt.Sprintf("%s case; showing %d of %d findings, %d of %d nodes, %d of %d relationships, and %d of %d evidence references.",
+	description := fmt.Sprintf("%s case; showing %d of %d findings, %d of %d nodes, %d of %d relationships, and %d of %d evidence references. One lane per finding: solid lines are exact observations, dashed lines inferences, dotted lines observed-after correlation without causation, double lines contradictions, and interrupted lines with a question mark evidence gaps.",
 		path.CaseKind, path.Counts.SelectedFindings, path.Counts.TotalFindings,
 		path.Counts.SelectedNodes, path.Counts.TotalNodes, path.Counts.SelectedEdges,
 		path.Counts.TotalEdges, path.Counts.SelectedEvidenceIDs, path.Counts.TotalEvidenceIDs)
