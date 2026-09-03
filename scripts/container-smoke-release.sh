@@ -73,9 +73,22 @@ docker run --rm \
 		$binary --help >/dev/null
 		$binary investigate --help >/dev/null 2>&1
 		$binary pack validate "$bundle/incidents/synthetic/mutable-tag.yaml" >/dev/null
+		[ -f "$bundle/incidents/reviewed/index.json" ]
+		for reviewed in "$bundle"/incidents/reviewed/*/*.yaml; do
+			[ -e "$reviewed" ] || continue
+			$binary pack validate "$reviewed" >/dev/null
+		done
 		$binary archive --import-fixture synthetic --store /work/archive.db >/dev/null
 		$binary replay --archive /work/archive.db --incident "$bundle/incidents/synthetic/mutable-tag.yaml" --out /work/case --fixed-collection-time 2026-08-20T00:00:00Z >/dev/null
 		$binary verify /work/case >/dev/null
+		$binary demo --out /work/demo >/dev/null
+		$binary verify /work/demo >/dev/null
+		$binary demo --out /work/demo-again >/dev/null
+		for name in report.html graph.svg graph.json findings.json affected-runs.csv summary.md collection-metadata.json evidence.jsonl case.db manifest.sha256; do
+			[ -f "/work/demo/$name" ]
+			cmp -s "/work/demo/$name" "/work/demo-again/$name"
+		done
+		[ ! -e /work/demo/raw ]
 	'
 
 printf '%s\n' "network-disabled, read-only-root clean-container smoke passed for linux/amd64 with image $resolved_image"

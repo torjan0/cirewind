@@ -69,6 +69,14 @@ fi
 "$binary" --help >/dev/null
 "$binary" investigate --help >/dev/null 2>&1
 "$binary" pack validate "$bundle/incidents/synthetic/mutable-tag.yaml" >/dev/null
+if [ ! -f "$bundle/incidents/reviewed/index.json" ]; then
+	printf '%s\n' "release archive omits the reviewed-pack index" >&2
+	exit 1
+fi
+for reviewed in "$bundle"/incidents/reviewed/*/*.yaml; do
+	[ -e "$reviewed" ] || continue
+	"$binary" pack validate "$reviewed" >/dev/null
+done
 "$binary" archive --import-fixture synthetic --store "$work/archive.db" >/dev/null
 "$binary" replay \
 	--archive "$work/archive.db" \
@@ -77,4 +85,24 @@ fi
 	--fixed-collection-time 2026-08-20T00:00:00Z >/dev/null
 "$binary" verify "$work/case" >/dev/null
 
-printf '%s\n' "native release smoke passed for $target_os/$target_arch (network credentials unset)"
+# The release binary must generate the complete deterministic synthetic case
+# outside the checkout, twice, without raw materialization.
+"$binary" demo --out "$work/demo" >/dev/null
+"$binary" verify "$work/demo" >/dev/null
+"$binary" demo --out "$work/demo-again" >/dev/null
+for name in report.html graph.svg graph.json findings.json affected-runs.csv summary.md collection-metadata.json evidence.jsonl case.db manifest.sha256; do
+	if [ ! -f "$work/demo/$name" ]; then
+		printf '%s\n' "release demo omitted $name" >&2
+		exit 1
+	fi
+	if ! cmp -s "$work/demo/$name" "$work/demo-again/$name"; then
+		printf '%s\n' "release demo is not deterministic: $name differs between runs" >&2
+		exit 1
+	fi
+done
+if [ -e "$work/demo/raw" ]; then
+	printf '%s\n' "release demo materialized raw content" >&2
+	exit 1
+fi
+
+printf '%s\n' "native release smoke passed for $target_os/$target_arch (network credentials unset; demo deterministic)"
