@@ -55,6 +55,12 @@ func AssembleCandidate(ctx context.Context, input AuthoringInput) (Packet, error
 	if len(input.Scenarios) == 0 {
 		return Packet{}, errors.New("candidate authoring requires at least one fixture scenario")
 	}
+	if input.Preparation.Authors == nil {
+		input.Preparation.Authors = []HumanIdentity{}
+	}
+	if input.Preparation.SourceTranscribers == nil {
+		input.Preparation.SourceTranscribers = []HumanIdentity{}
+	}
 	if !safeFilenameComponent(input.ReviewPolicyProfile) {
 		return Packet{}, errors.New("review policy profile is not a safe identifier")
 	}
@@ -169,12 +175,16 @@ func AssembleCandidate(ctx context.Context, input AuthoringInput) (Packet, error
 		return Packet{}, err
 	}
 
+	packetConflictIDs := conflictIDs(conflicts)
+	if packetConflictIDs == nil {
+		packetConflictIDs = []string{}
+	}
 	packet := Packet{
 		SchemaVersion: PacketSchema, IncidentID: validated.Pack.Metadata.ID, PackVersion: validated.Pack.Metadata.PackVersion,
 		ReviewUnitPackPath: "pack.yaml", OriginalPackSHA256: validated.OriginalSHA256, CanonicalPackSHA256: validated.CanonicalSHA256,
 		PackSchemaVersion: incident.APIVersion, ValidatorVersion: incident.PolicyVersion, ValidatorPolicySHA256: incident.ValidatorPolicySHA256(),
 		ClaimsSHA256: digestHex(claimsRaw), SourcesSHA256: digestHex(sourcesRaw), ConflictsSHA256: digestHex(conflictsRaw),
-		ExpectedFindingsSHA256: digestHex(expectedRaw), FixtureManifestSHA256: digestHex(fixtureManifest), ConflictIDs: conflictIDs(conflicts),
+		ExpectedFindingsSHA256: digestHex(expectedRaw), FixtureManifestSHA256: digestHex(fixtureManifest), ConflictIDs: packetConflictIDs,
 		ReviewPolicyProfile: input.ReviewPolicyProfile, ReviewPolicySHA256: digestHex(policyRaw), Preparation: input.Preparation,
 	}
 	packetRaw, err := marshalCanonical(packet)
