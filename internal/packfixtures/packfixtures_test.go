@@ -66,7 +66,20 @@ func TestReviewdogScenariosAreDeterministicAndBounded(t *testing.T) {
 	if _, err := Generate(ctx, "CIR-UNKNOWN", "1.0.0"); err == nil {
 		t.Fatal("unregistered incident produced fixtures")
 	}
-	if registered := Registered(); len(registered) != 1 || registered[0] != "CIR-REVIEWDOG-ACTION-SETUP-2025/1.0.0" {
+	if registered := Registered(); len(registered) != 2 || registered[0] != "CIR-REVIEWDOG-ACTION-SETUP-2025/1.0.0" || registered[1] != "CIR-TJ-ACTIONS-CHANGED-FILES-2025/1.0.0" {
 		t.Fatalf("registered=%v", registered)
+	}
+	tj, err := Generate(ctx, "CIR-TJ-ACTIONS-CHANGED-FILES-2025", "1.0.0")
+	if err != nil || len(tj) != 12 {
+		t.Fatalf("tj-actions scenarios=%d err=%v", len(tj), err)
+	}
+	for _, scenario := range tj {
+		data, err := json.Marshal(scenario.Snapshot)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(data), "tj-actions/changed-files") || strings.Contains(string(data), "gist.github") {
+			t.Fatalf("tj-actions scenario %s is not bounded to the affected component", scenario.ID)
+		}
 	}
 }
