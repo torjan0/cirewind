@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "retrievedAt": "2026-08-21",
-  "verificationMethod": "git ls-remote --tags against each official https://github.com/actions/<repository>.git remote; the recorded full object ID exactly matched the recorded tag ref",
+  "retrievedAt": "2026-09-03",
+  "verificationMethod": "git ls-remote --tags against each official https://github.com/actions/<repository>.git remote; the recorded full object ID exactly matched the recorded tag ref, and every entry was rechecked on the retrieval date",
   "actions": [
     {
       "repository": "actions/attest",
@@ -14,6 +14,12 @@
       "tag": "v7.0.1",
       "commit": "3d3c42e5aac5ba805825da76410c181273ba90b1",
       "source": "https://github.com/actions/checkout"
+    },
+    {
+      "repository": "actions/deploy-pages",
+      "tag": "v5.0.1",
+      "commit": "368f82528645a54fb793d4d04e342629a3f51346",
+      "source": "https://github.com/actions/deploy-pages"
     },
     {
       "repository": "actions/download-artifact",
@@ -32,6 +38,12 @@
       "tag": "v7.0.1",
       "commit": "043fb46d1a93c77aae656e7c1c64a875d1fc6a0a",
       "source": "https://github.com/actions/upload-artifact"
+    },
+    {
+      "repository": "actions/upload-pages-artifact",
+      "tag": "v5.0.0",
+      "commit": "fc324d3547104276b827a68afc52ff2a11cc49c9",
+      "source": "https://github.com/actions/upload-pages-artifact"
     }
   ]
 }

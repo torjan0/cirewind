@@ -29,7 +29,7 @@ func TestSiteValidationWorkflowIsReadOnlyAndNeverDeploys(t *testing.T) {
 	if !reflect.DeepEqual(job.Permissions, map[string]string{"contents": "read"}) {
 		t.Fatalf("validate permissions = %v, want exactly contents: read", job.Permissions)
 	}
-	if job.Environment != "" || job.RunsOn != "ubuntu-24.04" {
+	if job.Environment != nil || job.RunsOn != "ubuntu-24.04" {
 		t.Fatalf("validate must run on ubuntu-24.04 without a deployment environment, got runs-on %q environment %q", job.RunsOn, job.Environment)
 	}
 	var runs []string
