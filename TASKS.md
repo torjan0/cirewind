@@ -441,6 +441,18 @@ public-proxy claim is made; reference-host timing remains `ADO-031`.
 
 - [ ] **DIST-010 — Anonymously qualify the published tagged `go install` lane.** After `DIST-008`, install `github.com/torjan0/cirewind/cmd/cirewind@v0.2.0` from clean supported hosts and run version, demo, manifest verification, and path/uninstall guidance. **Done when:** the public module resolves the exact release tag/source, demo runs offline after installation, cold/warm timings include any toolchain download, and the frozen README remains off the default-branch landing page on any mismatch. *(Tests: anonymous public-module clean-host install and digest/version/demo comparison; dependencies: `DIST-008`.)*
 
+DIST-010 preparation checkpoint (2026-09-03): the anonymous public-lane check
+is automated as `make go-install-public-qualify GO_INSTALL_TAG=vX.Y.Z
+GO_INSTALL_OUT=DIR` (fresh caches and HOME outside any checkout, Go's default
+proxy and checksum database, default toolchain selection so timings include a
+toolchain download, cold and warm installs, exact version output, embedded
+module hash and toolchain, binary digest, offline demo and verification, and a
+bound record), and `make go-install-public-check` proves the script through a
+file-proxy dry run that says so in its record. The task stays open: it can run
+only after `DIST-008` publishes the tag, on the clean supported hosts the
+protocol names, and its record is input to the human reference-host
+measurements rather than a substitute for them.
+
 ## Phase 0 — fixed two-week feasibility spike
 
 - [ ] **P0-000 — Establish the project repository and governance baseline.** Initialize Git without altering the accepted planning documents, choose/document the default branch, add the intended Apache-2.0 license, DCO contribution/sign-off policy, and a private security-reporting policy; do not add product scaffolding. **Done when:** Git status, branch, and remotes are recorded; all preexisting planning files remain byte-accounted; governance files pass maintainer review; and no product source/dependency has been introduced. *(Tests: documentation/repository inventory review; dependencies: none.)*
