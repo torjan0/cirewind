@@ -665,17 +665,23 @@ def preflight(chrome: str, chromedriver: str, work: Path) -> int:
     else:
         print(f"chrome-sandbox helper absent beside {Path(chrome).resolve()}")
     profile = work / "preflight-profile"
-    command = [chrome, *site_chromium_arguments(profile), "--dump-dom", "about:blank"]
+    command = [chrome, *site_chromium_arguments(profile), "--enable-logging=stderr", "--v=0", "--dump-dom", "about:blank"]
+    process = subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    timed_out = False
     try:
-        result = subprocess.run(command, capture_output=True, text=True, timeout=60, check=False)
+        stdout, stderr = process.communicate(timeout=60)
     except subprocess.TimeoutExpired:
+        timed_out = True
+        process.kill()
+        stdout, stderr = process.communicate(timeout=15)
+    stderr_lines = [line for line in stderr.splitlines() if line.strip()]
+    print(f"preflight: exit={process.returncode} dom_bytes={len(stdout)} timed_out={timed_out}")
+    for line in stderr_lines[-60:]:
+        print("chrome stderr: " + "".join(character for character in line if character.isprintable())[:300])
+    if timed_out:
         print("preflight: Chrome did not exit within 60 seconds")
         return 1
-    stderr_lines = [line for line in result.stderr.splitlines() if line.strip()]
-    print(f"preflight: exit={result.returncode} dom_bytes={len(result.stdout)}")
-    for line in stderr_lines[-40:]:
-        print("chrome stderr: " + "".join(character for character in line if character.isprintable())[:300])
-    if result.returncode != 0 or "<html" not in result.stdout.lower():
+    if process.returncode != 0 or "<html" not in stdout.lower():
         print("preflight: sandboxed headless Chrome cannot start on this host under the audit policy")
         return 1
     print("preflight: sandboxed headless Chrome started under the audit policy")
