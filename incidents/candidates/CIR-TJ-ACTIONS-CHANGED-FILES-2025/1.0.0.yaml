@@ -1,0 +1,133 @@
+apiVersion: cirewind.dev/v1alpha1
+kind: GitHubActionsIncident
+metadata:
+  id: CIR-TJ-ACTIONS-CHANGED-FILES-2025
+  packVersion: 1.0.0
+  title: tj-actions/changed-files tag repointing compromise, 2025-03-14 to 2025-03-15
+  publishedAt: "2026-09-03T00:00:00Z"
+  updatedAt: "2026-09-03T00:00:00Z"
+  labels:
+    - candidate
+    - github-actions
+    - mutable-tag
+  sources:
+    - id: ghsa-maintainer
+      type: primary-advisory
+      title: tj-actions changed-files through 45.0.7 allows remote attackers to discover secrets by reading actions logs.
+      publisher: tj-actions maintainers, GitHub security advisory GHSA-mw4p-6x4p-x5m5
+      url: https://github.com/tj-actions/changed-files/security/advisories/GHSA-mw4p-6x4p-x5m5
+      publishedAt: "2025-03-22T15:56:08Z"
+      retrievedAt: "2026-09-03T04:30:33Z"
+      sourceRevision: rest-advisory-updated-at-2025-03-22T15:56:08Z
+      sourceSha256: 359be1d734e501ca95703121e2d2473ae6a16cfa8277a6de515ad311dfb6fead
+      timePrecision: day
+      notes: Reviewed bytes are the GitHub REST advisory object. It names the full malicious commit, three retroactively updated tags as examples, the March 14 to March 15, 2025 period without a timezone or clock time, and patched version 46.0.0.
+    - id: ghsa-database
+      type: github-advisory-database
+      title: GHSA-mrrh-fwg8-r2c3 reviewed record (CVE-2025-30066)
+      publisher: GitHub Advisory Database
+      url: https://github.com/github/advisory-database/blob/fa95208a0a9d23397334d6d71255ba089f49a067/advisories/github-reviewed/2025/03/GHSA-mrrh-fwg8-r2c3/GHSA-mrrh-fwg8-r2c3.json
+      publishedAt: "2025-03-15T06:30:34Z"
+      retrievedAt: "2026-09-03T04:30:33Z"
+      sourceRevision: fa95208a0a9d23397334d6d71255ba089f49a067
+      sourceSha256: f2a57bfbd08d7878fb09032741ff5a804c6be5475a93acf14171e395b87ecd55
+      timePrecision: second
+      notes: Pinned database commit. The record predates the maintainer advisory, repeats the full malicious commit and the three example tags, and states fixed version 46.0.1 with last known affected range through 45.0.7.
+    - id: release-v46-0-1
+      type: source-repository
+      title: tj-actions/changed-files release v46.0.1
+      publisher: tj-actions/changed-files repository, GitHub REST release object
+      url: https://github.com/tj-actions/changed-files/releases/tag/v46.0.1
+      publishedAt: "2025-03-16T04:12:55Z"
+      retrievedAt: "2026-09-03T04:30:33Z"
+      sourceRevision: rest-release-published-at-2025-03-16T04:12:55Z
+      sourceSha256: 84898ac35ac30286eeb30cd655b40bbf7cc84d8bd9293c8f88274797960b24be
+      timePrecision: second
+      notes: The maintainer release note states that the compromised commit was removed from all tags and branches and that tagged versions were updated; it repeats the March 14 to March 15 review period. On the retrieval date the GitHub API no longer served the malicious commit object.
+spec:
+  description: Between March 14 and March 15, 2025 mutable tags of tj-actions/changed-files were retroactively pointed at commit 0e58ed8671d6b60d0890c21b07f8835ace038e67, whose code read runner process memory and wrote encoded output into workflow logs; the maintainers repaired the tags and removed the object. The published period is date-level with no clock time or timezone, so this pack encodes UTC calendar days as a labeled conservative expansion. The three named tags are examples from the maintainer advisory and are not an exhaustive inventory; no known-good identity is encoded because the primary sources disagree on the first patched version; and no log literal or domain is encoded because none is stated as a reliable victim-log indicator.
+  components:
+    - id: changed-files
+      type: github-action
+      repository:
+        owner: tj-actions
+        name: changed-files
+      subpaths:
+        - ""
+  windows:
+    - id: tag-repointing-period
+      start: "2025-03-14T00:00:00Z"
+      end: "2025-03-16T00:00:00Z"
+      bounds: "[)"
+      sourcePrecision: day
+      approximation: conservative-expanded
+      originalClaim: "between March 14 and March 15, 2025"
+      sourceRefs:
+        - ghsa-maintainer
+        - ghsa-database
+      notes: The source states two calendar dates without a clock time or timezone. Both dates are read as UTC calendar days and the end is the exclusive boundary after March 15, which is a reviewer-labeled expansion rather than a publisher observation; no seconds are asserted.
+  indicators:
+    - id: changed-files-malicious-commit
+      componentId: changed-files
+      kind: action-commit
+      value:
+        gitObject:
+          algorithm: sha1
+          value: "0e58ed8671d6b60d0890c21b07f8835ace038e67"
+      windowRefs:
+        - tag-repointing-period
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-maintainer
+        - ghsa-database
+      notes: The maintainer advisory and the reviewed database record state the full object. The object has been removed from the repository, so identity rests on those statements rather than on a retrievable object; a runtime log that names this object still matches by identity.
+    - id: changed-files-tag-v1-0-0
+      componentId: changed-files
+      kind: mutable-action-ref
+      value:
+        ref: v1.0.0
+      windowRefs:
+        - tag-repointing-period
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-maintainer
+        - ghsa-database
+      notes: Named by the maintainer as an example of a retroactively updated tag; the named tags are not an exhaustive inventory.
+    - id: changed-files-tag-v35-7-7-sec
+      componentId: changed-files
+      kind: mutable-action-ref
+      value:
+        ref: v35.7.7-sec
+      windowRefs:
+        - tag-repointing-period
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-maintainer
+        - ghsa-database
+      notes: Named by the maintainer as an example of a retroactively updated tag.
+    - id: changed-files-tag-v44-5-1
+      componentId: changed-files
+      kind: mutable-action-ref
+      value:
+        ref: v44.5.1
+      windowRefs:
+        - tag-repointing-period
+      confidence: L4_CERTAIN
+      sourceRefs:
+        - ghsa-maintainer
+        - ghsa-database
+      notes: Named by the maintainer as an example of a retroactively updated tag.
+  knownGood: []
+  remediation:
+    guidance:
+      - Resolve every historical run attempt that declared tj-actions/changed-files by tag during the period to its exact runtime object before drawing a conclusion; repaired present-day tags say nothing about what a March 2025 run resolved, and tags outside the three named examples may also have been repointed.
+      - If a run inside the period shows unexpected encoded output under the changed-files step, treat every secret readable by that job as exposed; never decode, retain, or store that output in a case.
+      - Pin tj-actions/changed-files to a full commit object that has been independently reviewed rather than to a tag.
+    credentialRotationTriggers:
+      - id: rotate-after-execution
+        whenStates:
+          - CONFIRMED_EXECUTED
+        guidance: Rotate every secret the affected job could read; the malicious code read runner process memory and wrote encoded output into the workflow log, which does not by itself prove which values were recovered.
+        confidence: L4_CERTAIN
+        sourceRefs:
+          - ghsa-maintainer
