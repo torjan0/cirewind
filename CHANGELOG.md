@@ -6,6 +6,15 @@ All notable changes to CIRewind are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- `cirewind version` now falls back to Go module build information when no
+  release metadata was linked in: a versioned `go install` reports the module
+  version, a checkout build reports its embedded VCS revision and a `+dirty`
+  marker for a modified worktree, and anything the toolchain did not record
+  stays `dev` or `unknown`. Linker-injected release metadata remains
+  authoritative and the output format is unchanged.
+
 ### Documentation
 
 - Record the completed protected v0.1.1 draft, publication, and anonymous

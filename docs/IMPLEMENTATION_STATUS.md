@@ -169,7 +169,7 @@ C-to-P-to-later-registry history, respectively.
 
 | Command | Status | Qualification boundary |
 | --- | --- | --- |
-| `cirewind --help`, `help`, `version` | Implemented and offline-tested | Release builds inject version, source revision, and build time. |
+| `cirewind --help`, `help`, `version` | Implemented and offline-tested | Release builds inject version, source revision, and build time, and those values are authoritative. An unstamped build reports the Go module version and the VCS revision the toolchain embedded, marks a modified worktree, and otherwise reports `dev` or `unknown`; the versioned `go install` shape is exercised offline through a file-based module proxy by `make go-install-check`. |
 | `pack validate` | Implemented and offline-tested | Strict parse, semantic validation, deterministic canonical JSON and hashes; validation does not prove source truth. |
 | `investigate` | Implemented; mock-tested and controlled explicit-repository live-qualified | Organizations are supported syntactically and by mock transport, but dense-window and organization-visibility completeness are experimental. |
 | `archive` | Implemented; offline-, mock-, and controlled live-qualified | Compact incremental facts, checkpoints, overlap, watched-parent refresh, raw opt-in, idempotency, and interruption recovery. |
