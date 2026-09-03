@@ -190,6 +190,24 @@ checksum list. Attestation proves the signed build claim and checksum identity;
 it does not prove that the program is secure or that a forensic conclusion is
 correct.
 
+## Homebrew evaluation lane
+
+`releasetool formula --dist DIR --out cirewind.rb` renders the maintainer-tap
+formula from a verified release distribution: it verifies the distribution
+first, requires exactly one archive for each of the four Unix targets with the
+release naming and a lowercase SHA-256, ignores Windows subjects, and emits
+`on_macos`/`on_linux` blocks with the immutable upstream asset URLs. The formula
+has no bottles, no post-install network access, and a `test` block that runs
+`cirewind version`, `cirewind demo`, and `cirewind verify`. Its caveats state
+that Homebrew checks the archive digest but does not verify build-provenance
+attestations. `make brew-formula-check BREW_WORK_ROOT=DIR` qualifies the
+generator against synthetic subjects through a throwaway local tap (style,
+strict audit, install from a loopback mirror of the asset path shape, test,
+uninstall); `--download-base` exists only for that fixture and labels the
+rendered file as a fixture. The final `v0.2.0` formula is rendered from the
+frozen release-candidate subjects and published to the maintainer-owned tap
+only after the release is public.
+
 ## Runtime smoke boundaries
 
 `scripts/smoke-release.sh` verifies the distribution, unsets all supported
