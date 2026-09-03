@@ -7,7 +7,10 @@ which do not exist until the authorized publication and deployment. Sections
 below the first screen are carried from the v0.1.1 README pending the v0.2
 consistency gate. Do not copy this file to README.md on the default branch.
 -->
-{{end}}# CIRewind
+{{end}}![{{.BannerAlt}}]({{.BannerPath}}#gh-dark-mode-only)
+![{{.BannerAlt}}]({{.BannerLightPath}}#gh-light-mode-only)
+
+# CIRewind
 
 **Reconstruct which GitHub Action commit actually ran—even after a mutable tag
 was restored.**
@@ -40,7 +43,7 @@ cirewind verify cirewind-demo
 ```
 
 With the supported Go toolchain, `{{.GoInstallCommand}}`
-provides the same evaluation build before the demo and verify commands. The demo
+provides the same evaluation build for the demo and verify commands. The demo
 needs no credential, network access, or repository clone; it is a synthetic
 case, not a real incident.
 

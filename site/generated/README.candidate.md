@@ -7,6 +7,9 @@ which do not exist until the authorized publication and deployment. Sections
 below the first screen are carried from the v0.1.1 README pending the v0.2
 consistency gate. Do not copy this file to README.md on the default branch.
 -->
+![CIRewind wordmark above a schematic run graph: chained job nodes, one dashed node marked with a question mark where evidence is missing, one highlighted affected step, and a dashed arrow back to the start showing the run being reconstructed from evidence](site/assets/cirewind-banner-dark.png#gh-dark-mode-only)
+![CIRewind wordmark above a schematic run graph: chained job nodes, one dashed node marked with a question mark where evidence is missing, one highlighted affected step, and a dashed arrow back to the start showing the run being reconstructed from evidence](site/assets/cirewind-banner-light.png#gh-light-mode-only)
+
 # CIRewind
 
 **Reconstruct which GitHub Action commit actually ran—even after a mutable tag
@@ -44,7 +47,7 @@ cirewind verify cirewind-demo
 ```
 
 With the supported Go toolchain, `go install github.com/torjan0/cirewind/cmd/cirewind@v0.2.0`
-provides the same evaluation build before the demo and verify commands. The demo
+provides the same evaluation build for the demo and verify commands. The demo
 needs no credential, network access, or repository clone; it is a synthetic
 case, not a real incident.
 

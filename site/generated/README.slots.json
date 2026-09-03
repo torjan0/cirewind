@@ -10,6 +10,18 @@
       "note": "canonical SemVer without a v prefix; also fixes every versioned URL and install command below"
     },
     {
+      "name": "banner-image",
+      "value": "site/assets/cirewind-banner-dark.png",
+      "resolution": "resolved-now",
+      "note": "maintainer-owned fixed asset, 1800 by 600 palette PNG shown on GitHub's dark theme; sha256 bd106de758884025e19a2f4ca1a197cac4bfc978a4543186b2e736e21243235d"
+    },
+    {
+      "name": "banner-image-light",
+      "value": "site/assets/cirewind-banner-light.png",
+      "resolution": "resolved-now",
+      "note": "maintainer-owned fixed asset, 1800 by 600 palette PNG shown on GitHub's light theme; sha256 c6a41723b5155023157fbb61e5d73947d0c39d649f78eb80c63cf9414b53a3a1"
+    },
+    {
       "name": "preview-image",
       "value": "site/generated/readme-preview.svg",
       "resolution": "resolved-now",
