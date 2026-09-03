@@ -49,7 +49,14 @@ jobs:
         # passes --no-sandbox or --disable-setuid-sandbox.
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
       - name: Audit the sample site in sandboxed, network-denied Chromium
+        # The runner image ships Google Chrome with its setuid sandbox helper
+        # and a matching ChromeDriver, while its Chromium snapshot lacks the
+        # helper and never exits in headless mode; prefer Chrome when present.
         run: |
+          if command -v google-chrome >/dev/null 2>&1; then
+            CIREWIND_CHROME="$(command -v google-chrome)"
+            export CIREWIND_CHROME
+          fi
           if [ -n "${CHROMEWEBDRIVER:-}" ] && [ -x "$CHROMEWEBDRIVER/chromedriver" ]; then
             export CIREWIND_CHROMEDRIVER="$CHROMEWEBDRIVER/chromedriver"
           fi
