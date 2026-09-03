@@ -75,7 +75,7 @@ func TestReadmeWriteThenCheck(t *testing.T) {
 		t.Fatal(err)
 	}
 	var stdout, stderr bytes.Buffer
-	if code := run(context.Background(), []string{"readme", "--case", caseDir, "--out-dir", outDir, "--version", "0.2.0"}, &stdout, &stderr); code != 0 {
+	if code := run(context.Background(), []string{"readme", "--case", caseDir, "--out-dir", outDir, "--version", "0.2.0", "--assets-dir", filepath.Join("..", "..", "site", "assets")}, &stdout, &stderr); code != 0 {
 		t.Fatalf("readme exit=%d stderr=%s", code, stderr.String())
 	}
 	var written readmeResult
@@ -92,7 +92,7 @@ func TestReadmeWriteThenCheck(t *testing.T) {
 	}
 	stdout.Reset()
 	stderr.Reset()
-	if code := run(context.Background(), []string{"readme", "--case", caseDir, "--out-dir", outDir, "--version", "0.2.0", "--check"}, &stdout, &stderr); code != 0 {
+	if code := run(context.Background(), []string{"readme", "--case", caseDir, "--out-dir", outDir, "--version", "0.2.0", "--assets-dir", filepath.Join("..", "..", "site", "assets"), "--check"}, &stdout, &stderr); code != 0 {
 		t.Fatalf("readme --check exit=%d stderr=%s", code, stderr.String())
 	}
 	if err := os.WriteFile(filepath.Join(outDir, "README.slots.json"), []byte("{}\n"), 0o644); err != nil {
@@ -100,12 +100,12 @@ func TestReadmeWriteThenCheck(t *testing.T) {
 	}
 	stdout.Reset()
 	stderr.Reset()
-	if code := run(context.Background(), []string{"readme", "--case", caseDir, "--out-dir", outDir, "--version", "0.2.0", "--check"}, &stdout, &stderr); code != 1 || !strings.Contains(stderr.String(), "differs") {
+	if code := run(context.Background(), []string{"readme", "--case", caseDir, "--out-dir", outDir, "--version", "0.2.0", "--assets-dir", filepath.Join("..", "..", "site", "assets"), "--check"}, &stdout, &stderr); code != 1 || !strings.Contains(stderr.String(), "differs") {
 		t.Fatalf("drifted inventory check exit=%d stderr=%s", code, stderr.String())
 	}
 	stdout.Reset()
 	stderr.Reset()
-	if code := run(context.Background(), []string{"readme", "--case", caseDir, "--out-dir", filepath.Join(root, "missing"), "--version", "0.2.0"}, &stdout, &stderr); code != 1 {
+	if code := run(context.Background(), []string{"readme", "--case", caseDir, "--out-dir", filepath.Join(root, "missing"), "--version", "0.2.0", "--assets-dir", filepath.Join("..", "..", "site", "assets")}, &stdout, &stderr); code != 1 {
 		t.Fatalf("missing directory exit=%d", code)
 	}
 }
@@ -121,7 +121,7 @@ func TestUsageErrors(t *testing.T) {
 		{"verify", "--site", "x", "--version", "0.2.0", "--prior", "0.1.0"},
 		{"verify", "--site", "x", "--version", "0.2.0", "--prior", "0.1.0@abc@dir"},
 		{"readme", "--case", "x", "--out-dir", "y"},
-		{"readme", "--case", "x", "--out-dir", "y", "--version", "0.2.0", "extra"},
+		{"readme", "--case", "x", "--out-dir", "y", "--version", "0.2.0", "--assets-dir", filepath.Join("..", "..", "site", "assets"), "extra"},
 		{"build", "--case", "x", "--out", "y", "--version", "0.2.0", "--source-commit", strings.Repeat("a", 40), "--go-version", "go1.25.13", "--prior", "0.1.0@" + strings.Repeat("b", 64)},
 	} {
 		var stdout, stderr bytes.Buffer

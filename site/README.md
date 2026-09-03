@@ -89,6 +89,18 @@ that the visual has a text equivalent when images are blocked, and that no
 storage or service worker is used. The manual keyboard, screen-reader, zoom,
 and contrast review recorded by a person is still required by `SITE-003`.
 
+## Fixed assets
+
+`site/assets/` holds locally owned fixed assets that are not generated:
+`cirewind-banner-dark.png` and `cirewind-banner-light.png`, the 1800 by 600
+palette PNG banners the README candidate shows above its heading on GitHub's
+dark and light themes. Each banner carries no text other than the wordmark,
+encodes every meaning by shape as well as color, and shares one alt text that
+names each element. The README generator checks that both files are bounded
+PNGs of exactly those dimensions and records each SHA-256 in
+`README.slots.json`, so `make readme-candidate-check` fails if either asset
+changes without a regenerated candidate.
+
 ## README candidate
 
 `make readme-candidate` regenerates `site/generated/README.candidate.md`,
