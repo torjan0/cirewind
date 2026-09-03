@@ -327,7 +327,7 @@ claimed.
 
 - [x] **PACK-030 — Revalidate Reviewdog primary sources and build its claim matrix.** Explicitly retrieve/hash current primary objects and resolve exact component/ref/object, minute precision, boundary semantics, and every proposed wrapper mapping. **Done when:** each included value has a source claim, unproved wrapper/version mappings are excluded, conflicts are recorded, and no wrapper commit is called compromised solely by transitivity. *(Tests: source ledger/claims coverage; dependencies: `PACK-024`.)*
 
-- [ ] **PACK-031 — Prepare the Reviewdog candidate packet and fixtures.** Write one declarative candidate with deterministic exact/mutable/transitive/boundary/gap/contradiction tests. **Done when:** the candidate-content manifest verifies, all incident tests pass, registry status remains `candidate`, and the pack is absent from reviewed/release/sample indexes. *(Tests: candidate golden and replay determinism; dependencies: `PACK-030`.)*
+- [x] **PACK-031 — Prepare the Reviewdog candidate packet and fixtures.** Write one declarative candidate with deterministic exact/mutable/transitive/boundary/gap/contradiction tests. **Done when:** the candidate-content manifest verifies, all incident tests pass, registry status remains `candidate`, and the pack is absent from reviewed/release/sample indexes. *(Tests: candidate golden and replay determinism; dependencies: `PACK-030`.)*
 
 Reviewdog candidate checkpoint (2026-09-03): the primary sources were
 re-retrieved on 2026-09-03 (maintainer advisory GHSA-qmg3-hpqr-gqvc via the
@@ -353,8 +353,8 @@ current-only reference, a transitive wrapper, a runtime/definition
 contradiction, a full-SHA declaration, and a rerun that resolved another
 object, with forbidden-state rows for every promotion that must never happen.
 `validate-unit`, `validate-candidate-tree`, and `validate-governance` pass and
-assembly is byte-deterministic. `PACK-031` closes once the registry records
-the candidate against its freezing commit. Observed for maintainers: with
+assembly is byte-deterministic. `PACK-031` is closed: the registry carries the `research` and `candidate`
+records bound to the freezing commit, and the status remains `candidate`. Observed for maintainers: with
 complete coverage and no runtime observation, a mutable ref declared outside
 the window derives `UNKNOWN_EVIDENCE_GAP` without a gap code, which the
 oracle rejects; the boundary fixtures therefore carry an explicit retained-log
