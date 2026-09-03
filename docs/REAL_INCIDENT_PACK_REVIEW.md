@@ -420,6 +420,9 @@ under `candidate-content/` requires a new C and fresh reviews.
 A step-by-step procedure for outside reviewers, including the exact frozen
 candidate commits, reproduction commands, per-scope checks, and the assertion
 template, is in [`OUTSIDE_REVIEWER_PROCEDURE.md`](OUTSIDE_REVIEWER_PROCEDURE.md).
+The maintainer-side sequence from requesting reviews to promotion, with the
+identities of the three v0.2 candidates, is in
+[`PACK_APPROVAL_RUNBOOK.md`](PACK_APPROVAL_RUNBOOK.md).
 
 The accepted v0.1 specification requires at least two maintainer approvals for
 real incident data. v0.2 adds outside factual review; it does not silently reduce
