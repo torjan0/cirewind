@@ -108,3 +108,20 @@ Both prove the install shape and version reporting. Neither proves that a
 public tag exists, that the public proxy serves it, or that an arbitrary host
 meets the north-star time budget; those are separate post-publication and
 reference-host gates.
+
+## Post-publication qualification of the public lane
+
+After a release tag exists, `make go-install-public-qualify
+GO_INSTALL_TAG=v0.2.0 GO_INSTALL_OUT=/path/to/record` runs the anonymous
+public-lane check that `DIST-010` requires: a fresh, empty GOPATH, module
+cache, build cache, and HOME outside any checkout; Go's default module proxy
+and checksum database; the default `GOTOOLCHAIN=auto`, so a cold timing
+includes any automatic toolchain download; a cold and a warm install; the
+exact `cirewind <version> (commit unknown, built unknown)` version output; the
+module hash and toolchain embedded in the binary; the binary SHA-256; and the
+offline demo plus verification with an empty environment. The record it writes
+binds those values with the host and timings and is signed by nothing; it is
+input for the human-run reference-host measurements, not a substitute for
+them. `make go-install-public-check` runs the same script as a file-proxy dry
+run against a synthetic version, which proves the script and proves nothing
+about the public module.

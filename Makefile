@@ -11,7 +11,7 @@ RELEASE_WORK_ROOT ?=
 SPDX_VALIDATOR ?=
 SPDX_TOOLS_VERSION ?=
 
-.PHONY: build test vet race vuln licenses demo browser-audit safety-audit go-install-check go-install-qualify pack-review-check pack-review-clean release release-test release-verify release-spdx release-workflow-audit preflight clean
+.PHONY: build test vet race vuln licenses demo browser-audit safety-audit go-install-check go-install-qualify go-install-public-check go-install-public-qualify pack-review-check pack-review-clean release release-test release-verify release-spdx release-workflow-audit preflight clean
 
 build:
 	mkdir -p "$(dir $(BINARY))"
@@ -50,6 +50,18 @@ go-install-qualify:
 	sh -n ./scripts/go-install-proxy.sh
 	sh -n ./scripts/qualify-go-install.sh
 	GO="$(GO)" GOTOOLCHAIN="$(GO_TOOLCHAIN)" sh ./scripts/qualify-go-install.sh
+
+go-install-public-check:
+	sh -n ./scripts/go-install-proxy.sh
+	sh -n ./scripts/qualify-public-go-install.sh
+	sh -n ./scripts/test-qualify-public-go-install.sh
+	GO="$(GO)" GOTOOLCHAIN="$(GO_TOOLCHAIN)" sh ./scripts/test-qualify-public-go-install.sh
+
+go-install-public-qualify:
+	@test -n "$(GO_INSTALL_TAG)" || { echo "GO_INSTALL_TAG=vMAJOR.MINOR.PATCH is required" >&2; exit 2; }
+	@test -n "$(GO_INSTALL_OUT)" || { echo "GO_INSTALL_OUT is required" >&2; exit 2; }
+	sh -n ./scripts/qualify-public-go-install.sh
+	GO="$(GO)" sh ./scripts/qualify-public-go-install.sh "$(GO_INSTALL_TAG)" "$(GO_INSTALL_OUT)"
 
 pack-review-check:
 	bash -n scripts/pack-review-git-guard.sh

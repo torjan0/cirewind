@@ -24,6 +24,14 @@ All notable changes to CIRewind are documented here. The format follows
   the lane offline through a file-based module proxy on the host and inside a
   clean minimal container; neither claims that a public tag exists.
 
+- `make go-install-public-qualify` and `scripts/qualify-public-go-install.sh`,
+  the post-publication anonymous public-lane check for the versioned
+  `go install` command (fresh caches, default proxy and checksum database,
+  cold and warm timings including any toolchain download, exact version
+  output, embedded module hash, binary digest, offline demo and verification,
+  and a bound record), with a file-proxy dry run for its own test. Preparation
+  for `DIST-010`; it runs only after a public tag exists.
+
 ### Documentation
 
 - Record the completed protected v0.1.1 draft, publication, and anonymous
