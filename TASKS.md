@@ -140,7 +140,10 @@ stay open; the three real packs remain candidates and ship in no archive.
 waived for v0.2.0 by maintainer decision and stay open. `ADO-015` and
 `ADO-031` measurements on the reference systems did not happen and stay open.
 `SITE-006`, `SITE-007`, `SITE-008`, `DIST-004`, `DIST-005`, and `DIST-009`
-are maintainer steps after the tag. No box below is checked by this decision.
+are maintainer steps after the tag. The `SITE-008` preflight found that the
+`Protect main` ruleset cannot admit the plan's fast-forward activation, so the
+activation push uses a temporary, recorded repository-admin bypass that is
+removed immediately afterwards. No box below is checked by this decision.
 
 ### Adoption foundation and embedded demo
 

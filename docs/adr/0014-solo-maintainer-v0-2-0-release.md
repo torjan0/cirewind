@@ -48,6 +48,15 @@ than wait for people who may never come.
   real incident pack, no independent reproduction, no outside accessibility or
   cold-reader review. `ADO-015` and `ADO-031` measurements on the reference
   systems did not happen and stay open.
+- The `SITE-008` preflight found that the `Protect main` ruleset (pull request
+  required, squash merges only, linear history, no bypass actors) cannot admit
+  the fast-forward activation the adoption plan requires, and a squash merge
+  would put a different commit than the tagged one on the default branch. For
+  the activation push only, the maintainer adds a temporary repository-admin
+  bypass to that ruleset, pushes the exact tagged commit as a non-force
+  fast-forward, and restores the ruleset immediately afterwards. The activation
+  creates no commit, and both ruleset changes are recorded in the release
+  record.
 - Homebrew tap publication (`DIST-004`, `DIST-005`), Pages deployment
   (`SITE-006`, `SITE-007`), and default-branch activation (`DIST-009`) remain
   maintainer steps after the tag. Each is recorded in the ledger when done.
