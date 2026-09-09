@@ -494,3 +494,87 @@ Primary references, retrieved 2026-08-21:
 - [`gh attestation verify`](https://cli.github.com/manual/gh_attestation_verify)
 - [`gh release create`](https://cli.github.com/manual/gh_release_create)
 - [`gh release edit`](https://cli.github.com/manual/gh_release_edit)
+
+## v0.2.0 publication record
+
+v0.2.0 was released on 2026-09-09 by a solo maintainer under
+[ADR 0014](adr/0014-solo-maintainer-v0-2-0-release.md). The record below binds
+each public object to the locally frozen candidate.
+
+- Frozen commit `8793fd5be1a1d0a9485d646b9ccd88d48f378816`, branch
+  `release/v0.2.0` ([PR #20](https://github.com/torjan0/cirewind/pull/20)),
+  hosted CI run 34412628459 green at that commit. `make rc-freeze` recorded
+  fifteen passing gates and no skipped gate; the acquisition record's SHA-256 is
+  `ccd65aa40ef929191f77a16f99b8858e9a5ce8421e0b3ba3c34a1c87dd232642` and the
+  frozen README's is
+  `6dc50d3a4fd251fc03054a79b0ec35e424ee318459dc3b49034f4b0d256fe874`. The
+  record and ledger stay with the maintainer because the record names a local
+  work path.
+- Annotated tag `v0.2.0`, tag object
+  `30ff3c8e398b3e041461ca7b087333d37968e54a`, tagged 2026-09-09T22:48:37Z; the
+  tag message is the release notes.
+- Draft run
+  [`34414030241`](https://github.com/torjan0/cirewind/actions/runs/34414030241)
+  (`publish=false`): the build job reproduced the fourteen subjects, ran the
+  native smoke, attested every subject, and the draft job created the protected
+  draft after `release-draft` approval (deployment 6360911058). The draft's
+  `SHA256SUMS` and `release-metadata.json` were downloaded and found
+  byte-identical to the local freeze.
+- Publish run
+  [`34414716908`](https://github.com/torjan0/cirewind/actions/runs/34414716908)
+  (`publish=true`): reproduced and attested the subjects again, accepted only
+  the byte-identical existing draft after `release-draft` approval (deployment
+  6361023419), and after `release-publish` approval (deployment 6361057420)
+  changed that draft to public at 2026-09-09T23:09:08Z without rebuilding or
+  replacing an asset. The public release is
+  [`v0.2.0`](https://github.com/torjan0/cirewind/releases/tag/v0.2.0). An
+  anonymous download of the public `SHA256SUMS` and of the linux/amd64 archive
+  matched the local freeze, and the attestations API lists in-toto provenance
+  for that archive's digest.
+- Activation. The Pages deployment workflow was not present in the
+  pre-activation default-branch base, so the default branch was fast-forwarded
+  before the site deployment: `refs/heads/main` moved from
+  `200fde2e8ef651545b6da1ab2b598ddb88820555` (the recorded old tip, verified as
+  an ancestor of the tagged commit) to the tagged commit with a non-force
+  push under `--force-with-lease`. The `Protect main` ruleset (pull request,
+  squash-only, linear history, required checks, no bypass actors) cannot admit
+  that push, so a repository-admin `always` bypass actor was added for the
+  single push and removed immediately afterwards; the ruleset was read back
+  with zero bypass actors and all five rules active. Main CI run 34415732278
+  passed at the tagged commit, and GitHub marked PRs #5 to #9, #11 to #18, and
+  #20 merged because their heads became reachable from `main`.
+- Pages. GitHub Pages was enabled with the Actions source, the `github-pages`
+  environment was created with `torjan0` as sole required reviewer,
+  `prevent_self_review=false`, administrator bypass denied, and exactly one
+  `tag:v*` deployment rule (the checked-in verifier passes), and the pinned
+  `actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9`
+  (v5.0.0) and `actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346`
+  (v5.0.1) were allowlisted. Run 34415756271 failed at job setup because the
+  upload action nests
+  `actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f` (v7.0.0,
+  confirmed against the official tag list), which was allowlisted next. Run
+  [`34415896905`](https://github.com/torjan0/cirewind/actions/runs/34415896905)
+  rebuilt and audited the site at the tag and deployed it after `github-pages`
+  approval (deployment 6361154022). The public `v0.2.0/index.html`,
+  `graph.svg`, `site-manifest.sha256`, and `downloads/SHA256SUMS` are
+  byte-identical to a local build at the tag. The repository homepage was then
+  set to <https://torjan0.github.io/cirewind/>.
+- Homebrew. `torjan0/homebrew-tap` was created empty and public, and the
+  formula rendered by the freeze from the verified subjects was pushed as
+  `Formula/cirewind.rb` after the release was public. On Linux x86_64 with
+  Homebrew 6.0.22, `brew trust torjan0/tap` followed by tap, install, `brew
+  test`, and `cirewind version` passed and reported the tagged commit. Homebrew
+  6 refuses untrusted third-party taps, so the trust step is part of the
+  documented command. macOS hosts were not exercised at release time.
+- `go install`. The anonymous public qualifier on a clean Linux x86_64 host
+  resolved `github.com/torjan0/cirewind/cmd/cirewind@v0.2.0` through the
+  default proxy and checksum database, embedded module hash
+  `h1:C5oLkAxKsTWXmaXc2MYCMLLvX6Pw28HCQENSmV6+RNI=`, produced binary SHA-256
+  `b63f2ae8d79d0402c8a95ee019102fcb7a37ef924563922dab7e5c9ed40d1d38`, and
+  verified the offline demo; cold install 125.4 s including the toolchain
+  download, warm install 5.1 s. Record SHA-256
+  `6aea3de9edde138f20fdc577fc530870f83c74f8b1a95168b26668187bea1bbb`.
+- Not done, recorded in ADR 0014 and `TASKS.md`: no reviewed real incident
+  pack, no public lab or outside reproduction, no outside accessibility or
+  consistency review, no `v0.2.0-rc.N` hosted qualification, and no
+  reference-system measurements.

@@ -1,10 +1,11 @@
 # Installation lanes
 
-Status: v0.2 evaluation-lane contract prepared on 2026-09-03. No v0.2 tag,
-release, or Homebrew formula has been published; every v0.2 command below is
-the intended shape, validated only through a local file-based module proxy.
-The published product remains the immutable
-[v0.1.1 release](https://github.com/torjan0/cirewind/releases/tag/v0.1.1).
+Status: v0.2.0 was published on 2026-09-09 as the immutable
+[v0.2.0 release](https://github.com/torjan0/cirewind/releases/tag/v0.2.0). The
+versioned `go install` lane and the Homebrew tap below were exercised
+anonymously on a clean Linux x86_64 host at release time; macOS hosts were not
+exercised. The release ships no reviewed real incident pack (see
+[ADR 0014](adr/0014-solo-maintainer-v0-2-0-release.md)).
 
 CIRewind has two kinds of installation lane:
 
@@ -72,11 +73,24 @@ go clean -modcache   # optional; removes every cached module, not only CIRewind
 CIRewind writes nothing else on installation. Case directories created by
 `demo`, `investigate`, or `replay` are ordinary directories you chose.
 
-## Homebrew (evaluation lane, planned)
+## Homebrew (evaluation lane)
 
-The plan reserves a maintainer-owned tap that installs the exact upstream
-release archives with per-platform SHA-256 values and no bottles. The tap does
-not exist yet, so no `brew install` command is available or advertised.
+The maintainer-owned tap `torjan0/homebrew-tap` installs the exact upstream
+v0.2.0 release archive for your platform, checks its per-platform SHA-256, and
+has no bottles. Homebrew 6 and later refuse to load formulae from third-party
+taps until you trust the tap, so the command is three steps:
+
+```sh
+brew trust torjan0/tap
+brew tap torjan0/tap
+brew install torjan0/tap/cirewind
+```
+
+`brew test torjan0/tap/cirewind` runs `cirewind version`, `cirewind demo`, and
+`cirewind verify`. Homebrew checks the archive digest but does not verify
+build-provenance attestations; for forensic use, follow the high-assurance lane
+below. At release time this lane was exercised on Linux x86_64 with Homebrew
+6.0.22; macOS installs use the same formula but were not exercised.
 
 ## High-assurance lane
 
