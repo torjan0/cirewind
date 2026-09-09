@@ -6,6 +6,16 @@ All notable changes to CIRewind are documented here. The format follows
 
 ## [Unreleased]
 
+### Documentation
+
+- Record the v0.2.0 publication in `docs/RELEASE_PROCESS.md`, `TASKS.md`, and
+  `docs/validation/2026-09-09-v0.2.0-release-record.md`: the frozen commit and
+  gate ledger, the tag, the draft and publish runs, the activation push under a
+  temporary ruleset bypass, the Pages deployment and its nested-action
+  allowlist entry, the Homebrew tap, and the anonymous `go install`
+  qualification. `docs/INSTALLATION.md` now describes the published tag and the
+  Homebrew tap, including the `brew trust` step Homebrew 6 requires.
+
 ## [0.2.0] - 2026-09-09
 
 Solo-maintainer release under ADR 0014. No reviewed real incident pack ships:
