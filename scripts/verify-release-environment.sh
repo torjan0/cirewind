@@ -23,7 +23,7 @@ if [ "$owner" = "$repository" ] || [ -z "$owner" ] || [ -z "$name" ]; then
 	exit 2
 fi
 case "$environment" in
-release-draft|release-publish) ;;
+release-draft|release-publish|github-pages) ;;
 *)
 	printf '%s\n' "unexpected release environment: $environment" >&2
 	exit 2

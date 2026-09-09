@@ -140,3 +140,14 @@ func TestSiteDeploymentWorkflowIsExactTagAndLeastPrivilege(t *testing.T) {
 		}
 	}
 }
+
+// TestEnvironmentVerifierAcceptsPagesEnvironment pins the name contract
+// between the site deployment workflow and the environment verifier: the
+// workflow passes github-pages, so the verifier must accept that name or the
+// first deployment fails closed at the tag.
+func TestEnvironmentVerifierAcceptsPagesEnvironment(t *testing.T) {
+	script := string(readRepositoryFile(t, "scripts/verify-release-environment.sh"))
+	if !strings.Contains(script, "release-draft|release-publish|github-pages) ;;") {
+		t.Fatal("verify-release-environment.sh must accept the github-pages environment that site-deploy.yml passes")
+	}
+}
