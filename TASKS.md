@@ -132,6 +132,16 @@ a non-preparer pack reviewer may also perform the final skeptical review.
   exact malicious identity, affected ref, source-precision-aware timing,
   conflicts, deterministic fixtures, and qualifying independent review all pass.
 
+Maintainer decision (2026-09-09, ADR 0014): v0.2.0 releases with one
+maintainer. `PACK-019`, `PACK-032`, `PACK-042`, and `PACK-053` are not met and
+stay open; the three real packs remain candidates and ship in no archive.
+`LAB-PUBLIC-006` through `LAB-PUBLIC-011` move to post-v0.2. `ADO-025`,
+`ADO-026`, `ADO-099`, the manual part of `SITE-003`, and `DIST-007A` are
+waived for v0.2.0 by maintainer decision and stay open. `ADO-015` and
+`ADO-031` measurements on the reference systems did not happen and stay open.
+`SITE-006`, `SITE-007`, `SITE-008`, `DIST-004`, `DIST-005`, and `DIST-009`
+are maintainer steps after the tag. No box below is checked by this decision.
+
 ### Adoption foundation and embedded demo
 
 Batch 1 implementation checkpoint (2026-08-23): the embedded v2 bundle,

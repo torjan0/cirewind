@@ -6,6 +6,15 @@ All notable changes to CIRewind are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-09
+
+Solo-maintainer release under ADR 0014. No reviewed real incident pack ships:
+the reviewed-pack index is empty and the Reviewdog, tj-actions, and Trivy 2026
+packs remain unreviewed candidates. The public harmless lab is not published,
+and no outside accessibility, cold-reader, or consistency review took place.
+Everything below is implemented and locally qualified; nothing below is
+independently reproduced.
+
 ### Added
 
 - `docs/INSTALLATION.md` describes the evaluation and high-assurance
@@ -249,6 +258,7 @@ deliberately bounded, not a universal GitHub Actions completeness claim.
 - No verified real-world incident pack is included. The bundled pack and lab
   inputs are unmistakably synthetic.
 
-[Unreleased]: https://github.com/torjan0/cirewind/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/torjan0/cirewind/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/torjan0/cirewind/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/torjan0/cirewind/releases/tag/v0.1.1
 [0.1.0]: https://github.com/torjan0/cirewind/tree/v0.1.0

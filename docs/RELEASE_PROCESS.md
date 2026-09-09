@@ -257,7 +257,9 @@ recomputes the subject digests against a record. The schema is
 
 A freeze with `qualification.complete` false, any skipped gate, missing
 reviewed packs, or an unauthorized public lab is preparation only and cannot
-close `DIST-007`. `make rc-freeze-check RELEASE_WORK_ROOT=...` exercises the
+close `DIST-007`. For v0.2.0 only, ADR 0014 records the maintainer's decision
+that an empty reviewed-pack index and an unpublished public lab do not block
+`DIST-007`; every other condition in this section still applies. `make rc-freeze-check RELEASE_WORK_ROOT=...` exercises the
 driver on a disposable synthetic commit with a subset of gates and proves the
 argument rejections, the double-build comparison, and the record round trip.
 
