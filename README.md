@@ -1,14 +1,81 @@
+![CIRewind wordmark above a schematic run graph: chained job nodes, one dashed node marked with a question mark where evidence is missing, one highlighted affected step, and a dashed arrow back to the start showing the run being reconstructed from evidence](site/assets/cirewind-banner-dark.png#gh-dark-mode-only)
+![CIRewind wordmark above a schematic run graph: chained job nodes, one dashed node marked with a question mark where evidence is missing, one highlighted affected step, and a dashed arrow back to the start showing the run being reconstructed from evidence](site/assets/cirewind-banner-light.png#gh-light-mode-only)
+
 # CIRewind
 
-CIRewind is an evidence-first command-line tool for reconstructing historical
-GitHub Actions execution after a supply-chain incident.
+**Reconstruct which GitHub Action commit each historical run executed, from
+retained evidence and with every gap visible, even after a mutable tag was
+restored.**
 
-> **Experimental v0.1:** CIRewind has a controlled GitHub.com
+CIRewind is an experimental, evidence-first command-line tool that rebuilds
+historical GitHub Actions execution from retained runner, API, and definition
+evidence at `run_id + run_attempt + job_id` precision, that is, one record per
+job of each attempt of each run. It keeps preparation separate from execution
+and makes missing evidence visible: a run whose evidence does not support a
+conclusion is reported as a gap, never as clean.
+
+[![Temporal evidence path for the synthetic case: the legend and first finding lane of the generated graph; the link opens the complete eleven-lane visual](site/generated/readme-preview.svg)](https://torjan0.github.io/cirewind/v0.2.0/graph.svg)
+
+**SYNTHETIC — PARTIAL COVERAGE.** The deterministic demo case reports
+11 findings across the ten canonical states:
+
+| Canonical state | Count | Canonical state | Count |
+| --- | --- | --- | --- |
+| `CONFIRMED_EXECUTED` | 1 | `CONFIRMED_DOWNLOADED` | 1 |
+| `CONFIRMED_CALLED_WORKFLOW` | 1 | `DECLARED_AT_RUN_SHA` | 1 |
+| `RUN_IN_WINDOW_MUTABLE_REF` | 1 | `POTENTIAL_TRANSITIVE` | 2 |
+| `CURRENT_REFERENCE_ONLY` | 1 | `NO_MATCH_CONFIRMED` | 1 |
+| `UNKNOWN_EVIDENCE_GAP` | 1 | `CONTRADICTORY_EVIDENCE` | 1 |
+
+[Open the sample report](https://torjan0.github.io/cirewind/v0.2.0/sample-case/report.html) ·
+[Download the verified sample case](https://torjan0.github.io/cirewind/v0.2.0/downloads/cirewind-synthetic-case-v0.2.0.tar.gz) ·
+[View the case manifest](https://torjan0.github.io/cirewind/v0.2.0/sample-case/manifest.sha256) ·
+[Browse the sample site](https://torjan0.github.io/cirewind/v0.2.0/)
+
+## Two-minute local run
+
+```sh
+brew install torjan0/tap/cirewind
+cirewind demo --out cirewind-demo
+cirewind verify cirewind-demo
+```
+
+With the supported Go toolchain, `go install github.com/torjan0/cirewind/cmd/cirewind@v0.2.0`
+provides the same evaluation build for the demo and verify commands. The demo
+needs no credential, network access, or repository clone; it is a synthetic
+case, not a real incident.
+
+> **Experimental v0.2.0:** CIRewind has a controlled GitHub.com
 > explicit-repository qualification and a deterministic offline demonstration.
 > It is not production-ready or complete for every organization, runner layout,
 > credential type, or retained-evidence condition. Always inspect collection
 > coverage and evidence gaps; do not use CIRewind as the sole basis for declaring
 > an incident absent.
+
+## High-assurance installation
+
+The [v0.2.0 release](https://github.com/torjan0/cirewind/releases/tag/v0.2.0), published with GitHub's
+immutable-release protection so that its tag and assets cannot change after
+publication, provides platform archives, `SHA256SUMS`, per-target SPDX
+documents, and GitHub build-provenance attestations. Download the complete
+release set into one clean directory, authenticate provenance and verify
+`SHA256SUMS` as described in [`docs/RELEASE_PROCESS.md`](docs/RELEASE_PROCESS.md),
+then extract the archive for your platform. This lane is the recommended path
+when the evidence you produce must be reproducible and integrity-checked; it
+supports integrity verification and publisher provenance, not legal
+chain-of-custody certification. The Homebrew and `go install` lanes rely on
+their ecosystems for integrity and are evaluation lanes, not attestation
+equivalents.
+
+The canonical Go module is `github.com/torjan0/cirewind`.
+
+## Why CIRewind exists
+
+Current-state dependency inventories cannot reliably answer what a runner used
+before a mutable tag moved back to a safe commit. CIRewind preserves and joins
+runtime, API, and historical-definition evidence at
+`run_id + run_attempt + job_id` precision. It keeps preparation separate from
+execution and makes missing evidence visible.
 
 The product contract is:
 
@@ -20,23 +87,16 @@ The product contract is:
 
 The evidence model is the product. The graph is a derived view.
 
-## Why CIRewind exists
-
-Current-state dependency inventories cannot reliably answer what a runner used
-before a mutable tag moved back to a safe commit. CIRewind preserves and joins
-runtime, API, and historical-definition evidence at
-`run_id + run_attempt + job_id` precision. It keeps preparation separate from
-execution and makes missing evidence visible.
-
 CIRewind is not a generic workflow scanner, Actions BOM replacement,
 exploitation framework, secret-value collector, cloud compromise validator,
-runner endpoint monitor, or hosted service. v0.1 supports GitHub.com only; GHES,
+runner endpoint monitor, or hosted service. It supports GitHub.com only; GHES,
 GitLab, Azure DevOps, and Jenkins are out of scope.
 
 ## Implemented commands
 
 | Command | Purpose |
 | --- | --- |
+| `cirewind demo` | Generate and verify the deterministic synthetic case offline |
 | `cirewind investigate` | Collect read-only GitHub.com evidence and generate a case |
 | `cirewind archive` | Incrementally preserve compact execution facts before retention loss |
 | `cirewind replay` | Apply a new incident pack to an archive without network access |
@@ -47,41 +107,24 @@ GitLab, Azure DevOps, and Jenkins are out of scope.
 All important flags have command help. Default tests and the offline demo require
 no GitHub credential or network access.
 
-## Install
+## Build and demo from source
 
-The immutable [v0.1.1 release](https://github.com/torjan0/cirewind/releases/tag/v0.1.1)
-provides platform archives and per-target SPDX documents. Each archive contains
-the executable, synthetic incident pack, applicable third-party notices, and
-build metadata. The checked-in provenance verifier validates the complete
-14-asset release set. Download all release assets into one clean directory,
-authenticate their provenance and verify `SHA256SUMS` as described in
-[`docs/RELEASE_PROCESS.md`](docs/RELEASE_PROCESS.md), then extract the archive
-for your platform.
-
-From source, use the exact Go version declared in [`go.mod`](go.mod):
+This is the same demo as the two-minute run, built from a checkout with the
+exact Go version declared in [`go.mod`](go.mod) and using only local synthetic
+data:
 
 ```sh
 make build
 ./bin/cirewind version
-./bin/cirewind --help
-```
-
-The canonical Go module is `github.com/torjan0/cirewind`.
-
-## Offline quickstart
-
-After Go dependencies are available, this path uses only local synthetic data:
-
-```sh
-make build
 ./bin/cirewind pack validate incidents/synthetic/mutable-tag.yaml
 make demo
 ./bin/cirewind verify demo-case
 ```
 
 `make demo` creates a compact archive, replays the synthetic incident, emits a
-complete case, verifies its manifest, and asserts canonical finding counts. It
-refuses to overwrite an existing directory. Choose another new path with:
+complete case into `demo-case`, verifies its manifest, and asserts canonical
+finding counts. It refuses to overwrite an existing directory. Choose another
+new path with:
 
 ```sh
 make demo DEMO_OUT=/new/path
@@ -120,12 +163,15 @@ Organization collection uses the same evidence contract:
   --out cases/example
 ```
 
-The requested event window is half-open: `[from,to)`. The collector uses a
-documented conservative parent-run discovery/watch interval for reruns and
-delayed jobs. Organization enumeration and recursive time partitioning are
-implemented, but dense-window saturation and the complete classic PAT,
-fine-grained PAT, and GitHub App permission matrix are not live-qualified in
-v0.1. Any inaccessible or unsplittable scope must remain partial coverage.
+The requested event window is half-open: `[from,to)`. The collector also looks
+at a conservative interval before the window so that reruns and delayed jobs of
+earlier runs are found; the bound and its basis are recorded in
+[`docs/IMPLEMENTATION_STATUS.md`](docs/IMPLEMENTATION_STATUS.md). Organization
+enumeration and recursive time partitioning are implemented, but a window so
+dense that GitHub's 1,000-result search ceiling cannot be split further, and the
+complete classic PAT, fine-grained PAT, and GitHub App permission matrix, are
+not live-qualified. Any inaccessible or unsplittable scope must remain partial
+coverage.
 
 ## Archive and replay
 
@@ -146,16 +192,19 @@ Preserve compact facts incrementally, then apply an incident disclosed later:
 ```
 
 Archive polling uses per-repository checkpoints, a 15-minute overlap, and a
-provisional 65-day parent watch. Explicit `--from` and `--to` are also supported.
-Interrupted collection is recoverable; replay can read committed WAL facts, while
-a clean close checkpoints the archive. Re-derivation does not rewrite archived
-source facts.
+provisional 65-day watch for parent runs whose reruns or delayed jobs may still
+appear. Explicit `--from` and `--to` are also supported. Interrupted collection
+is recoverable: replay can read facts already committed to the SQLite
+write-ahead log, and a clean close checkpoints the archive. Re-derivation does
+not rewrite archived source facts.
 
 Replay makes no network request. It cannot recover facts or raw bytes that an
-older extractor did not retain. The measured v0.1 relational envelope is 1,000
-repositories, 100,000 runs, and 300,000 attempt/job/fact executions on the
-documented reference host. Snapshot materialization rejects more than 1,000,000
-facts or 256 MiB. Larger cases require partitioning or a later streaming design.
+older extractor did not retain. The measured envelope is 1,000 repositories,
+100,000 runs, and 300,000 attempt/job/fact executions on the reference host
+recorded in the
+[hosted release qualification](docs/validation/2026-08-22-hosted-release-qualification.md).
+Loading an archive snapshot for replay rejects more than 1,000,000 facts or
+256 MiB. Larger cases require partitioning or a later streaming design.
 
 ## Raw logs and privacy
 
@@ -182,9 +231,10 @@ sanitize them before sharing. See [`PRIVACY.md`](PRIVACY.md).
 
 ## Case bundle
 
-Investigation and replay emit:
+Investigation, replay, and the demo emit:
 
 - `report.html`
+- `graph.svg`
 - `findings.json`
 - `affected-runs.csv`
 - `evidence.jsonl`
@@ -242,10 +292,11 @@ bill of health.
 Effective `GITHUB_TOKEN` permissions are runtime-observed where runner evidence
 exists; a static fallback is labeled inferred. Named-secret relationships require
 an exact reference, step mapping, reusable-workflow mapping/inheritance, or
-environment-eligibility join. `id-token: write` is only
-`OIDC_MINTING_CAPABILITY`; v0.1 performs no cloud trust-policy analysis.
+environment-eligibility join. `id-token: write` is reported only as the
+context relationship `OIDC_MINTING_CAPABILITY`, a capability label rather than
+a finding state; CIRewind performs no cloud trust-policy analysis.
 
-## v0.1 qualification boundary
+## Qualification boundary
 
 The controlled lab qualifies direct mutable Action execution, downloaded-only
 skip behavior, attempt separation across tag movement and reruns, exact remote
@@ -260,14 +311,16 @@ The following remain experimental limitations:
 - live immutable Action package grammar and every runner version/localization;
 - exact runtime bytes for unarchived local workspace Actions;
 - broad secret, package, release, deployment, and runner inventory joins;
-- cloud identity reachability, runner persistence, exfiltration, or malicious
-  causation; and
+- cloud identity reachability, runner persistence, outbound data theft, or
+  malicious causation; and
 - replay above the documented fact/byte guards.
 
 Unsupported syntax, missing definitions, denied routes, expired logs, and
-ambiguous joins remain evidence gaps. See
-[`ADR 0011`](docs/adr/0011-experimental-v0-1-qualification-envelope.md), the
-sanitized [controlled-lab record](docs/validation/2026-08-22-controlled-lab-qualification.md),
+ambiguous joins remain evidence gaps. The qualification envelope accepted for
+v0.1 in [`ADR 0011`](docs/adr/0011-experimental-v0-1-qualification-envelope.md)
+still bounds v0.2.0 until the release-candidate qualification record
+replaces it; see also the sanitized
+[controlled-lab record](docs/validation/2026-08-22-controlled-lab-qualification.md)
 and [`docs/IMPLEMENTATION_STATUS.md`](docs/IMPLEMENTATION_STATUS.md).
 
 ## Read-only permission profile
@@ -310,6 +363,7 @@ make licenses
 make demo DEMO_OUT=/new/path
 make safety-audit
 make browser-audit
+make sample-site-check
 make vuln
 make preflight
 ```
@@ -327,6 +381,7 @@ checksums, and GitHub build-provenance attestations; see
 - [Implementation status](docs/IMPLEMENTATION_STATUS.md)
 - [Incident-pack specification](docs/INCIDENT_PACK_SPEC.md)
 - [GitHub data sources](docs/GITHUB_DATA_SOURCES.md)
+- [Sample site specification](docs/SAMPLE_SITE_SPEC.md)
 - [Test strategy](docs/TEST_STRATEGY.md)
 - [Threat model](docs/THREAT_MODEL.md)
 - [Release process](docs/RELEASE_PROCESS.md)
