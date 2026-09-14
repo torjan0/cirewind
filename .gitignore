@@ -29,3 +29,14 @@
 *.sqlite3-wal
 coverage.out
 .DS_Store
+
+# Local instruction files for coding assistants stay on the maintainer's
+# machine; scripts/local-instruction-files-guard.sh rejects any that are tracked.
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+.claude/
+.codex/
+.codex-tmp/
+.cursor/
+.cursorrules

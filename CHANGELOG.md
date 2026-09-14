@@ -6,6 +6,15 @@ All notable changes to CIRewind are documented here. The format follows
 
 ## [Unreleased]
 
+### Removed
+
+- `AGENTS.md` from the tracked tree. Local instruction files for coding
+  assistants stay on the maintainer's machine: the ignore rules exclude them,
+  and `make local-instructions-check`, which `make preflight` and CI run,
+  fails when any of them is tracked or when the ignore rules stop covering
+  them. `make pack-review-check` allowlists those ignored local paths so the
+  pack review Git guard keeps rejecting every other ignored file.
+
 ### Documentation
 
 - Record the v0.2.0 publication in `docs/RELEASE_PROCESS.md`, `TASKS.md`, and

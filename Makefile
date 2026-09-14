@@ -3,6 +3,11 @@ GO_VERSION := $(shell awk '/^go / { print $$2; exit }' go.mod)
 GO_TOOLCHAIN ?= go$(GO_VERSION)
 GO_EXACT = GOTOOLCHAIN="$(GO_TOOLCHAIN)" $(GO)
 PACK_REVIEW_HEAD ?= $(shell git rev-parse --verify HEAD)
+# Local instruction files for coding assistants may sit on the maintainer's disk,
+# ignored and never tracked (scripts/local-instruction-files-guard.sh); the pack
+# review Git guard otherwise treats every ignored file as an uninspected input.
+PACK_REVIEW_LOCAL_PATHS := AGENTS.md CLAUDE.md GEMINI.md .claude .codex .codex-tmp .cursor .cursorrules
+PACK_REVIEW_LOCAL_ALLOW := $(foreach path,$(PACK_REVIEW_LOCAL_PATHS),--allow-dirty-path $(path))
 BINARY ?= bin/cirewind
 DEMO_OUT ?= demo-case
 RELEASE_OUT ?=
@@ -20,7 +25,7 @@ SITE_VERSION ?=
 README_VERSION ?= 0.2.0
 BREW_WORK_ROOT ?=
 
-.PHONY: build test vet race vuln licenses demo browser-audit safety-audit pack-review-check pack-review-clean release release-test release-verify release-spdx release-workflow-audit sample-site sample-site-check sample-site-browser-audit readme-candidate readme-candidate-check brew-formula-check preflight clean
+.PHONY: build test vet race vuln licenses demo browser-audit safety-audit pack-review-check pack-review-clean release release-test release-verify release-spdx release-workflow-audit sample-site sample-site-check sample-site-browser-audit readme-candidate readme-candidate-check brew-formula-check local-instructions-check preflight clean
 
 build:
 	mkdir -p "$(dir $(BINARY))"
@@ -94,7 +99,7 @@ pack-review-check:
 	sh scripts/test-pack-review-candidate-change-guard.sh
 	$(GO_EXACT) test ./internal/packreview ./tools/packreview ./internal/releaseartifact
 	$(GO_EXACT) run ./tools/packreview validate-governance --repository-root .
-	scripts/pack-review-git-guard.sh --repository-root . --expected-head "$(PACK_REVIEW_HEAD)" -- env GOTOOLCHAIN="$(GO_TOOLCHAIN)" $(GO) run ./tools/packreview validate-candidate-tree --repository-root . --candidate-commit "$(PACK_REVIEW_HEAD)"
+	scripts/pack-review-git-guard.sh --repository-root . --expected-head "$(PACK_REVIEW_HEAD)" $(PACK_REVIEW_LOCAL_ALLOW) -- env GOTOOLCHAIN="$(GO_TOOLCHAIN)" $(GO) run ./tools/packreview validate-candidate-tree --repository-root . --candidate-commit "$(PACK_REVIEW_HEAD)"
 
 pack-review-clean:
 	git diff --exit-code
@@ -162,6 +167,12 @@ rc-freeze-check:
 	sh -n scripts/test-freeze-rc.sh
 	$(GO_EXACT) test ./internal/releaseartifact -run 'Acquisition|SuiteLedger'
 	sh ./scripts/test-freeze-rc.sh "$(RELEASE_WORK_ROOT)"
+
+local-instructions-check:
+	sh -n scripts/local-instruction-files-guard.sh
+	sh -n scripts/test-local-instruction-files-guard.sh
+	sh scripts/test-local-instruction-files-guard.sh
+	sh scripts/local-instruction-files-guard.sh --repository-root .
 
 preflight:
 	sh ./scripts/preflight.sh
