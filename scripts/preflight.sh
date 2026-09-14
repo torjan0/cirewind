@@ -58,6 +58,9 @@ bash -n scripts/pack-review-git-guard.sh
 sh scripts/test-pack-review-git-guard.sh
 bash -n scripts/pack-review-candidate-change-guard.sh
 sh scripts/test-pack-review-candidate-change-guard.sh
+sh -n scripts/local-instruction-files-guard.sh
+sh scripts/test-local-instruction-files-guard.sh
+sh scripts/local-instruction-files-guard.sh --repository-root .
 
 git diff --check
 git diff --cached --check

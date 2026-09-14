@@ -38,6 +38,8 @@ git diff --check
 
 Keep tests deterministic. Do not make the default suite depend on live GitHub, cloud credentials, Docker, a browser, a self-hosted runner, or external services. Live integration tests must be explicit opt-in tests against resources controlled for CIRewind testing.
 
+Local instruction files for coding assistants (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.cursorrules`, and the `.claude/`, `.codex/`, and `.cursor/` directories) stay on your machine and are never part of the repository. The ignore rules exclude them, and `make local-instructions-check`, which `make preflight` and CI also run, fails when any of them reaches the index.
+
 ## Forensic review checklist
 
 Every change must preserve these distinctions:
