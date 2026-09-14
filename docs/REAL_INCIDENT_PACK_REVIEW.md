@@ -629,9 +629,9 @@ boundary as self-certified approval.
   validates it against the source.
 - Bots, CI, language models, automated assistants, generated comments, schema
   validators, and test output never count as a human approval.
-- Codex, or any other automated implementation session, may prepare candidate
-  material but may not create an approving record, change status to `reviewed`,
-  or satisfy an independence gate.
+- An automated implementation session may prepare candidate material but may
+  not create an approving record, change status to `reviewed`, or satisfy an
+  independence gate.
 - An automated session may not create an approval record with an `approve`
   decision, mark status `reviewed`, or describe review as independent.
 - A maintainer cannot satisfy the outside-review requirement by approving their
