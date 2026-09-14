@@ -17,6 +17,9 @@ All notable changes to CIRewind are documented here. The format follows
 
 ### Documentation
 
+- Name the automated implementation session generically in the adoption plan
+  responsibility matrix and in the real-incident review independence rules.
+
 - Record the v0.2.0 publication in `docs/RELEASE_PROCESS.md`, `TASKS.md`, and
   `docs/validation/2026-09-09-v0.2.0-release-record.md`: the frozen commit and
   gate ledger, the tag, the draft and publish runs, the activation push under a
