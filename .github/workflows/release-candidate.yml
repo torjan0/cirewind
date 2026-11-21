@@ -75,7 +75,7 @@ jobs:
             printf 'build-date=%s\n' "$build_date"
           } >>"$GITHUB_OUTPUT"
       - name: Set up the exact Go toolchain
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: go.mod
           cache: true
@@ -145,7 +145,7 @@ jobs:
         shell: bash
         run: ./scripts/verify-release-environment.sh "$GITHUB_REPOSITORY" release-draft "$GITHUB_REPOSITORY_OWNER"
       - name: Set up the verifier toolchain
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: go.mod
           cache: true
@@ -239,7 +239,7 @@ jobs:
         shell: bash
         run: ./scripts/verify-release-environment.sh "$GITHUB_REPOSITORY" release-publish "$GITHUB_REPOSITORY_OWNER"
       - name: Set up the verifier toolchain
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: go.mod
           cache: true
